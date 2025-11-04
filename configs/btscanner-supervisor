@@ -1,0 +1,24 @@
+# ≈cie≈ºka i spos√≥b uruchomienia g≈√≥wnego skryptu
+# - je≈li u≈ºywasz venv: BTS_MAIN_CMD="/opt/btscanner/venv/bin/python /opt/btscanner/main_scanner.py"
+BTS_MAIN_CMD="/usr/bin/python3 /home/grpck/sar_bt_scan/sar_bt_scan/main.py"
+
+# ≈πr√≥d≈owy plik bazy a lokalnym dysku RasPI)
+BTS_DB_PATH="/home/grpck/results.db"
+
+# Katalog docelowy (montowany on-demand pendrive)
+BTS_DEST_DIR="/mnt/pendrive"
+
+# Logi supervisora
+BTS_LOG_DIR="/var/log/btscanner"
+
+# Interwa≈ backupu (sekundy)
+BTS_BACKUP_INTERVAL="60"
+
+# Maksymalny backoff restartu
+BTS_RESTART_BACKOFF_MAX="60"
+
+# Strefa czasu do stempla: "local" lub "utc"
+BTS_TIMEZONE="utc"
+
+# Utworzenie pliku powoduje wstrzymanie restart√≥w g≈√≥wnego procesu
+BTS_STOP_FILE="/run/btscanner-supervisor.stop"

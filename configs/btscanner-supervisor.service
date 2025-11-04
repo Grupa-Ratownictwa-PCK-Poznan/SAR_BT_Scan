@@ -1,0 +1,29 @@
+[Unit]
+Description=BT Scanner Supervisor (SAR)
+After=network-online.target local-fs.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/default/btscanner-supervisor
+ExecStart=/usr/bin/env python3 /home/grpck/sar_bt_scan/sar_bt_scan/supervisor.py
+WorkingDirectory=/home/grpck/sar_bt_scan/sar_bt_scan
+User=grpck
+Group=grpck
+Restart=always
+RestartSec=3
+Nice=5
+# Dodatkowe zabezpieczenia:
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=false
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+ReadWritePaths=/home/grpck /home/grpck/sar_bt_scan/sar_bt_scan /var/log/btscanner /run
+# Je≈li pendrive montujesz w /mnt/btusb:
+ReadWritePaths=/mnt/pendrive
+
+[Install]
+WantedBy=multi-user.target
