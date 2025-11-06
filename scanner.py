@@ -8,14 +8,7 @@ import subprocess
 from typing import Dict, Any, Optional
 import gps_client as gc
 from settings import SCANNER_ID
-
 from storage import init_db, db, upsert_device, add_sighting
-# def add_sighting(con, addr, ts_unix, ts_gps=None, lat=None, lon=None, alt=None,
-#                 gps_hdop=None, rssi=None, tx_power=None, local_name=None,
-#                 manufacturer=None, manufacturer_hex=None, service_uuid=None,
-#                 adv_raw=None):
-# def upsert_device(con, addr, name=None, manufacturer=None, now=None)
-
 from bt_manufacturer_ids import COMPANY_IDS
 
 try:
@@ -74,7 +67,7 @@ def detection_callback(device, advertisement_data):
     gps_loc = gc.get_location()
     gps_time = gc.get_gps_time()
 
-    print(gc.get_gps_status())
+    # print(gc.get_gps_status())
 
     lat = None
     lon = None
@@ -82,10 +75,7 @@ def detection_callback(device, advertisement_data):
 
     if gps_loc is not None and hasattr(gps_loc, 'lat'):
         lat = gps_loc.lat
-        lon = gps_loc.lon  # if needed
-   # else:
-        # Optionally log a warning or handle the fallback
-        #print("GPS location is not available.")
+        lon = gps_loc.lon  
 
     if gps_time is not None:
         ts_gps = gps_time
@@ -117,26 +107,8 @@ def detection_callback(device, advertisement_data):
                      adv_raw=None)  # can store advertisement_data.bytes if needed
 
 
-    print(f"Lat {lat}, Lon {lon}, TS_GPS {ts_gps}, Device {device.address}, RSSI={advertisement_data.rssi}, TX={tx_power}, Manufacturer {manufacturer}, Service {service}, Name {best_name}, Manufacturer HEX {company_hex}")
+    # print(f"Lat {lat}, Lon {lon}, TS_GPS {ts_gps}, Device {device.address}, RSSI={advertisement_data.rssi}, TX={tx_power}, Manufacturer {manufacturer}, Service {service}, Name {best_name}, Manufacturer HEX {company_hex}")
 
-#    entry = devices_seen.get(mac)
-#    if entry is None:
-#        devices_seen[mac] = {
-#            "name": name,
-#            "best_rssi": rssi,
-#            "count": 1,
-#            "first_seen": now,
-#            "last_seen": now,
-#        }
-#    else:
-#        # Update best RSSI if stronger
-#        if rssi is not None:
-#            if entry["best_rssi"] is None or rssi > entry["best_rssi"]:
-#                entry["best_rssi"] = rssi
-#        # Update name if we learned a better one
-#        entry["name"] = _best_name(entry.get("name"), name)
-#        entry["count"] += 1
-#        entry["last_seen"] = now
 
 
 async def run(adapter: Optional[str], duration: Optional[float]):
@@ -145,7 +117,6 @@ async def run(adapter: Optional[str], duration: Optional[float]):
     #print(f"Initializing scanner with device {adapter_str} and duration of {duration_str} seconds.\n")
 
     # init GPS
-
     gc.init_gps(wait_for_fix=True, timeout=20)
     #print(gc.get_gps_status())
     #print(gc.get_location())
@@ -155,7 +126,6 @@ async def run(adapter: Optional[str], duration: Optional[float]):
 
     # init DB
     init_db()
-
 
     stop_event = asyncio.Event()
 
