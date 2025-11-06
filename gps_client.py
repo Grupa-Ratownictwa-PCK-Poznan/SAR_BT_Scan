@@ -149,15 +149,6 @@ class _GPSWorker:
                 last_update=self._last_update,
             )
 
-#    def _parse_iso_utc(iso: Optional[str]) -> Optional[datetime]:
-#        if not iso:
-#            return None
-#        try:
-#            # gpsd often sends something like '2025-08-30T19:11:12.345Z'
-#            return datetime.fromisoformat(str(iso).replace("Z", "+00:00")).astimezone(timezone.utc)
-#        except Exception:
-#            return None
-
     def get_time(self) -> Optional[datetime]:
         with self._lock:
             tpv = self._latest_tpv
@@ -183,73 +174,6 @@ class _GPSWorker:
             timestamp_utc=_parse_iso_utc(iso),
             accuracy_m_2d_cep95=2.0 * (epx**2 + epy**2) ** 0.5 if (epx is not None and epy is not None) else (epx and epy),
         )
-
-
-"""
-    def get_location(self) -> Optional[GPSLocation]:
-        with self._lock:
-            tpv = self._latest_tpv or {}
-            sky = self._latest_sky or {}
-            if tpv.get("lat") is None or tpv.get("lon") is None:
-                return None
-            lat = float(tpv["lat"])
-            lon = float(tpv["lon"])
-            alt = _to_float(tpv.get("alt"))
-            epx = _to_float(tpv.get("epx"))
-            epy = _to_float(tpv.get("epy"))
-            hdop = _to_float(sky.get("hdop"))
-            iso = tpv.get("time")  # skopiuj string czasu
-        # pza lockiem:
-        cep95 = 2.0*math.sqrt(epx*epx+epy*epy) if (epx is not None and epy is not None) else (hdop*5.0 if hdop is not None else None)
-        ts = _parse_iso_utc(iso)
-        return GPSLocation(lat=lat, lon=lon, alt=alt, timestamp_utc=ts, accuracy_m_2d_cep95=cep95)
-"""
-
-#    def _parse_iso_utc(iso: Optional[str]) -> Optional[datetime]:
-#        if not iso:
-#            return None
-#        try:
-#            return datetime.fromisoformat(str(iso).replace("Z","+00:00")).astimezone(timezone.utc)
-#        except Exception:
-#            return None
-
-
-
-'''
-    def get_time(self) -> Optional[datetime]:
-        with self._lock:
-            tpv = self._latest_tpv
-            if not tpv or not tpv.get("time"):
-                return None
-            try:
-                iso = str(tpv["time"])  # e.g., '2025-08-30T13:57:44.000Z'
-                # Normalize 'Z' to +00:00
-                dt = datetime.fromisoformat(iso.replace("Z", "+00:00")).astimezone(timezone.utc)
-                return dt
-            except Exception:
-                return None
-
-    def get_location(self) -> Optional[GPSLocation]:
-        with self._lock:
-            tpv = self._latest_tpv or {}
-            if tpv.get("lat") is None or tpv.get("lon") is None:
-                return None
-            lat = float(tpv["lat"])  # type: ignore[arg-type]
-            lon = float(tpv["lon"])  # type: ignore[arg-type]
-            alt = _to_float(tpv.get("alt"))
-            # Accuracy estimate: prefer CEP95 from epx/epy; else HDOP*5m heuristic
-            epx = _to_float(tpv.get("epx"))
-            epy = _to_float(tpv.get("epy"))
-            sky = self._latest_sky or {}
-            hdop = _to_float(sky.get("hdop"))
-            cep95 = None
-            if epx is not None and epy is not None:
-                cep95 = 2.0 * math.sqrt(epx * epx + epy * epy)
-            elif hdop is not None:
-                cep95 = hdop * 5.0
-            ts = self.get_time()
-            return GPSLocation(lat=lat, lon=lon, alt=alt, timestamp_utc=ts, accuracy_m_2d_cep95=cep95)
-'''
 
 def _to_float(x: Any) -> Optional[float]:
     try:
@@ -345,9 +269,6 @@ def _parse_iso_utc(iso: Optional[str]) -> Optional[datetime]:
         return datetime.fromisoformat(str(iso).replace("Z", "+00:00")).astimezone(timezone.utc)
     except Exception:
         return None
-
-
-
 
 if __name__ == "__main__":
     # Simple self-test
