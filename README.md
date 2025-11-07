@@ -1,4 +1,4 @@
-# SAR_BT_Scan — Bluetooth Scanner for Search and Rescue (SAR)
+# SAR BT Scan — Bluetooth Scanner for Search and Rescue (SAR)
 
 **SAR_BT_Scan** is an open-source tool by **Grupa Ratownictwa PCK Poznań** designed to assist Search and Rescue (SAR) operations.  
 It continuously scans Bluetooth Low Energy (BLE) beacons, tags them with GPS coordinates and timestamps, and stores the data in a local SQLite database for post-mission analysis and visualization.
