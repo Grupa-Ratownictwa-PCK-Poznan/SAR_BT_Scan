@@ -174,4 +174,4 @@ async def run(adapter: Optional[str], duration: Optional[float]):
             await stop_event.wait()
     finally:
         await scanner.stop()
-#        print_summary()
+        # print_summary()
