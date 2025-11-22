@@ -174,6 +174,8 @@ This will:
 
 ## 📤 Data Offload & Analysis
 
+Keep in mind - the supervisor will wipe the DB file on every service start. Thsi is to prevent the scanner from mixing data from various operations. If you boot the device multiple times in a single mission - no worries, you will still have all the database snapshots on the USB memory (unless you wipe it). This wipe was added because it's easier to clean up files from USB memory (you can connect to a computer with screen) than from the scanner itself.
+
 At the end of the mission:
 - Retrieve `.db` files from `/mnt/pendrive`.
 - Analyze with:
