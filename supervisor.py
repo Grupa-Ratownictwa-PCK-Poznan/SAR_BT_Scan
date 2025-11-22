@@ -3,6 +3,7 @@
 """
 Supervisor code:
 - starts and monitors the main process
+- wipes the database file on every start (you will still have older versions on the USB memory, this is left intact)
 - logs events and errors
 - every 60s creates a dump of database to selected path
   with naming: YYYY-MM-DD-HH-MM-SS-BTlog.db
@@ -134,6 +135,8 @@ def do_minute_backup():
 def start_child():
     global child_proc
     with child_lock:
+        logger.info(f"Removal of DB file under: {DB_PATH}")
+        Path(DB_PATH).unlink(missing_ok=True)
         logger.info(f"Start of the main process: {MAIN_CMD}")
         # If a single string is provided, run it with shell=True; we maintain flexibility.
         child_proc = subprocess.Popen(
