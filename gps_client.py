@@ -62,7 +62,10 @@ class GPSLocation:
 
 class _GPSWorker:
     def __init__(self, host: str = "127.0.0.1", port: int = 2947):
+        self._host = host
+        self._port = port
         self._session = gps(host=host, port=port, mode=WATCH_ENABLE | WATCH_NEWSTYLE)
+        self._session.sock.settimeout(5.0)
         self._lock = threading.Lock()
         self._stop = threading.Event()
         self._thread: Optional[threading.Thread] = None
@@ -86,42 +89,58 @@ class _GPSWorker:
             pass
 
     def _run(self) -> None:
-        for report in self._session:  # generator, blocks internally
-            if self._stop.is_set():
-                break
+        while not self._stop.is_set():
             try:
-                cls = report.get("class") if hasattr(report, "get") else getattr(report, "class", None)
-                if cls == "TPV":
-                    # extract only what we need
-                    tpv = {
-                        "lat": getattr(report, "lat", None),
-                        "lon": getattr(report, "lon", None),
-                        "alt": getattr(report, "alt", None),
-                        "epx": getattr(report, "epx", None),
-                        "epy": getattr(report, "epy", None),
-                        "epv": getattr(report, "epv", None),
-                        "mode": getattr(report, "mode", 0),
-                        "time": getattr(report, "time", None),
-                        "speed": getattr(report, "speed", None),
-                        "track": getattr(report, "track", None),
-                        "sats": getattr(report, "satellites_used", None) if hasattr(report, "satellites_used") else None,
-                    }
-                    with self._lock:
-                        self._latest_tpv = tpv
-                        self._last_update = datetime.now(timezone.utc)
-                elif cls == "SKY":
-                    sky = {
-                        "hdop": getattr(report, "hdop", None),
-                        "vdop": getattr(report, "vdop", None),
-                        "pdop": getattr(report, "pdop", None),
-                        "satellites": getattr(report, "satellites", None),  # list w/ PRNs & used flags
-                    }
-                    with self._lock:
-                        self._latest_sky = sky
-                        self._last_update = datetime.now(timezone.utc)
+                for report in self._session:  # generator, blocks internally
+                    if self._stop.is_set():
+                        break
+                    try:
+                        cls = report.get("class") if hasattr(report, "get") else getattr(report, "class", None)
+                        if cls == "TPV":
+                            # extract only what we need
+                            tpv = {
+                                "lat": getattr(report, "lat", None),
+                                "lon": getattr(report, "lon", None),
+                                "alt": getattr(report, "alt", None),
+                                "epx": getattr(report, "epx", None),
+                                "epy": getattr(report, "epy", None),
+                                "epv": getattr(report, "epv", None),
+                                "mode": getattr(report, "mode", 0),
+                                "time": getattr(report, "time", None),
+                                "speed": getattr(report, "speed", None),
+                                "track": getattr(report, "track", None),
+                                "sats": getattr(report, "satellites_used", None) if hasattr(report, "satellites_used") else None,
+                            }
+                            with self._lock:
+                                self._latest_tpv = tpv
+                                self._last_update = datetime.now(timezone.utc)
+                        elif cls == "SKY":
+                            sky = {
+                                "hdop": getattr(report, "hdop", None),
+                                "vdop": getattr(report, "vdop", None),
+                                "pdop": getattr(report, "pdop", None),
+                                "satellites": getattr(report, "satellites", None),  # list w/ PRNs & used flags
+                            }
+                            with self._lock:
+                                self._latest_sky = sky
+                                self._last_update = datetime.now(timezone.utc)
+                    except Exception:
+                        # swallow malformed frames; keep reading
+                        continue
             except Exception:
-                # swallow malformed frames; keep reading
-                continue
+                # connection lost; reconnect with backoff
+                if self._stop.is_set():
+                    break
+                time.sleep(1)
+                try:
+                    self._session.close()
+                except Exception:
+                    pass
+                try:
+                    self._session = gps(host=self._host, port=self._port, mode=WATCH_ENABLE | WATCH_NEWSTYLE)
+                    self._session.sock.settimeout(5.0)
+                except Exception:
+                    pass
 
     def get_status(self) -> GPSStatus:
         with self._lock:
@@ -172,7 +191,7 @@ class _GPSWorker:
             lon=float(lon),
             alt=alt,
             timestamp_utc=_parse_iso_utc(iso),
-            accuracy_m_2d_cep95=2.0 * (epx**2 + epy**2) ** 0.5 if (epx is not None and epy is not None) else (epx and epy),
+            accuracy_m_2d_cep95=2.0 * (epx**2 + epy**2) ** 0.5 if (epx is not None and epy is not None) else None,
         )
 
 def _to_float(x: Any) -> Optional[float]:
@@ -202,11 +221,15 @@ def init_gps(host: str = "127.0.0.1", port: int = 2947, *, wait_for_fix: bool = 
         timeout: seconds to wait when wait_for_fix=True
     """
     global _client
-    if _client is None:
-        _client = _GPSWorker(host=host, port=port)
-        _client.start()
-    if wait_for_fix:
-        _wait_until(lambda: (_client.get_status().fix_ok if _client else False), timeout)
+    try:
+        if _client is None:
+            _client = _GPSWorker(host=host, port=port)
+            _client.start()
+        if wait_for_fix:
+            _wait_until(lambda: (_client.get_status().fix_ok if _client else False), timeout)
+    except Exception:
+        # Gracefully fail if gpsd unavailable; scanner continues without GPS
+        pass
 
 
 def get_gps_status() -> Optional[GPSStatus]:
