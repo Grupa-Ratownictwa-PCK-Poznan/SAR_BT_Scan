@@ -52,6 +52,37 @@ def init_db():
     con.execute("CREATE INDEX IF NOT EXISTS idx_sightings_ts ON sightings(ts_unix);")
     con.execute("CREATE INDEX IF NOT EXISTS idx_sightings_addr_ts ON sightings(addr, ts_unix);")
 
+    # WiFi devices table (one row per unique WiFi device MAC)
+    con.execute("""
+    CREATE TABLE IF NOT EXISTS wifi_devices (
+        mac TEXT PRIMARY KEY,
+        first_seen INTEGER NOT NULL,
+        last_seen INTEGER NOT NULL,
+        vendor TEXT
+    );
+    """)
+
+    # WiFi associations table (association requests with SSIDs)
+    con.execute("""
+    CREATE TABLE IF NOT EXISTS wifi_associations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        mac TEXT NOT NULL,
+        ts_unix INTEGER NOT NULL,           -- capture time (Unix epoch)
+        ts_gps TEXT,                        -- raw GPS timestamp (UTC, ISO8601)
+        lat REAL,
+        lon REAL,
+        alt REAL,
+        ssid TEXT NOT NULL,                 -- plaintext SSID from assoc request
+        rssi INTEGER,                       -- signal strength
+        scanner_name TEXT,
+        FOREIGN KEY(mac) REFERENCES wifi_devices(mac)
+    );
+    """)
+
+    con.execute("CREATE INDEX IF NOT EXISTS idx_wifi_assoc_ts ON wifi_associations(ts_unix);")
+    con.execute("CREATE INDEX IF NOT EXISTS idx_wifi_assoc_mac_ts ON wifi_associations(mac, ts_unix);")
+    con.execute("CREATE INDEX IF NOT EXISTS idx_wifi_assoc_ssid ON wifi_associations(ssid);")
+
     con.commit()
     con.close()
 
@@ -88,4 +119,28 @@ def add_sighting(con, addr, ts_unix=None,ts_gps=None, lat=None, lon=None, alt=No
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
     """, (addr, ts_unix, ts_gps, lat, lon, alt, gps_hdop,
           rssi, tx_power, local_name, manufacturer, manufacturer_hex, service_uuid, scanner, adv_raw))
+    con.execute("COMMIT;")
+
+def upsert_wifi_device(con, mac, vendor=None, now=None):
+    """Register or update a WiFi device."""
+    now = now or int(time.time())
+    con.execute("BEGIN;")
+    con.execute("""
+        INSERT INTO wifi_devices(mac, first_seen, last_seen, vendor)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(mac) DO UPDATE SET
+          last_seen=excluded.last_seen,
+          vendor=COALESCE(excluded.vendor, wifi_devices.vendor);
+    """, (mac, now, now, vendor))
+    con.execute("COMMIT;")
+
+def add_wifi_association(con, mac, ssid, ts_unix=None, ts_gps=None, lat=None, lon=None, 
+                         alt=None, rssi=None, scanner=None):
+    """Record a WiFi association request (device trying to connect to SSID)."""
+    con.execute("BEGIN;")
+    con.execute("""
+        INSERT INTO wifi_associations(
+            mac, ts_unix, ts_gps, lat, lon, alt, ssid, rssi, scanner_name
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+    """, (mac, ts_unix, ts_gps, lat, lon, alt, ssid, rssi, scanner))
     con.execute("COMMIT;")
