@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAR Scanner - Live Dashboard</title>
+    
+    <!-- Leaflet CSS for maps -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a2e;
+            color: #fff;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+            gap: 10px;
+            padding: 10px;
+            background: #0f0f1e;
+        }
+
+        .sidebar {
+            width: 350px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            overflow-y: auto;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .panel {
+            background: #16213e;
+            border: 1px solid #0f3460;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .panel-title {
+            font-size: 14px;
+            font-weight: bold;
+            text-transform: uppercase;
+            color: #e94560;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Indicators */
+        .indicators {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .indicator {
+            background: #0f3460;
+            border-left: 4px solid #0f3460;
+            padding: 12px;
+            border-radius: 4px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .indicator.active {
+            background: rgba(46, 125, 50, 0.2);
+            border-left-color: #2e7d32;
+        }
+
+        .indicator.inactive {
+            background: rgba(215, 61, 40, 0.2);
+            border-left-color: #c6362b;
+        }
+
+        .indicator-label {
+            font-size: 11px;
+            color: #aaa;
+            text-transform: uppercase;
+        }
+
+        .indicator-value {
+            font-size: 13px;
+            font-weight: bold;
+        }
+
+        .indicator-value.good {
+            color: #4caf50;
+        }
+
+        .indicator-value.warning {
+            color: #ff9800;
+        }
+
+        .indicator-value.error {
+            color: #f44336;
+        }
+
+        /* Live time */
+        #liveTime {
+            font-size: 24px;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+            text-align: center;
+            color: #00d4ff;
+            padding: 15px;
+            background: rgba(0, 212, 255, 0.1);
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 5px;
+            border-bottom: 1px solid #0f3460;
+            margin-bottom: 10px;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: 1px solid #0f3460;
+            color: #aaa;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 12px;
+            border-radius: 4px 4px 0 0;
+            transition: all 0.3s;
+        }
+
+        .tab-btn.active {
+            background: #0f3460;
+            color: #00d4ff;
+            border-color: #00d4ff;
+        }
+
+        .tab-btn:hover {
+            color: #fff;
+        }
+
+        /* Tables */
+        .table-container {
+            overflow-y: auto;
+            flex: 1;
+            max-height: 400px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        th {
+            position: sticky;
+            top: 0;
+            background: #0f3460;
+            padding: 8px;
+            text-align: left;
+            font-weight: bold;
+            color: #00d4ff;
+            border-bottom: 2px solid #e94560;
+        }
+
+        td {
+            padding: 8px;
+            border-bottom: 1px solid #0f3460;
+        }
+
+        tr:hover {
+            background: rgba(0, 212, 255, 0.05);
+        }
+
+        .mac-addr {
+            font-family: 'Courier New', monospace;
+            color: #00d4ff;
+        }
+
+        .rssi-bar {
+            display: inline-block;
+            width: 50px;
+            height: 16px;
+            background: #333;
+            border-radius: 2px;
+            border: 1px solid #555;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .rssi-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #f44336, #ff9800, #4caf50);
+            width: 100%;
+            transition: width 0.3s;
+        }
+
+        /* Map */
+        #map {
+            height: 100%;
+            border-radius: 8px;
+            border: 1px solid #0f3460;
+        }
+
+        /* Filters */
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .filter-group label {
+            font-size: 12px;
+            color: #aaa;
+            text-transform: uppercase;
+        }
+
+        input[type="text"],
+        input[type="range"],
+        input[type="number"],
+        select {
+            background: #0f3460;
+            border: 1px solid #00d4ff;
+            color: #fff;
+            padding: 6px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        input[type="text"]::placeholder {
+            color: #666;
+        }
+
+        input[type="range"] {
+            padding: 0;
+            cursor: pointer;
+        }
+
+        .range-values {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: #aaa;
+            margin-top: 4px;
+        }
+
+        /* Stats */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .stat-box {
+            background: #0f3460;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+            border-left: 3px solid #00d4ff;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: #aaa;
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #00d4ff;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #aaa;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #0f3460;
+            border-top: 3px solid #00d4ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .container {
+                flex-direction: column;
+            }
+            .sidebar {
+                width: 100%;
+                max-height: 30%;
+            }
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #0f3460;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #00d4ff;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #00a8cc;
+        }
+
+        .legend {
+            font-size: 11px;
+            padding: 8px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 4px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin: 4px 0;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <!-- Live Time -->
+            <div id="liveTime">--:--:--</div>
+
+            <!-- Status Indicators Panel -->
+            <div class="panel">
+                <div class="panel-title">
+                    <i class="fas fa-heartbeat"></i> Status
+                </div>
+                <div class="indicators">
+                    <div class="indicator" id="gpsIndicator">
+                        <div class="indicator-label">GPS Fix</div>
+                        <div class="indicator-value error">--</div>
+                    </div>
+                    <div class="indicator" id="satsIndicator">
+                        <div class="indicator-label">Satellites</div>
+                        <div class="indicator-value">0</div>
+                    </div>
+                    <div class="indicator" id="scanModeIndicator">
+                        <div class="indicator-label">Scan Mode</div>
+                        <div class="indicator-value">--</div>
+                    </div>
+                    <div class="indicator" id="wifiMonitorIndicator">
+                        <div class="indicator-label">WiFi Monitor</div>
+                        <div class="indicator-value error">OFF</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statistics Panel -->
+            <div class="panel">
+                <div class="panel-title">
+                    <i class="fas fa-chart-bar"></i> Statistics
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <div class="stat-label">BT Devices</div>
+                        <div class="stat-value" id="btDeviceCount">0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">WiFi Devices</div>
+                        <div class="stat-value" id="wifiDeviceCount">0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">BT Sightings</div>
+                        <div class="stat-value" id="btSightingCount">0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">WiFi Assoc</div>
+                        <div class="stat-value" id="wifiAssocCount">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Data Table with Tabs -->
+            <div class="panel" style="flex: 1; display: flex; flex-direction: column;">
+                <div class="panel-title">
+                    <i class="fas fa-table"></i> Data
+                </div>
+
+                <!-- Tabs -->
+                <div class="tabs">
+                    <button class="tab-btn active" data-tab="bt-devices">BT Devices</button>
+                    <button class="tab-btn" data-tab="bt-sightings">BT Sightings</button>
+                    <button class="tab-btn" data-tab="wifi-devices">WiFi Devices</button>
+                    <button class="tab-btn" data-tab="wifi-assoc">WiFi Assoc</button>
+                </div>
+
+                <!-- Filters -->
+                <div class="filter-group">
+                    <input type="text" id="macFilter" placeholder="Filter by MAC..." style="font-size: 11px;">
+                    <input type="text" id="ssidFilter" placeholder="Filter by SSID..." style="display: none; font-size: 11px;">
+                    
+                    <label>RSSI Range</label>
+                    <div style="display: flex; gap: 5px;">
+                        <input type="range" id="rssiMin" min="-100" max="0" value="-100" style="flex: 1;">
+                        <input type="range" id="rssiMax" min="-100" max="0" value="0" style="flex: 1;">
+                    </div>
+                    <div class="range-values">
+                        <span id="rssiMinValue">-100</span>
+                        <span id="rssiMaxValue">0</span>
+                    </div>
+
+                    <label>Recent Hours</label>
+                    <input type="number" id="timeFilter" min="0" max="24" value="1" style="font-size: 11px;">
+                </div>
+
+                <!-- Tables -->
+                <div id="bt-devices" class="table-container" style="display: block;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>MAC Address</th>
+                                <th>Name</th>
+                                <th>Last Seen</th>
+                            </tr>
+                        </thead>
+                        <tbody id="btDevicesTable">
+                            <tr><td colspan="3" class="loading">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div id="bt-sightings" class="table-container" style="display: none;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>MAC</th>
+                                <th>RSSI</th>
+                                <th>Time</th>
+                            </tr>
+                        </thead>
+                        <tbody id="btSightingsTable">
+                            <tr><td colspan="3" class="loading">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div id="wifi-devices" class="table-container" style="display: none;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>MAC Address</th>
+                                <th>Vendor</th>
+                                <th>Last Seen</th>
+                            </tr>
+                        </thead>
+                        <tbody id="wifiDevicesTable">
+                            <tr><td colspan="3" class="loading">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div id="wifi-assoc" class="table-container" style="display: none;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>MAC</th>
+                                <th>SSID</th>
+                                <th>RSSI</th>
+                            </tr>
+                        </thead>
+                        <tbody id="wifiAssocTable">
+                            <tr><td colspan="3" class="loading">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Map Type Selector -->
+            <div class="panel">
+                <div class="panel-title">
+                    <i class="fas fa-map"></i> Map Display
+                </div>
+                <div style="display: flex; gap: 5px;">
+                    <button class="tab-btn" id="mapBtBtn" data-map-type="bt" style="flex: 1;">BT</button>
+                    <button class="tab-btn active" id="mapWifiBtn" data-map-type="wifi" style="flex: 1;">WiFi</button>
+                    <button class="tab-btn" id="mapAllBtn" data-map-type="all" style="flex: 1;">Both</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="main-content">
+            <!-- Map -->
+            <div class="panel" style="flex: 1; display: flex; flex-direction: column;">
+                <div class="panel-title">
+                    <i class="fas fa-map-location-dot"></i> Heatmap Overlay
+                </div>
+                <div id="map" style="flex: 1;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    
+    <!-- Heatmap.js library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/heatmap.js/2.0.5/heatmap.min.js"></script>
+
+    <!-- Main Application JS -->
+    <script>
+        // ============= Configuration =============
+        const API_BASE = "";
+        const WS_PROTOCOL = window.location.protocol === "https:" ? "wss://" : "ws://";
+        const WS_URL = `${WS_PROTOCOL}${window.location.host}/ws/live`;
+
+        // ============= State =============
+        let map = null;
+        let heatmapLayer = null;
+        let mapDataType = "wifi";
+        let currentTab = "bt-devices";
+        let wsConnection = null;
+
+        // ============= Initialization =============
+        function initMap() {
+            map = L.map("map").setView([51.505, -0.09], 13);
+
+            L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+                attribution: "© OpenStreetMap contributors",
+                maxZoom: 19,
+                className: "dark-map"
+            }).addTo(map);
+
+            // Add a style for dark map
+            const style = document.createElement("style");
+            style.textContent = `
+                .leaflet-tile-pane {
+                    filter: invert(0.93) hue-rotate(180deg);
+                }
+            `;
+            document.head.appendChild(style);
+
+            updateHeatmap();
+        }
+
+        function setupWebSocket() {
+            try {
+                wsConnection = new WebSocket(WS_URL);
+
+                wsConnection.onopen = () => {
+                    console.log("WebSocket connected");
+                };
+
+                wsConnection.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    if (data.type === "live_update") {
+                        updateLiveStatus(data);
+                    }
+                };
+
+                wsConnection.onerror = (error) => {
+                    console.error("WebSocket error:", error);
+                };
+
+                wsConnection.onclose = () => {
+                    console.log("WebSocket disconnected, reconnecting in 3s...");
+                    setTimeout(setupWebSocket, 3000);
+                };
+            } catch (error) {
+                console.error("Failed to connect WebSocket:", error);
+                setTimeout(setupWebSocket, 3000);
+            }
+        }
+
+        // ============= Live Time Display =============
+        function updateLiveTime() {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString("en-US", {
+                hour12: false,
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit"
+            });
+            document.getElementById("liveTime").textContent = timeStr;
+        }
+
+        setInterval(updateLiveTime, 1000);
+        updateLiveTime();
+
+        // ============= Live Status Updates =============
+        async function updateLiveStatus(data) {
+            // Update GPS indicator
+            const gpsIndicator = document.getElementById("gpsIndicator");
+            const gpsValue = gpsIndicator.querySelector(".indicator-value");
+            if (data.gps.fix_ok) {
+                gpsIndicator.className = "indicator active";
+                gpsValue.className = "indicator-value good";
+                gpsValue.textContent = "3D/2D";
+            } else {
+                gpsIndicator.className = "indicator inactive";
+                gpsValue.className = "indicator-value error";
+                gpsValue.textContent = "NO FIX";
+            }
+
+            // Update satellites
+            const satsIndicator = document.getElementById("satsIndicator");
+            const satsValue = satsIndicator.querySelector(".indicator-value");
+            if (data.gps.sats_used !== null) {
+                satsValue.textContent = data.gps.sats_used;
+                satsIndicator.className = data.gps.sats_used >= 4 ? "indicator active" : "indicator";
+            }
+
+            // Update stats
+            document.getElementById("btDeviceCount").textContent = data.stats.bt_devices;
+            document.getElementById("wifiDeviceCount").textContent = data.stats.wifi_devices;
+            document.getElementById("btSightingCount").textContent = data.stats.bt_sightings;
+            document.getElementById("wifiAssocCount").textContent = data.stats.wifi_associations;
+        }
+
+        // ============= Status Update on Page Load =============
+        async function updateStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/api/status`);
+                const status = await response.json();
+
+                // Update GPS
+                const gpsIndicator = document.getElementById("gpsIndicator");
+                const gpsValue = gpsIndicator.querySelector(".indicator-value");
+                if (status.gps.fix_ok) {
+                    gpsIndicator.className = "indicator active";
+                    gpsValue.className = "indicator-value good";
+                    gpsValue.textContent = `Mode ${status.gps.mode}`;
+                } else {
+                    gpsIndicator.className = "indicator inactive";
+                    gpsValue.className = "indicator-value error";
+                    gpsValue.textContent = "NO FIX";
+                }
+
+                // Update satellites
+                const satsIndicator = document.getElementById("satsIndicator");
+                const satsValue = satsIndicator.querySelector(".indicator-value");
+                satsValue.textContent = status.gps.sats_used ? status.gps.sats_used : "0";
+
+                // Update scan mode
+                const scanModeIndicator = document.getElementById("scanModeIndicator");
+                const scanModeValue = scanModeIndicator.querySelector(".indicator-value");
+                scanModeValue.textContent = status.scanner.mode || "N/A";
+
+                // Update WiFi monitor mode
+                const wifiMonitorIndicator = document.getElementById("wifiMonitorIndicator");
+                const wifiMonitorValue = wifiMonitorIndicator.querySelector(".indicator-value");
+                if (status.scanner.wifi_monitor_mode) {
+                    wifiMonitorIndicator.className = "indicator active";
+                    wifiMonitorValue.className = "indicator-value good";
+                    wifiMonitorValue.textContent = "ON";
+                } else {
+                    wifiMonitorIndicator.className = "indicator inactive";
+                    wifiMonitorValue.className = "indicator-value error";
+                    wifiMonitorValue.textContent = "OFF";
+                }
+            } catch (error) {
+                console.error("Error updating status:", error);
+            }
+        }
+
+        // ============= Data Loading Functions =============
+        async function loadBTDevices() {
+            try {
+                const macFilter = document.getElementById("macFilter").value;
+                const params = new URLSearchParams({
+                    limit: 100,
+                    ...(macFilter && { mac_filter: macFilter })
+                });
+
+                const response = await fetch(`${API_BASE}/api/bt/devices?${params}`);
+                const data = await response.json();
+
+                updateBTDevicesTable(data.devices);
+            } catch (error) {
+                console.error("Error loading BT devices:", error);
+            }
+        }
+
+        async function loadBTSightings() {
+            try {
+                const macFilter = document.getElementById("macFilter").value;
+                const rssiMin = parseInt(document.getElementById("rssiMin").value);
+                const rssiMax = parseInt(document.getElementById("rssiMax").value);
+                const timeFilter = parseInt(document.getElementById("timeFilter").value);
+
+                const params = new URLSearchParams({
+                    limit: 500,
+                    ...(macFilter && { mac_filter: macFilter }),
+                    ...(rssiMin !== -100 && { rssi_min: rssiMin }),
+                    ...(rssiMax !== 0 && { rssi_max: rssiMax }),
+                    ...(timeFilter > 0 && { hours_back: timeFilter })
+                });
+
+                const response = await fetch(`${API_BASE}/api/bt/sightings?${params}`);
+                const data = await response.json();
+
+                updateBTSightingsTable(data.sightings);
+            } catch (error) {
+                console.error("Error loading BT sightings:", error);
+            }
+        }
+
+        async function loadWiFiDevices() {
+            try {
+                const macFilter = document.getElementById("macFilter").value;
+                const params = new URLSearchParams({
+                    limit: 100,
+                    ...(macFilter && { mac_filter: macFilter })
+                });
+
+                const response = await fetch(`${API_BASE}/api/wifi/devices?${params}`);
+                const data = await response.json();
+
+                updateWiFiDevicesTable(data.devices);
+            } catch (error) {
+                console.error("Error loading WiFi devices:", error);
+            }
+        }
+
+        async function loadWiFiAssociations() {
+            try {
+                const macFilter = document.getElementById("macFilter").value;
+                const ssidFilter = document.getElementById("ssidFilter").value;
+                const rssiMin = parseInt(document.getElementById("rssiMin").value);
+                const rssiMax = parseInt(document.getElementById("rssiMax").value);
+                const timeFilter = parseInt(document.getElementById("timeFilter").value);
+
+                const params = new URLSearchParams({
+                    limit: 500,
+                    ...(macFilter && { mac_filter: macFilter }),
+                    ...(ssidFilter && { ssid_filter: ssidFilter }),
+                    ...(rssiMin !== -100 && { rssi_min: rssiMin }),
+                    ...(rssiMax !== 0 && { rssi_max: rssiMax }),
+                    ...(timeFilter > 0 && { hours_back: timeFilter })
+                });
+
+                const response = await fetch(`${API_BASE}/api/wifi/associations?${params}`);
+                const data = await response.json();
+
+                updateWiFiAssociationsTable(data.associations);
+            } catch (error) {
+                console.error("Error loading WiFi associations:", error);
+            }
+        }
+
+        // ============= Table Update Functions =============
+        function updateBTDevicesTable(devices) {
+            const tbody = document.getElementById("btDevicesTable");
+            if (devices.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" class="loading">No devices found</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = devices.map(device => `
+                <tr>
+                    <td class="mac-addr">${device.mac}</td>
+                    <td>${device.name || "—"}</td>
+                    <td>${new Date(device.last_seen * 1000).toLocaleTimeString()}</td>
+                </tr>
+            `).join("");
+        }
+
+        function updateBTSightingsTable(sightings) {
+            const tbody = document.getElementById("btSightingsTable");
+            if (sightings.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" class="loading">No sightings found</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = sightings.map(s => {
+                const rssiPercent = Math.max(0, Math.min(100, (s.rssi + 100)));
+                const rssiColor = rssiPercent > 70 ? "#4caf50" : rssiPercent > 40 ? "#ff9800" : "#f44336";
+                return `
+                    <tr>
+                        <td class="mac-addr">${s.mac}</td>
+                        <td>
+                            <div class="rssi-bar">
+                                <div class="rssi-fill" style="width: ${rssiPercent}%; background: ${rssiColor};"></div>
+                            </div>
+                            ${s.rssi} dBm
+                        </td>
+                        <td>${new Date(s.timestamp * 1000).toLocaleTimeString()}</td>
+                    </tr>
+                `;
+            }).join("");
+        }
+
+        function updateWiFiDevicesTable(devices) {
+            const tbody = document.getElementById("wifiDevicesTable");
+            if (devices.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" class="loading">No devices found</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = devices.map(device => `
+                <tr>
+                    <td class="mac-addr">${device.mac}</td>
+                    <td>${device.vendor || "—"}</td>
+                    <td>${new Date(device.last_seen * 1000).toLocaleTimeString()}</td>
+                </tr>
+            `).join("");
+        }
+
+        function updateWiFiAssociationsTable(associations) {
+            const tbody = document.getElementById("wifiAssocTable");
+            if (associations.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" class="loading">No associations found</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = associations.map(a => {
+                const rssiPercent = Math.max(0, Math.min(100, (a.rssi + 100)));
+                const rssiColor = rssiPercent > 70 ? "#4caf50" : rssiPercent > 40 ? "#ff9800" : "#f44336";
+                return `
+                    <tr>
+                        <td class="mac-addr">${a.mac}</td>
+                        <td>${a.ssid}</td>
+                        <td>
+                            <div class="rssi-bar">
+                                <div class="rssi-fill" style="width: ${rssiPercent}%; background: ${rssiColor};"></div>
+                            </div>
+                            ${a.rssi} dBm
+                        </td>
+                    </tr>
+                `;
+            }).join("");
+        }
+
+        // ============= Heatmap =============
+        async function updateHeatmap() {
+            try {
+                const response = await fetch(`${API_BASE}/api/map/heatmap?data_type=${mapDataType}`);
+                const data = await response.json();
+
+                if (heatmapLayer) {
+                    map.removeLayer(heatmapLayer);
+                }
+
+                if (data.points.length === 0) {
+                    console.log("No heatmap data available");
+                    return;
+                }
+
+                const points = data.points.map(p => [p.lat, p.lon, p.intensity]);
+
+                heatmapLayer = L.heatLayer(points, {
+                    radius: 25,
+                    blur: 15,
+                    maxZoom: 17,
+                    gradient: {
+                        0.0: "blue",
+                        0.25: "cyan",
+                        0.5: "lime",
+                        0.75: "yellow",
+                        1.0: "red"
+                    }
+                }).addTo(map);
+
+                // Fit map to bounds
+                if (points.length > 0) {
+                    const bounds = L.latLngBounds(points.map(p => [p[0], p[1]]));
+                    map.fitBounds(bounds.pad(0.1));
+                }
+            } catch (error) {
+                console.error("Error updating heatmap:", error);
+            }
+        }
+
+        // ============= Event Listeners =============
+        document.querySelectorAll(".tab-btn[data-tab]").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                document.querySelectorAll(".tab-btn[data-tab]").forEach(b => b.classList.remove("active"));
+                e.target.classList.add("active");
+
+                document.querySelectorAll("[id^='bt-'], [id^='wifi-']").forEach(el => {
+                    el.style.display = "none";
+                });
+
+                currentTab = e.target.dataset.tab;
+                document.getElementById(currentTab).style.display = "block";
+
+                // Load data based on current tab
+                if (currentTab === "bt-devices") loadBTDevices();
+                else if (currentTab === "bt-sightings") loadBTSightings();
+                else if (currentTab === "wifi-devices") loadWiFiDevices();
+                else if (currentTab === "wifi-assoc") loadWiFiAssociations();
+            });
+        });
+
+        document.querySelectorAll("[data-map-type]").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                document.querySelectorAll("[data-map-type]").forEach(b => b.classList.remove("active"));
+                e.target.classList.add("active");
+                mapDataType = e.target.dataset.mapType;
+                updateHeatmap();
+            });
+        });
+
+        // Filter listeners
+        document.getElementById("macFilter").addEventListener("input", () => {
+            if (currentTab.includes("bt")) loadBTDevices();
+            else if (currentTab.includes("wifi")) loadWiFiDevices();
+        });
+
+        document.getElementById("ssidFilter").addEventListener("input", loadWiFiAssociations);
+
+        document.getElementById("rssiMin").addEventListener("input", (e) => {
+            document.getElementById("rssiMinValue").textContent = e.target.value;
+            if (currentTab === "bt-sightings") loadBTSightings();
+            else if (currentTab === "wifi-assoc") loadWiFiAssociations();
+        });
+
+        document.getElementById("rssiMax").addEventListener("input", (e) => {
+            document.getElementById("rssiMaxValue").textContent = e.target.value;
+            if (currentTab === "bt-sightings") loadBTSightings();
+            else if (currentTab === "wifi-assoc") loadWiFiAssociations();
+        });
+
+        document.getElementById("timeFilter").addEventListener("input", () => {
+            if (currentTab === "bt-sightings") loadBTSightings();
+            else if (currentTab === "wifi-assoc") loadWiFiAssociations();
+        });
+
+        // Show SSID filter only for WiFi associations
+        document.querySelectorAll(".tab-btn[data-tab]").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                const ssidFilter = document.getElementById("ssidFilter");
+                if (e.target.dataset.tab === "wifi-assoc") {
+                    ssidFilter.style.display = "block";
+                } else {
+                    ssidFilter.style.display = "none";
+                }
+            });
+        });
+
+        // ============= Initialization on Page Load =============
+        window.addEventListener("load", () => {
+            initMap();
+            updateStatus();
+            setupWebSocket();
+            
+            // Load initial data
+            loadBTDevices();
+            
+            // Refresh data periodically
+            setInterval(() => {
+                if (currentTab === "bt-devices") loadBTDevices();
+                else if (currentTab === "bt-sightings") loadBTSightings();
+                else if (currentTab === "wifi-devices") loadWiFiDevices();
+                else if (currentTab === "wifi-assoc") loadWiFiAssociations();
+                
+                updateHeatmap();
+                updateStatus();
+            }, 5000);
+        });
+    </script>
+</body>
+</html>

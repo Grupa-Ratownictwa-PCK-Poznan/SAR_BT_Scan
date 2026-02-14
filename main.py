@@ -8,6 +8,7 @@ import subprocess
 import threading
 
 from settings import USB_STORAGE, SD_STORAGE, BLEAK_DEVICE, SCAN_MODE, WIFI_INTERFACE, SCANNER_ID
+from settings import WEB_UI_ENABLED, WEB_UI_PORT, WEB_UI_HOST
 from scanner import run as run_bt
 import wifi_scanner as ws
 import gps_client as gc
@@ -87,6 +88,34 @@ def main():
     # Initialize database
     print("Initializing database...")
     init_db()
+
+    # Start Web UI if enabled
+    if WEB_UI_ENABLED:
+        print(f"\nStarting Web UI...")
+        try:
+            from web_ui.app import app, update_scanner_state
+            import uvicorn
+            
+            # Update scanner state
+            update_scanner_state(SCAN_MODE, False)
+            
+            # Start web server in a background thread
+            web_thread = threading.Thread(
+                target=lambda: uvicorn.run(app, host=WEB_UI_HOST, port=WEB_UI_PORT, log_level="warning"),
+                daemon=True,
+                name="web-ui-server"
+            )
+            web_thread.start()
+            
+            print(f"✓ Web UI started at http://localhost:{WEB_UI_PORT}")
+            time.sleep(1)  # Give the server time to start
+        except ImportError:
+            print("⚠ Web UI dependencies not installed (fastapi, uvicorn). Skipping.")
+            print("  Install with: pip install fastapi uvicorn")
+        except Exception as e:
+            print(f"⚠ Failed to start Web UI: {e}")
+    else:
+        print("⚠ Web UI is disabled in settings")
 
     try:
         if SCAN_MODE == "bt":
