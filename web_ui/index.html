@@ -1109,6 +1109,58 @@
             }).join("");
         }
 
+        function renderHeatmapFallback(points, originalData) {
+            console.log("Rendering fallback heatmap with circle markers...");
+            try {
+                // Clear old markers
+                if (mapMarkers.length > 0) {
+                    mapMarkers.forEach(m => map.removeLayer(m));
+                    mapMarkers = [];
+                    console.log("Cleared old markers");
+                }
+                
+                // Create circle markers for each point
+                originalData.forEach(point => {
+                    const intensity = point.intensity || 0.5;
+                    const rssi = point.rssi || -50;
+                    
+                    // Determine color based on intensity/RSSI
+                    let color = "#001aff"; // blue
+                    if (intensity > 0.75) color = "#ff0000"; // red
+                    else if (intensity > 0.5) color = "#ffff00"; // yellow
+                    else if (intensity > 0.25) color = "#00ff00"; // green
+                    
+                    // Determine radius based on intensity
+                    const radius = 5 + (intensity * 15);
+                    
+                    const circleMarker = L.circleMarker([point.lat, point.lon], {
+                        radius: Math.min(radius, 20),
+                        fillColor: color,
+                        color: color,
+                        weight: 1,
+                        opacity: 0.7,
+                        fillOpacity: intensity,
+                        title: `RSSI: ${rssi}, Type: ${point.type || 'unknown'}`
+                    });
+                    
+                    circleMarker.bindPopup(`<b>Signal Strength:</b> ${rssi} dBm<br><b>Intensity:</b> ${(intensity * 100).toFixed(0)}%<br><b>Type:</b> ${point.type || 'unknown'}`);
+                    circleMarker.addTo(map);
+                    mapMarkers.push(circleMarker);
+                });
+                
+                console.log("Created", mapMarkers.length, "circle markers");
+                
+                // Fit map to bounds
+                if (mapMarkers.length > 0) {
+                    const bounds = L.latLngBounds(mapMarkers.map(m => m.getLatLng()));
+                    map.fitBounds(bounds.pad(0.1));
+                    console.log("Map fitted to marker bounds");
+                }
+            } catch (err) {
+                console.error("Error in fallback heatmap rendering:", err);
+            }
+        }
+
         async function updateHeatmap() {
             try {
                 // Build query with filters
@@ -1145,9 +1197,17 @@
                     return;
                 }
 
+                // Remove old heatmap layer (either heat layer or fallback markers)
                 if (heatmapLayer) {
                     map.removeLayer(heatmapLayer);
-                    console.log("Removed old heatmap layer");
+                    heatmapLayer = null;
+                    console.log("Removed old heat layer");
+                }
+                
+                if (mapMarkers.length > 0) {
+                    mapMarkers.forEach(m => map.removeLayer(m));
+                    mapMarkers = [];
+                    console.log("Removed old fallback markers");
                 }
 
                 if (!data.points || data.points.length === 0) {
@@ -1161,6 +1221,8 @@
                 
                 if (!L.heatLayer) {
                     console.error("L.heatLayer is not defined - heat.js library may not be loaded");
+                    console.log("Using fallback circle marker rendering...");
+                    renderHeatmapFallback(points, data.points);
                     return;
                 }
                 
