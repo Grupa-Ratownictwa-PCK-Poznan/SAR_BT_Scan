@@ -715,6 +715,12 @@
     <script>
         // ============= Configuration =============
         const API_BASE = `http://${window.location.host}`;
+        console.log("API_BASE:", API_BASE);
+        console.log("Leaflet library URL: checking if loaded...");
+        console.log("L object available:", typeof L !== 'undefined');
+        if (typeof L !== 'undefined') {
+            console.log("L.heatLayer available:", typeof L.heatLayer !== 'undefined');
+        }
         const WS_PROTOCOL = window.location.protocol === "https:" ? "wss://" : "ws://";
         const WS_URL = `${WS_PROTOCOL}${window.location.host}/ws/live`;
 
@@ -763,14 +769,38 @@
         }
         
         function initMap() {
+            console.log("Initializing map...");
+            
+            const mapContainer = document.getElementById("map");
+            if (!mapContainer) {
+                console.error("Map container not found");
+                return;
+            }
+            console.log("Map container found, size:", mapContainer.offsetWidth, "x", mapContainer.offsetHeight);
+            
+            if (!L) {
+                console.error("Leaflet (L) not loaded");
+                return;
+            }
+            console.log("Leaflet library available");
+            
             map = L.map("map").setView([51.505, -0.09], 13);
+            console.log("Map object created");
 
             L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
                 attribution: "© OpenStreetMap contributors",
                 maxZoom: 19
             }).addTo(map);
+            console.log("OSM tiles added to map");
+            
+            // Add event listener for map size changes
+            setTimeout(() => {
+                map.invalidateSize();
+                console.log("Map size invalidated");
+            }, 100);
 
             updateHeatmap();
+            console.log("Initial heatmap update called");
         }
 
         function setupWebSocket() {
@@ -1099,19 +1129,40 @@
                 const ssidFilter = document.getElementById("ssidFilter")?.value.trim();
                 if (ssidFilter && currentTab === "wifi-assoc") params.append("ssid_filter", ssidFilter);
                 
-                const response = await fetch(`${API_BASE}/api/map/heatmap?${params}`);
+                const apiUrl = `${API_BASE}/api/map/heatmap?${params}`;
+                console.log("Fetching heatmap from:", apiUrl);
+                
+                const response = await fetch(apiUrl);
+                if (!response.ok) {
+                    console.error("Heatmap API error:", response.status, response.statusText);
+                    return;
+                }
                 const data = await response.json();
+                console.log("Heatmap data received:", data.points.length, "points");
+
+                if (!map) {
+                    console.error("Map not initialized");
+                    return;
+                }
 
                 if (heatmapLayer) {
                     map.removeLayer(heatmapLayer);
+                    console.log("Removed old heatmap layer");
                 }
 
-                if (data.points.length === 0) {
+                if (!data.points || data.points.length === 0) {
                     console.log("No heatmap data available");
                     return;
                 }
 
                 const points = data.points.map(p => [p.lat, p.lon, p.intensity]);
+                console.log("Creating heat layer with", points.length, "points");
+                console.log("Sample point:", points[0]);
+                
+                if (!L.heatLayer) {
+                    console.error("L.heatLayer is not defined - heat.js library may not be loaded");
+                    return;
+                }
                 
                 heatmapLayer = L.heatLayer(points, {
                     radius: 25,
@@ -1125,14 +1176,17 @@
                         1.0: "red"
                     }
                 }).addTo(map);
+                console.log("Heat layer created and added to map");
 
                 // Fit map to bounds
                 if (points.length > 0) {
                     const bounds = L.latLngBounds(points.map(p => [p[0], p[1]]));
                     map.fitBounds(bounds.pad(0.1));
+                    console.log("Map fitted to bounds:", bounds);
                 }
             } catch (error) {
                 console.error("Error updating heatmap:", error);
+                console.error("Stack trace:", error.stack);
             }
         }
 

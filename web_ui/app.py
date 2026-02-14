@@ -532,46 +532,56 @@ async def websocket_live_updates(websocket: WebSocket):
             # Send live updates periodically
             await asyncio.sleep(WEB_UI_REFRESH_INTERVAL)
             
-            # Get latest data
-            gps_status = gc.get_gps_status()
-            gps_loc = gc.get_location()
-            
-            # Get recent sightings and associations
-            recent_sightings = query_sightings(limit=20)
-            recent_assocs = query_wifi_associations(limit=20)
-            
-            # Count devices
-            with db() as con:
-                bt_count = con.execute("SELECT COUNT(*) FROM devices").fetchone()[0]
-                wifi_count = con.execute("SELECT COUNT(*) FROM wifi_devices").fetchone()[0]
-                sighting_count = con.execute("SELECT COUNT(*) FROM sightings").fetchone()[0]
-                assoc_count = con.execute("SELECT COUNT(*) FROM wifi_associations").fetchone()[0]
-            
-            update = {
-                "type": "live_update",
-                "timestamp": time.time(),
-                "gps": {
-                    "fix_ok": gps_status.fix_ok if gps_status else False,
-                    "sats_used": gps_status.sats_used if gps_status else None,
-                    "hdop": gps_status.hdop if gps_status else None,
-                    "location": {
-                        "lat": gps_loc.lat if gps_loc else None,
-                        "lon": gps_loc.lon if gps_loc else None,
-                    } if gps_loc else None
-                },
-                "stats": {
-                    "bt_devices": bt_count,
-                    "wifi_devices": wifi_count,
-                    "bt_sightings": sighting_count,
-                    "wifi_associations": assoc_count,
-                },
-                "recent_sightings": recent_sightings[:5],
-                "recent_associations": recent_assocs[:5]
-            }
-            
-            await websocket.send_json(update)
+            try:
+                # Get latest data
+                gps_status = gc.get_gps_status()
+                gps_loc = gc.get_location()
+                
+                # Get recent sightings and associations
+                recent_sightings = query_sightings(limit=20)
+                recent_assocs = query_wifi_associations(limit=20)
+                
+                # Count devices
+                with db() as con:
+                    bt_count = con.execute("SELECT COUNT(*) FROM devices").fetchone()[0]
+                    wifi_count = con.execute("SELECT COUNT(*) FROM wifi_devices").fetchone()[0]
+                    sighting_count = con.execute("SELECT COUNT(*) FROM sightings").fetchone()[0]
+                    assoc_count = con.execute("SELECT COUNT(*) FROM wifi_associations").fetchone()[0]
+                
+                update = {
+                    "type": "live_update",
+                    "timestamp": time.time(),
+                    "gps": {
+                        "fix_ok": gps_status.fix_ok if gps_status else False,
+                        "sats_used": gps_status.sats_used if gps_status else None,
+                        "hdop": gps_status.hdop if gps_status else None,
+                        "location": {
+                            "lat": gps_loc.lat if gps_loc else None,
+                            "lon": gps_loc.lon if gps_loc else None,
+                        } if gps_loc else None
+                    },
+                    "stats": {
+                        "bt_devices": bt_count,
+                        "wifi_devices": wifi_count,
+                        "bt_sightings": sighting_count,
+                        "wifi_associations": assoc_count,
+                    },
+                    "recent_sightings": recent_sightings[:5],
+                    "recent_associations": recent_assocs[:5]
+                }
+                
+                await websocket.send_json(update)
+            except Exception as send_error:
+                # Connection closed or send failed - break the loop
+                if "CLOSED" in str(send_error) or "closed" in str(send_error):
+                    break
+                # Log other errors but continue
+                print(f"Error sending WebSocket update: {send_error}")
     
     except WebSocketDisconnect:
+        manager.disconnect(websocket)
+    except Exception as e:
+        print(f"WebSocket error: {e}")
         manager.disconnect(websocket)
 
 
