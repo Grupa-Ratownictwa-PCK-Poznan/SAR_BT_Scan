@@ -350,6 +350,43 @@
             margin-top: 3px;
         }
 
+        .time-preset-btn {
+            padding: 5px 10px;
+            background: var(--rc-white);
+            border: 1px solid var(--rc-red);
+            color: var(--rc-red);
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            flex: 1;
+        }
+
+        .time-preset-btn:hover {
+            background: rgba(198, 12, 48, 0.05);
+        }
+
+        .time-preset-btn.active {
+            background: var(--rc-red);
+            color: var(--rc-white);
+        }
+
+        input[type="datetime-local"] {
+            background: var(--rc-white);
+            border: 1px solid var(--rc-red);
+            color: var(--rc-black);
+            padding: 6px;
+            border-radius: 2px;
+            font-size: 11px;
+        }
+
+        input[type="datetime-local"]:focus {
+            outline: none;
+            border-color: var(--rc-dark-red);
+            box-shadow: 0 0 0 2px rgba(198, 12, 48, 0.1);
+        }
+
         /* Stats */
         .stats-grid {
             display: grid;
@@ -558,8 +595,19 @@
                 </div>
 
                 <div class="filter-group">
-                    <label>Recent Hours</label>
-                    <input type="number" id="timeFilter" min="0" max="24" value="1" style="font-size: 11px;">
+                    <label>Time Range</label>
+                    <div style="display: flex; gap: 5px; margin-bottom: 8px;">
+                        <button id="timePreset1h" class="time-preset-btn active" data-hours="1">1h</button>
+                        <button id="timePreset6h" class="time-preset-btn" data-hours="6">6h</button>
+                        <button id="timePreset24h" class="time-preset-btn" data-hours="24">24h</button>
+                        <button id="timePresetAll" class="time-preset-btn" data-hours="0">All</button>
+                    </div>
+                    <div style="font-size: 11px; margin-bottom: 5px;">Or set custom range:</div>
+                    <div style="display: flex; gap: 5px; flex-direction: column;">
+                        <input type="datetime-local" id="timeStart" title="Start time" style="font-size: 11px; padding: 4px;">
+                        <input type="datetime-local" id="timeEnd" title="End time" style="font-size: 11px; padding: 4px;">
+                        <button id="timeRangeApply" style="font-size: 11px; padding: 5px; background: var(--rc-red); color: white; border: none; border-radius: 3px; cursor: pointer;">Apply Range</button>
+                    </div>
                 </div>
 
                 <!-- Tables -->
@@ -676,8 +724,39 @@
         let sidebarWidth = 380;
         let isDraggingDivider = false;
         let mapMinimized = false;
+        
+        // Time filter state
+        let currentTimePreset = 1; // hours, 0 = all
+        let customTimeStart = null; // Unix timestamp
+        let customTimeEnd = null;   // Unix timestamp
 
         // ============= Initialization =============
+        function initTimeFilters() {
+            // Set default datetime inputs to last 1 hour
+            const now = new Date();
+            const oneHourAgo = new Date(now.getTime() - 3600000);
+            
+            document.getElementById("timeEnd").value = now.toISOString().slice(0, 16);
+            document.getElementById("timeStart").value = oneHourAgo.toISOString().slice(0, 16);
+        }
+        
+        function getTimeFilterParams() {
+            /**Get time filter parameters based on current preset or custom range.
+             * Returns object with hours_back (for quick select) or time_start/time_end (for custom range)
+             */
+            if (customTimeStart && customTimeEnd) {
+                return {
+                    time_start: customTimeStart.getTime() / 1000,
+                    time_end: customTimeEnd.getTime() / 1000
+                };
+            } else if (currentTimePreset > 0) {
+                return { hours_back: currentTimePreset };
+            } else {
+                // All time - no parameters
+                return {};
+            }
+        }
+        
         function initMap() {
             map = L.map("map").setView([51.505, -0.09], 13);
 
@@ -1308,23 +1387,55 @@
 
     <!-- Leaflet JS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-    
-    <!-- Heatmap.js library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/heatmap.js/2.0.5/heatmap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-heat/1.0.3/leaflet-heat.min.js"></script>
 
-    <!-- Main Application JS -->
     <script>
         // ============= Configuration =============
-        const API_BASE = "";
-        const WS_PROTOCOL = window.location.protocol === "https:" ? "wss://" : "ws://";
-        const WS_URL = `${WS_PROTOCOL}${window.location.host}/ws/live`;
+        const API_BASE = `http://location.hostname:${location.port}`;
+        const WS_URL = `ws://${location.hostname}:${location.port}/ws/live`;
 
         // ============= State =============
         let map = null;
         let heatmapLayer = null;
+        let mapMarkers = [];
         let mapDataType = "wifi";
         let currentTab = "bt-devices";
         let wsConnection = null;
+        let sidebarWidth = 380;
+        let isDraggingDivider = false;
+        let mapMinimized = false;
+        
+        // Time filter state
+        let currentTimePreset = 1; // hours, 0 = all
+        let customTimeStart = null; // Unix timestamp
+        let customTimeEnd = null;   // Unix timestamp
+
+        // ============= Time Filter Functions =============
+        function initTimeFilters() {
+            // Set default datetime inputs to last 1 hour
+            const now = new Date();
+            const oneHourAgo = new Date(now.getTime() - 3600000);
+            
+            document.getElementById("timeEnd").value = now.toISOString().slice(0, 16);
+            document.getElementById("timeStart").value = oneHourAgo.toISOString().slice(0, 16);
+        }
+        
+        function getTimeFilterParams() {
+            /**Get time filter parameters based on current preset or custom range.
+             * Returns object with hours_back (for quick select) or time_start/time_end (for custom range)
+             */
+            if (customTimeStart && customTimeEnd) {
+                return {
+                    time_start: Math.floor(customTimeStart.getTime() / 1000),
+                    time_end: Math.floor(customTimeEnd.getTime() / 1000)
+                };
+            } else if (currentTimePreset > 0) {
+                return { hours_back: currentTimePreset };
+            } else {
+                // All time - no parameters
+                return {};
+            }
+        }
 
         // ============= Initialization =============
         function initMap() {
@@ -1332,18 +1443,8 @@
 
             L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
                 attribution: "© OpenStreetMap contributors",
-                maxZoom: 19,
-                className: "dark-map"
+                maxZoom: 19
             }).addTo(map);
-
-            // Add a style for dark map
-            const style = document.createElement("style");
-            style.textContent = `
-                .leaflet-tile-pane {
-                    filter: invert(0.93) hue-rotate(180deg);
-                }
-            `;
-            document.head.appendChild(style);
 
             updateHeatmap();
         }
@@ -1372,114 +1473,24 @@
                     setTimeout(setupWebSocket, 3000);
                 };
             } catch (error) {
-                console.error("Failed to connect WebSocket:", error);
-                setTimeout(setupWebSocket, 3000);
+                console.error("WebSocket setup error:", error);
             }
         }
 
-        // ============= Live Time Display =============
-        function updateLiveTime() {
-            const now = new Date();
-            const timeStr = now.toLocaleTimeString("en-US", {
-                hour12: false,
-                hour: "2-digit",
-                minute: "2-digit",
-                second: "2-digit"
-            });
-            document.getElementById("liveTime").textContent = timeStr;
-        }
-
-        setInterval(updateLiveTime, 1000);
-        updateLiveTime();
-
-        // ============= Live Status Updates =============
-        async function updateLiveStatus(data) {
-            // Update GPS indicator
-            const gpsIndicator = document.getElementById("gpsIndicator");
-            const gpsValue = gpsIndicator.querySelector(".indicator-value");
-            if (data.gps.fix_ok) {
-                gpsIndicator.className = "indicator active";
-                gpsValue.className = "indicator-value good";
-                gpsValue.textContent = "3D/2D";
-            } else {
-                gpsIndicator.className = "indicator inactive";
-                gpsValue.className = "indicator-value error";
-                gpsValue.textContent = "NO FIX";
-            }
-
-            // Update satellites
-            const satsIndicator = document.getElementById("satsIndicator");
-            const satsValue = satsIndicator.querySelector(".indicator-value");
-            if (data.gps.sats_used !== null) {
-                satsValue.textContent = data.gps.sats_used;
-                satsIndicator.className = data.gps.sats_used >= 4 ? "indicator active" : "indicator";
-            }
-
-            // Update stats
-            document.getElementById("btDeviceCount").textContent = data.stats.bt_devices;
-            document.getElementById("wifiDeviceCount").textContent = data.stats.wifi_devices;
-            document.getElementById("btSightingCount").textContent = data.stats.bt_sightings;
-            document.getElementById("wifiAssocCount").textContent = data.stats.wifi_associations;
-        }
-
-        // ============= Status Update on Page Load =============
-        async function updateStatus() {
-            try {
-                const response = await fetch(`${API_BASE}/api/status`);
-                const status = await response.json();
-
-                // Update GPS
-                const gpsIndicator = document.getElementById("gpsIndicator");
-                const gpsValue = gpsIndicator.querySelector(".indicator-value");
-                if (status.gps.fix_ok) {
-                    gpsIndicator.className = "indicator active";
-                    gpsValue.className = "indicator-value good";
-                    gpsValue.textContent = `Mode ${status.gps.mode}`;
-                } else {
-                    gpsIndicator.className = "indicator inactive";
-                    gpsValue.className = "indicator-value error";
-                    gpsValue.textContent = "NO FIX";
-                }
-
-                // Update satellites
-                const satsIndicator = document.getElementById("satsIndicator");
-                const satsValue = satsIndicator.querySelector(".indicator-value");
-                satsValue.textContent = status.gps.sats_used ? status.gps.sats_used : "0";
-
-                // Update scan mode
-                const scanModeIndicator = document.getElementById("scanModeIndicator");
-                const scanModeValue = scanModeIndicator.querySelector(".indicator-value");
-                scanModeValue.textContent = status.scanner.mode || "N/A";
-
-                // Update WiFi monitor mode
-                const wifiMonitorIndicator = document.getElementById("wifiMonitorIndicator");
-                const wifiMonitorValue = wifiMonitorIndicator.querySelector(".indicator-value");
-                if (status.scanner.wifi_monitor_mode) {
-                    wifiMonitorIndicator.className = "indicator active";
-                    wifiMonitorValue.className = "indicator-value good";
-                    wifiMonitorValue.textContent = "ON";
-                } else {
-                    wifiMonitorIndicator.className = "indicator inactive";
-                    wifiMonitorValue.className = "indicator-value error";
-                    wifiMonitorValue.textContent = "OFF";
-                }
-            } catch (error) {
-                console.error("Error updating status:", error);
-            }
-        }
-
-        // ============= Data Loading Functions =============
+        // ============= Load Functions =============
         async function loadBTDevices() {
             try {
                 const macFilter = document.getElementById("macFilter").value;
+                const timeParams = getTimeFilterParams();
+
                 const params = new URLSearchParams({
                     limit: 100,
-                    ...(macFilter && { mac_filter: macFilter })
+                    ...(macFilter && { mac_filter: macFilter }),
+                    ...timeParams
                 });
 
                 const response = await fetch(`${API_BASE}/api/bt/devices?${params}`);
                 const data = await response.json();
-
                 updateBTDevicesTable(data.devices);
             } catch (error) {
                 console.error("Error loading BT devices:", error);
@@ -1491,14 +1502,14 @@
                 const macFilter = document.getElementById("macFilter").value;
                 const rssiMin = parseInt(document.getElementById("rssiMin").value);
                 const rssiMax = parseInt(document.getElementById("rssiMax").value);
-                const timeFilter = parseInt(document.getElementById("timeFilter").value);
+                const timeParams = getTimeFilterParams();
 
                 const params = new URLSearchParams({
                     limit: 500,
                     ...(macFilter && { mac_filter: macFilter }),
                     ...(rssiMin !== -100 && { rssi_min: rssiMin }),
                     ...(rssiMax !== 0 && { rssi_max: rssiMax }),
-                    ...(timeFilter > 0 && { hours_back: timeFilter })
+                    ...timeParams
                 });
 
                 const response = await fetch(`${API_BASE}/api/bt/sightings?${params}`);
@@ -1513,14 +1524,16 @@
         async function loadWiFiDevices() {
             try {
                 const macFilter = document.getElementById("macFilter").value;
+                const timeParams = getTimeFilterParams();
+
                 const params = new URLSearchParams({
                     limit: 100,
-                    ...(macFilter && { mac_filter: macFilter })
+                    ...(macFilter && { mac_filter: macFilter }),
+                    ...timeParams
                 });
 
                 const response = await fetch(`${API_BASE}/api/wifi/devices?${params}`);
                 const data = await response.json();
-
                 updateWiFiDevicesTable(data.devices);
             } catch (error) {
                 console.error("Error loading WiFi devices:", error);
@@ -1533,7 +1546,7 @@
                 const ssidFilter = document.getElementById("ssidFilter").value;
                 const rssiMin = parseInt(document.getElementById("rssiMin").value);
                 const rssiMax = parseInt(document.getElementById("rssiMax").value);
-                const timeFilter = parseInt(document.getElementById("timeFilter").value);
+                const timeParams = getTimeFilterParams();
 
                 const params = new URLSearchParams({
                     limit: 500,
@@ -1541,12 +1554,11 @@
                     ...(ssidFilter && { ssid_filter: ssidFilter }),
                     ...(rssiMin !== -100 && { rssi_min: rssiMin }),
                     ...(rssiMax !== 0 && { rssi_max: rssiMax }),
-                    ...(timeFilter > 0 && { hours_back: timeFilter })
+                    ...timeParams
                 });
 
                 const response = await fetch(`${API_BASE}/api/wifi/associations?${params}`);
                 const data = await response.json();
-
                 updateWiFiAssociationsTable(data.associations);
             } catch (error) {
                 console.error("Error loading WiFi associations:", error);
@@ -1555,88 +1567,95 @@
 
         // ============= Table Update Functions =============
         function updateBTDevicesTable(devices) {
-            const tbody = document.getElementById("btDevicesTable");
-            if (devices.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="3" class="loading">No devices found</td></tr>';
-                return;
-            }
-
-            tbody.innerHTML = devices.map(device => `
+            const tbody = document.querySelector("table tbody");
+            if (!tbody) return;
+            tbody.innerHTML = devices.map(d => `
                 <tr>
-                    <td class="mac-addr">${device.mac}</td>
-                    <td>${device.name || "—"}</td>
-                    <td>${new Date(device.last_seen * 1000).toLocaleTimeString()}</td>
+                    <td>${d.mac}</td>
+                    <td>${d.name || "N/A"}</td>
+                    <td>${d.manufacturer || "N/A"}</td>
+                    <td>${new Date(d.last_seen_str).toLocaleTimeString()}</td>
                 </tr>
             `).join("");
         }
 
         function updateBTSightingsTable(sightings) {
-            const tbody = document.getElementById("btSightingsTable");
-            if (sightings.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="3" class="loading">No sightings found</td></tr>';
-                return;
-            }
-
-            tbody.innerHTML = sightings.map(s => {
-                const rssiPercent = Math.max(0, Math.min(100, (s.rssi + 100)));
-                const rssiColor = rssiPercent > 70 ? "#4caf50" : rssiPercent > 40 ? "#ff9800" : "#f44336";
-                return `
-                    <tr>
-                        <td class="mac-addr">${s.mac}</td>
-                        <td>
-                            <div class="rssi-bar">
-                                <div class="rssi-fill" style="width: ${rssiPercent}%; background: ${rssiColor};"></div>
-                            </div>
-                            ${s.rssi} dBm
-                        </td>
-                        <td>${new Date(s.timestamp * 1000).toLocaleTimeString()}</td>
-                    </tr>
-                `;
-            }).join("");
-        }
-
-        function updateWiFiDevicesTable(devices) {
-            const tbody = document.getElementById("wifiDevicesTable");
-            if (devices.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="3" class="loading">No devices found</td></tr>';
-                return;
-            }
-
-            tbody.innerHTML = devices.map(device => `
+            const tbody = document.querySelector("#bt-sightings table tbody");
+            if (!tbody) return;
+            tbody.innerHTML = sightings.map(s => `
                 <tr>
-                    <td class="mac-addr">${device.mac}</td>
-                    <td>${device.vendor || "—"}</td>
-                    <td>${new Date(device.last_seen * 1000).toLocaleTimeString()}</td>
+                    <td>${s.mac}</td>
+                    <td>${s.rssi} dBm</td>
+                    <td>${s.lat ? s.lat.toFixed(6) : "N/A"}</td>
+                    <td>${s.lon ? s.lon.toFixed(6) : "N/A"}</td>
+                    <td>${new Date(s.timestamp_str).toLocaleTimeString()}</td>
                 </tr>
             `).join("");
         }
 
-        function updateWiFiAssociationsTable(associations) {
-            const tbody = document.getElementById("wifiAssocTable");
-            if (associations.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="3" class="loading">No associations found</td></tr>';
-                return;
-            }
-
-            tbody.innerHTML = associations.map(a => {
-                const rssiPercent = Math.max(0, Math.min(100, (a.rssi + 100)));
-                const rssiColor = rssiPercent > 70 ? "#4caf50" : rssiPercent > 40 ? "#ff9800" : "#f44336";
-                return `
-                    <tr>
-                        <td class="mac-addr">${a.mac}</td>
-                        <td>${a.ssid}</td>
-                        <td>
-                            <div class="rssi-bar">
-                                <div class="rssi-fill" style="width: ${rssiPercent}%; background: ${rssiColor};"></div>
-                            </div>
-                            ${a.rssi} dBm
-                        </td>
-                    </tr>
-                `;
-            }).join("");
+        function updateWiFiDevicesTable(devices) {
+            const tbody = document.querySelector("#wifi-devices table tbody");
+            if (!tbody) return;
+            tbody.innerHTML = devices.map(d => `
+                <tr>
+                    <td>${d.mac}</td>
+                    <td>${d.vendor || "N/A"}</td>
+                    <td>${new Date(d.last_seen_str).toLocaleTimeString()}</td>
+                </tr>
+            `).join("");
         }
 
-        // ============= Heatmap =============
+        function updateWiFiAssociationsTable(assocs) {
+            const tbody = document.querySelector("#wifi-assoc table tbody");
+            if (!tbody) return;
+            tbody.innerHTML = assocs.map(a => `
+                <tr>
+                    <td>${a.mac}</td>
+                    <td>${a.ssid || "Hidden"}</td>
+                    <td>${a.rssi} dBm</td>
+                    <td>${a.lat ? a.lat.toFixed(6) : "N/A"}</td>
+                    <td>${a.lon ? a.lon.toFixed(6) : "N/A"}</td>
+                    <td>${new Date(a.timestamp_str).toLocaleTimeString()}</td>
+                </tr>
+            `).join("");
+        }
+
+        function updateLiveStatus(data) {
+            if (data.gps) {
+                document.getElementById("gpsStatus").textContent = data.gps.fix_ok ? "✓ OK" : "✗ NO FIX";
+                if (data.gps.sats_used !== null) {
+                    document.getElementById("gpsSats").textContent = `${data.gps.sats_used} satellites`;
+                }
+            }
+            if (data.stats) {
+                document.getElementById("btCount").textContent = data.stats.bt_devices;
+                document.getElementById("wifiCount").textContent = data.stats.wifi_devices;
+                document.getElementById("btSightingsCount").textContent = data.stats.bt_sightings;
+                document.getElementById("wifiAssocCount").textContent = data.stats.wifi_associations;
+            }
+        }
+
+        async function updateStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/api/status`);
+                const data = await response.json();
+
+                document.getElementById("serverTime").textContent = new Date(data.timestamp_str).toLocaleTimeString();
+                
+                if (data.gps) {
+                    document.getElementById("gpsStatus").textContent = data.gps.fix_ok ? "✓ OK" : "✗ NO FIX";
+                    document.getElementById("gpsSats").textContent = data.gps.sats_used ? `${data.gps.sats_used} satellites` : "Waiting...";
+                }
+
+                if (data.scanner) {
+                    document.getElementById("scanMode").textContent = data.scanner.mode ? data.scanner.mode.toUpperCase() : "N/A";
+                    document.getElementById("wifiMonitor").textContent = data.scanner.wifi_monitor_mode ? "✓ ON" : "✗ OFF";
+                }
+            } catch (error) {
+                console.error("Error updating status:", error);
+            }
+        }
+
         async function updateHeatmap() {
             try {
                 // Build query with filters
@@ -1647,13 +1666,13 @@
                 if (macFilter) params.append("mac_filter", macFilter);
                 
                 const rssiMin = document.getElementById("rssiMin")?.value;
-                if (rssiMin) params.append("rssi_min", rssiMin);
+                if (rssiMin && rssiMin != -100) params.append("rssi_min", rssiMin);
                 
                 const rssiMax = document.getElementById("rssiMax")?.value;
-                if (rssiMax) params.append("rssi_max", rssiMax);
+                if (rssiMax && rssiMax != 0) params.append("rssi_max", rssiMax);
                 
-                const timeFilter = document.getElementById("timeFilter")?.value;
-                if (timeFilter) params.append("hours_back", timeFilter);
+                const timeParams = getTimeFilterParams();
+                Object.entries(timeParams).forEach(([k, v]) => params.append(k, v));
                 
                 const ssidFilter = document.getElementById("ssidFilter")?.value.trim();
                 if (ssidFilter && currentTab === "wifi-assoc") params.append("ssid_filter", ssidFilter);
@@ -1706,15 +1725,48 @@
                 });
 
                 currentTab = e.target.dataset.tab;
-                document.getElementById(currentTab).style.display = "block";
+                const el = document.getElementById(currentTab);
+                if (el) el.style.display = "block";
 
-                // Load data based on current tab
                 if (currentTab === "bt-devices") loadBTDevices();
                 else if (currentTab === "bt-sightings") loadBTSightings();
                 else if (currentTab === "wifi-devices") loadWiFiDevices();
                 else if (currentTab === "wifi-assoc") loadWiFiAssociations();
             });
         });
+
+        // Resizable divider
+        const divider = document.getElementById("divider");
+        if (divider) {
+            divider.addEventListener("mousedown", () => {
+                isDraggingDivider = true;
+            });
+
+            document.addEventListener("mousemove", (e) => {
+                if (!isDraggingDivider) return;
+                const sidebar = document.querySelector(".sidebar");
+                const newWidth = e.clientX;
+                if (newWidth > 250 && newWidth < 600) {
+                    sidebar.style.width = newWidth + "px";
+                    sidebarWidth = newWidth;
+                }
+            });
+
+            document.addEventListener("mouseup", () => {
+                isDraggingDivider = false;
+            });
+        }
+
+        // Map minimize button
+        const minimizeMapBtn = document.getElementById("minimizeMapBtn");
+        if (minimizeMapBtn) {
+            minimizeMapBtn.addEventListener("click", () => {
+                const mapPanel = document.querySelector(".main-content > .panel");
+                mapMinimized = !mapMinimized;
+                mapPanel.style.display = mapMinimized ? "none" : "flex";
+                minimizeMapBtn.title = mapMinimized ? "Show map" : "Hide map";
+            });
+        }
 
         document.querySelectorAll("[data-map-type]").forEach(btn => {
             btn.addEventListener("click", (e) => {
@@ -1723,3 +1775,111 @@
                 mapDataType = e.target.dataset.mapType;
                 updateHeatmap();
             });
+        });
+
+        // Time preset buttons
+        document.querySelectorAll(".time-preset-btn").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                document.querySelectorAll(".time-preset-btn").forEach(b => b.classList.remove("active"));
+                e.target.classList.add("active");
+                currentTimePreset = parseInt(e.target.dataset.hours);
+                customTimeStart = null;
+                customTimeEnd = null;
+                
+                // Reset datetime inputs
+                initTimeFilters();
+                
+                loadBTDevices();
+                loadBTSightings();
+                loadWiFiDevices();
+                loadWiFiAssociations();
+                updateHeatmap();
+            });
+        });
+
+        // Custom time range
+        document.getElementById("timeRangeApply").addEventListener("click", () => {
+            const startStr = document.getElementById("timeStart").value;
+            const endStr = document.getElementById("timeEnd").value;
+            
+            if (!startStr || !endStr) {
+                alert("Please select both start and end times");
+                return;
+            }
+            
+            customTimeStart = new Date(startStr);
+            customTimeEnd = new Date(endStr);
+            currentTimePreset = 0; // Disable preset
+            
+            // Deactivate all preset buttons
+            document.querySelectorAll(".time-preset-btn").forEach(b => b.classList.remove("active"));
+            
+            loadBTDevices();
+            loadBTSightings();
+            loadWiFiDevices();
+            loadWiFiAssociations();
+            updateHeatmap();
+        });
+
+        // Filter listeners
+        document.getElementById("macFilter").addEventListener("input", () => {
+            if (currentTab.includes("bt")) loadBTDevices();
+            else if (currentTab.includes("wifi")) loadWiFiDevices();
+            updateHeatmap();
+        });
+
+        document.getElementById("ssidFilter").addEventListener("input", () => {
+            loadWiFiAssociations();
+            updateHeatmap();
+        });
+
+        document.getElementById("rssiMin").addEventListener("input", (e) => {
+            document.getElementById("rssiMinValue").textContent = e.target.value;
+            if (currentTab === "bt-sightings") loadBTSightings();
+            else if (currentTab === "wifi-assoc") loadWiFiAssociations();
+            updateHeatmap();
+        });
+
+        document.getElementById("rssiMax").addEventListener("input", (e) => {
+            document.getElementById("rssiMaxValue").textContent = e.target.value;
+            if (currentTab === "bt-sightings") loadBTSightings();
+            else if (currentTab === "wifi-assoc") loadWiFiAssociations();
+            updateHeatmap();
+        });
+
+        // Show SSID filter only for WiFi associations
+        document.querySelectorAll(".tab-btn[data-tab]").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                const ssidFilter = document.getElementById("ssidFilter");
+                if (e.target.dataset.tab === "wifi-assoc") {
+                    ssidFilter.style.display = "block";
+                } else {
+                    ssidFilter.style.display = "none";
+                }
+            });
+        });
+
+        // ============= Page Load =============
+        window.addEventListener("load", () => {
+            initMap();
+            initTimeFilters();
+            updateStatus();
+            setupWebSocket();
+            
+            // Load initial data
+            loadBTDevices();
+            
+            // Refresh data periodically
+            setInterval(() => {
+                if (currentTab === "bt-devices") loadBTDevices();
+                else if (currentTab === "bt-sightings") loadBTSightings();
+                else if (currentTab === "wifi-devices") loadWiFiDevices();
+                else if (currentTab === "wifi-assoc") loadWiFiAssociations();
+                
+                updateHeatmap();
+                updateStatus();
+            }, 5000);
+        });
+    </script>
+</body>
+</html>

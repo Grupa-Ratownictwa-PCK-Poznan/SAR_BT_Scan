@@ -335,18 +335,27 @@ async def get_bt_sightings(
     mac_filter: Optional[str] = None,
     rssi_min: Optional[int] = Query(None, ge=-100, le=0),
     rssi_max: Optional[int] = Query(None, ge=-100, le=0),
-    hours_back: Optional[int] = Query(None, ge=0)
+    hours_back: Optional[int] = Query(None, ge=0),
+    time_start: Optional[float] = None,
+    time_end: Optional[float] = None
 ):
-    """Get BT sightings with filters."""
-    time_start = None
-    if hours_back:
-        time_start = time.time() - (hours_back * 3600)
+    """Get BT sightings with filters.
+    
+    Can use either hours_back (quick select) or time_start/time_end (custom range).
+    time_start and time_end take precedence if provided.
+    """
+    time_start_unix = None
+    if time_start is not None:
+        time_start_unix = time_start
+    elif hours_back:
+        time_start_unix = time.time() - (hours_back * 3600)
     
     sightings = query_sightings(
         mac_filter=mac_filter,
         rssi_min=rssi_min,
         rssi_max=rssi_max,
-        time_start=time_start,
+        time_start=time_start_unix,
+        time_end=time_end,
         limit=limit
     )
     return {"sightings": sightings, "count": len(sightings)}
@@ -372,19 +381,28 @@ async def get_wifi_associations(
     ssid_filter: Optional[str] = None,
     rssi_min: Optional[int] = Query(None, ge=-100, le=0),
     rssi_max: Optional[int] = Query(None, ge=-100, le=0),
-    hours_back: Optional[int] = Query(None, ge=0)
+    hours_back: Optional[int] = Query(None, ge=0),
+    time_start: Optional[float] = None,
+    time_end: Optional[float] = None
 ):
-    """Get WiFi association requests with filters."""
-    time_start = None
-    if hours_back:
-        time_start = time.time() - (hours_back * 3600)
+    """Get WiFi association requests with filters.
+    
+    Can use either hours_back (quick select) or time_start/time_end (custom range).
+    time_start and time_end take precedence if provided.
+    """
+    time_start_unix = None
+    if time_start is not None:
+        time_start_unix = time_start
+    elif hours_back:
+        time_start_unix = time.time() - (hours_back * 3600)
     
     associations = query_wifi_associations(
         mac_filter=mac_filter,
         ssid_filter=ssid_filter,
         rssi_min=rssi_min,
         rssi_max=rssi_max,
-        time_start=time_start,
+        time_start=time_start_unix,
+        time_end=time_end,
         limit=limit
     )
     return {"associations": associations, "count": len(associations)}
@@ -397,12 +415,20 @@ async def get_heatmap_data(
     mac_filter: Optional[str] = None,
     ssid_filter: Optional[str] = None,
     rssi_min: Optional[int] = Query(None, ge=-100, le=0),
-    rssi_max: Optional[int] = Query(None, ge=-100, le=0)
+    rssi_max: Optional[int] = Query(None, ge=-100, le=0),
+    time_start: Optional[float] = None,
+    time_end: Optional[float] = None
 ):
-    """Get heatmap data (GPS coordinates with RSSI) for map visualization with optional filters."""
-    time_start = None
-    if hours_back:
-        time_start = time.time() - (hours_back * 3600)
+    """Get heatmap data (GPS coordinates with RSSI) for map visualization with optional filters.
+    
+    Can use either hours_back (quick select) or time_start/time_end (custom range).
+    time_start and time_end take precedence if provided.
+    """
+    time_start_unix = None
+    if time_start is not None:
+        time_start_unix = time_start
+    elif hours_back:
+        time_start_unix = time.time() - (hours_back * 3600)
     
     heatmap_points = []
     
@@ -425,9 +451,13 @@ async def get_heatmap_data(
                     query += " AND rssi <= ?"
                     params.append(rssi_max)
                 
-                if time_start:
+                if time_start_unix:
                     query += " AND ts_unix >= ?"
-                    params.append(time_start)
+                    params.append(time_start_unix)
+                
+                if time_end is not None:
+                    query += " AND ts_unix <= ?"
+                    params.append(time_end)
                 
                 cursor = con.execute(query, params)
                 for lat, lon, rssi in cursor.fetchall():
@@ -461,9 +491,13 @@ async def get_heatmap_data(
                     query += " AND rssi <= ?"
                     params.append(rssi_max)
                 
-                if time_start:
+                if time_start_unix:
                     query += " AND ts_unix >= ?"
-                    params.append(time_start)
+                    params.append(time_start_unix)
+                
+                if time_end is not None:
+                    query += " AND ts_unix <= ?"
+                    params.append(time_end)
                 
                 cursor = con.execute(query, params)
                 for lat, lon, rssi in cursor.fetchall():
