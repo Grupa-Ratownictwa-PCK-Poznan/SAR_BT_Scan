@@ -597,10 +597,10 @@
                 <div class="filter-group">
                     <label>Time Range</label>
                     <div style="display: flex; gap: 5px; margin-bottom: 8px;">
-                        <button id="timePreset1h" class="time-preset-btn active" data-hours="1">1h</button>
+                        <button id="timePreset1h" class="time-preset-btn" data-hours="1">1h</button>
                         <button id="timePreset6h" class="time-preset-btn" data-hours="6">6h</button>
                         <button id="timePreset24h" class="time-preset-btn" data-hours="24">24h</button>
-                        <button id="timePresetAll" class="time-preset-btn" data-hours="0">All</button>
+                        <button id="timePresetAll" class="time-preset-btn active" data-hours="0">All</button>
                     </div>
                     <div style="font-size: 11px; margin-bottom: 5px;">Or set custom range:</div>
                     <div style="display: flex; gap: 5px; flex-direction: column;">
@@ -726,18 +726,19 @@
         let mapMinimized = false;
         
         // Time filter state
-        let currentTimePreset = 1; // hours, 0 = all
+        let currentTimePreset = 0; // hours, 0 = all (DEFAULT)
         let customTimeStart = null; // Unix timestamp
         let customTimeEnd = null;   // Unix timestamp
 
         // ============= Initialization =============
         function initTimeFilters() {
-            // Set default datetime inputs to last 1 hour
+            // Set default datetime inputs (not used by default since currentTimePreset=0 means ALL)
+            // But keep them available for custom range selection
             const now = new Date();
-            const oneHourAgo = new Date(now.getTime() - 3600000);
+            const oneDayAgo = new Date(now.getTime() - 86400000);
             
             document.getElementById("timeEnd").value = now.toISOString().slice(0, 16);
-            document.getElementById("timeStart").value = oneHourAgo.toISOString().slice(0, 16);
+            document.getElementById("timeStart").value = oneDayAgo.toISOString().slice(0, 16);
         }
         
         function getTimeFilterParams() {
@@ -804,13 +805,18 @@
                 const data = await response.json();
                 const serverDate = new Date(data.timestamp_str);
                 
+                const dateStr = serverDate.toLocaleDateString("en-US", {
+                    weekday: "short",
+                    month: "short",
+                    day: "2-digit"
+                });
                 const timeStr = serverDate.toLocaleTimeString("en-US", {
                     hour12: false,
                     hour: "2-digit",
                     minute: "2-digit",
                     second: "2-digit"
                 });
-                document.getElementById("liveTime").textContent = timeStr;
+                document.getElementById("liveTime").textContent = `${dateStr} ${timeStr}`;
             } catch (error) {
                 console.error("Error fetching server time:", error);
             }
@@ -924,14 +930,14 @@
                 const macFilter = document.getElementById("macFilter").value;
                 const rssiMin = parseInt(document.getElementById("rssiMin").value);
                 const rssiMax = parseInt(document.getElementById("rssiMax").value);
-                const timeFilter = parseInt(document.getElementById("timeFilter").value);
+                const timeFilterParams = getTimeFilterParams();
 
                 const params = new URLSearchParams({
                     limit: 500,
                     ...(macFilter && { mac_filter: macFilter }),
                     ...(rssiMin !== -100 && { rssi_min: rssiMin }),
                     ...(rssiMax !== 0 && { rssi_max: rssiMax }),
-                    ...(timeFilter > 0 && { hours_back: timeFilter })
+                    ...timeFilterParams
                 });
 
                 const response = await fetch(`${API_BASE}/api/bt/sightings?${params}`);
@@ -966,7 +972,7 @@
                 const ssidFilter = document.getElementById("ssidFilter").value;
                 const rssiMin = parseInt(document.getElementById("rssiMin").value);
                 const rssiMax = parseInt(document.getElementById("rssiMax").value);
-                const timeFilter = parseInt(document.getElementById("timeFilter").value);
+                const timeFilterParams = getTimeFilterParams();
 
                 const params = new URLSearchParams({
                     limit: 500,
@@ -974,7 +980,7 @@
                     ...(ssidFilter && { ssid_filter: ssidFilter }),
                     ...(rssiMin !== -100 && { rssi_min: rssiMin }),
                     ...(rssiMax !== 0 && { rssi_max: rssiMax }),
-                    ...(timeFilter > 0 && { hours_back: timeFilter })
+                    ...timeFilterParams
                 });
 
                 const response = await fetch(`${API_BASE}/api/wifi/associations?${params}`);
@@ -1069,7 +1075,64 @@
             }).join("");
         }
 
-        // ============= Resizable Divider =============
+        async function updateHeatmap() {
+            try {
+                // Build query with filters
+                const params = new URLSearchParams();
+                
+                const macFilter = document.getElementById("macFilter")?.value.trim();
+                if (macFilter) params.append("mac_filter", macFilter);
+                
+                const rssiMin = document.getElementById("rssiMin")?.value;
+                if (rssiMin && rssiMin != -100) params.append("rssi_min", rssiMin);
+                
+                const rssiMax = document.getElementById("rssiMax")?.value;
+                if (rssiMax && rssiMax != 0) params.append("rssi_max", rssiMax);
+                
+                const timeParams = getTimeFilterParams();
+                Object.entries(timeParams).forEach(([k, v]) => params.append(k, v));
+                
+                const ssidFilter = document.getElementById("ssidFilter")?.value.trim();
+                if (ssidFilter && currentTab === "wifi-assoc") params.append("ssid_filter", ssidFilter);
+                
+                const response = await fetch(`${API_BASE}/api/map/heatmap?${params}`);
+                const data = await response.json();
+
+                if (heatmapLayer) {
+                    map.removeLayer(heatmapLayer);
+                }
+
+                if (data.points.length === 0) {
+                    console.log("No heatmap data available");
+                    return;
+                }
+
+                const points = data.points.map(p => [p.lat, p.lon, p.intensity]);
+                
+                heatmapLayer = L.heatLayer(points, {
+                    radius: 25,
+                    blur: 15,
+                    maxZoom: 17,
+                    gradient: {
+                        0.0: "blue",
+                        0.25: "cyan",
+                        0.5: "lime",
+                        0.75: "yellow",
+                        1.0: "red"
+                    }
+                }).addTo(map);
+
+                // Fit map to bounds
+                if (points.length > 0) {
+                    const bounds = L.latLngBounds(points.map(p => [p[0], p[1]]));
+                    map.fitBounds(bounds.pad(0.1));
+                }
+            } catch (error) {
+                console.error("Error updating heatmap:", error);
+            }
+        }
+
+        // ============= Event Listeners =============
         const divider = document.getElementById("divider");
         const sidebar = document.getElementById("sidebar");
         
