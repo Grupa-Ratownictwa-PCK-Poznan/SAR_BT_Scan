@@ -96,8 +96,9 @@ def main():
             from web_ui.app import app, update_scanner_state
             import uvicorn
             
-            # Update scanner state
-            update_scanner_state(SCAN_MODE, False)
+            # Update scanner state (WiFi monitor is ON if SCAN_MODE is wifi or both)
+            wifi_monitor_active = SCAN_MODE in ("wifi", "both")
+            update_scanner_state(SCAN_MODE, wifi_monitor_active)
             
             # Start web server in a background thread
             web_thread = threading.Thread(

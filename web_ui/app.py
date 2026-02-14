@@ -393,9 +393,13 @@ async def get_wifi_associations(
 @app.get("/api/map/heatmap")
 async def get_heatmap_data(
     data_type: str = Query("all", regex="^(bt|wifi|assoc|all)$"),
-    hours_back: Optional[int] = Query(None, ge=0)
+    hours_back: Optional[int] = Query(None, ge=0),
+    mac_filter: Optional[str] = None,
+    ssid_filter: Optional[str] = None,
+    rssi_min: Optional[int] = Query(None, ge=-100, le=0),
+    rssi_max: Optional[int] = Query(None, ge=-100, le=0)
 ):
-    """Get heatmap data (GPS coordinates with RSSI) for map visualization."""
+    """Get heatmap data (GPS coordinates with RSSI) for map visualization with optional filters."""
     time_start = None
     if hours_back:
         time_start = time.time() - (hours_back * 3600)
@@ -408,6 +412,18 @@ async def get_heatmap_data(
             if data_type in ("bt", "all"):
                 query = "SELECT lat, lon, rssi FROM sightings WHERE lat IS NOT NULL AND lon IS NOT NULL"
                 params = []
+                
+                if mac_filter:
+                    query += " AND addr LIKE ?"
+                    params.append(f"%{mac_filter}%")
+                
+                if rssi_min is not None:
+                    query += " AND rssi >= ?"
+                    params.append(rssi_min)
+                
+                if rssi_max is not None:
+                    query += " AND rssi <= ?"
+                    params.append(rssi_max)
                 
                 if time_start:
                     query += " AND ts_unix >= ?"
@@ -428,6 +444,22 @@ async def get_heatmap_data(
             if data_type in ("wifi", "assoc", "all"):
                 query = "SELECT lat, lon, rssi FROM wifi_associations WHERE lat IS NOT NULL AND lon IS NOT NULL"
                 params = []
+                
+                if mac_filter:
+                    query += " AND mac LIKE ?"
+                    params.append(f"%{mac_filter}%")
+                
+                if ssid_filter:
+                    query += " AND ssid LIKE ?"
+                    params.append(f"%{ssid_filter}%")
+                
+                if rssi_min is not None:
+                    query += " AND rssi >= ?"
+                    params.append(rssi_min)
+                
+                if rssi_max is not None:
+                    query += " AND rssi <= ?"
+                    params.append(rssi_max)
                 
                 if time_start:
                     query += " AND ts_unix >= ?"

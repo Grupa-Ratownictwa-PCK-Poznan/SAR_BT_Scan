@@ -990,62 +990,6 @@
             }).join("");
         }
 
-        // ============= Heatmap =============
-        async function updateHeatmap() {
-            try {
-                const response = await fetch(`${API_BASE}/api/map/heatmap?data_type=${mapDataType}`);
-                const data = await response.json();
-
-                // Clear old markers
-                mapMarkers.forEach(marker => map.removeLayer(marker));
-                mapMarkers = [];
-
-                if (data.points.length === 0) {
-                    console.log("No heatmap data available");
-                    return;
-                }
-
-                // Create markers with hover popups
-                const bounds = L.latLngBounds();
-                data.points.forEach(point => {
-                    if (point.lat && point.lon) {
-                        const color = point.rssi > -70 ? "#2ecc71" : point.rssi > -85 ? "#e67e22" : "#e74c3c";
-                        
-                        const marker = L.circleMarker([point.lat, point.lon], {
-                            radius: 6 + (point.intensity * 4),
-                            fillColor: color,
-                            color: "white",
-                            weight: 2,
-                            opacity: 0.8,
-                            fillOpacity: 0.7,
-                            className: `marker-${point.type}`
-                        });
-
-                        const popupText = `
-                            <strong>${point.type === 'bt' ? 'BT' : 'WiFi'}</strong><br>
-                            <strong>RSSI:</strong> ${point.rssi} dBm<br>
-                            <strong>Lat:</strong> ${point.lat.toFixed(6)}<br>
-                            <strong>Lon:</strong> ${point.lon.toFixed(6)}<br>
-                            <strong>Intensity:</strong> ${(point.intensity * 100).toFixed(0)}%
-                        `;
-                        
-                        marker.bindPopup(popupText);
-                        marker.addTo(map);
-                        mapMarkers.push(marker);
-                        
-                        bounds.extend([point.lat, point.lon]);
-                    }
-                });
-
-                // Fit map to bounds
-                if (mapMarkers.length > 0) {
-                    map.fitBounds(bounds.pad(0.1));
-                }
-            } catch (error) {
-                console.error("Error updating heatmap:", error);
-            }
-        }
-
         // ============= Resizable Divider =============
         const divider = document.getElementById("divider");
         const sidebar = document.getElementById("sidebar");
@@ -1121,25 +1065,32 @@
         document.getElementById("macFilter").addEventListener("input", () => {
             if (currentTab.includes("bt")) loadBTDevices();
             else if (currentTab.includes("wifi")) loadWiFiDevices();
+            updateHeatmap();
         });
 
-        document.getElementById("ssidFilter").addEventListener("input", loadWiFiAssociations);
+        document.getElementById("ssidFilter").addEventListener("input", () => {
+            loadWiFiAssociations();
+            updateHeatmap();
+        });
 
         document.getElementById("rssiMin").addEventListener("input", (e) => {
             document.getElementById("rssiMinValue").textContent = e.target.value;
             if (currentTab === "bt-sightings") loadBTSightings();
             else if (currentTab === "wifi-assoc") loadWiFiAssociations();
+            updateHeatmap();
         });
 
         document.getElementById("rssiMax").addEventListener("input", (e) => {
             document.getElementById("rssiMaxValue").textContent = e.target.value;
             if (currentTab === "bt-sightings") loadBTSightings();
             else if (currentTab === "wifi-assoc") loadWiFiAssociations();
+            updateHeatmap();
         });
 
         document.getElementById("timeFilter").addEventListener("input", () => {
             if (currentTab === "bt-sightings") loadBTSightings();
             else if (currentTab === "wifi-assoc") loadWiFiAssociations();
+            updateHeatmap();
         });
 
         // Show SSID filter only for WiFi associations
@@ -1688,7 +1639,26 @@
         // ============= Heatmap =============
         async function updateHeatmap() {
             try {
-                const response = await fetch(`${API_BASE}/api/map/heatmap?data_type=${mapDataType}`);
+                // Build query with filters
+                const params = new URLSearchParams();
+                params.append("data_type", mapDataType);
+                
+                const macFilter = document.getElementById("macFilter")?.value.trim();
+                if (macFilter) params.append("mac_filter", macFilter);
+                
+                const rssiMin = document.getElementById("rssiMin")?.value;
+                if (rssiMin) params.append("rssi_min", rssiMin);
+                
+                const rssiMax = document.getElementById("rssiMax")?.value;
+                if (rssiMax) params.append("rssi_max", rssiMax);
+                
+                const timeFilter = document.getElementById("timeFilter")?.value;
+                if (timeFilter) params.append("hours_back", timeFilter);
+                
+                const ssidFilter = document.getElementById("ssidFilter")?.value.trim();
+                if (ssidFilter && currentTab === "wifi-assoc") params.append("ssid_filter", ssidFilter);
+                
+                const response = await fetch(`${API_BASE}/api/map/heatmap?${params}`);
                 const data = await response.json();
 
                 if (heatmapLayer) {
@@ -1753,42 +1723,3 @@
                 mapDataType = e.target.dataset.mapType;
                 updateHeatmap();
             });
-        });
-
-        // Filter listeners
-        document.getElementById("macFilter").addEventListener("input", () => {
-            if (currentTab.includes("bt")) loadBTDevices();
-            else if (currentTab.includes("wifi")) loadWiFiDevices();
-        });
-
-        document.getElementById("ssidFilter").addEventListener("input", loadWiFiAssociations);
-
-        document.getElementById("rssiMin").addEventListener("input", (e) => {
-            document.getElementById("rssiMinValue").textContent = e.target.value;
-            if (currentTab === "bt-sightings") loadBTSightings();
-            else if (currentTab === "wifi-assoc") loadWiFiAssociations();
-        });
-
-        document.getElementById("rssiMax").addEventListener("input", (e) => {
-            document.getElementById("rssiMaxValue").textContent = e.target.value;
-            if (currentTab === "bt-sightings") loadBTSightings();
-            else if (currentTab === "wifi-assoc") loadWiFiAssociations();
-        });
-
-        document.getElementById("timeFilter").addEventListener("input", () => {
-            if (currentTab === "bt-sightings") loadBTSightings();
-            else if (currentTab === "wifi-assoc") loadWiFiAssociations();
-        });
-
-        // Show SSID filter only for WiFi associations
-        document.querySelectorAll(".tab-btn[data-tab]").forEach(btn => {
-            btn.addEventListener("click", (e) => {
-                const ssidFilter = document.getElementById("ssidFilter");
-                if (e.target.dataset.tab === "wifi-assoc") {
-                    ssidFilter.style.display = "block";
-                } else {
-                    ssidFilter.style.display = "none";
-                }
-            });
-        });
-
