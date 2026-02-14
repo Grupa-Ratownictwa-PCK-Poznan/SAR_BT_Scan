@@ -49,17 +49,21 @@ The prototype has been successfully tested on:
 ### Repository Layout
 ```
 SAR_BT_Scan/
-├── main.py                 # Entry point: mode selector (BT/WiFi/both)
-├── scanner.py              # BLE scanning logic using bleak
-├── wifi_scanner.py         # WiFi probe capture using scapy
-├── gps_client.py           # GPSD client providing coordinates and UTC time
-├── storage.py              # SQLite schema and write helpers
-├── supervisor.py           # Watchdog that restarts scanner and backs up DB
-├── settings.py             # Configuration (paths, adapters, scan mode)
-├── bt_manufacturer_ids.py  # Bluetooth SIG company ID mappings
-├── freeze_company_ids.py   # Utility to update company ID database
-├── WIFI_SETUP.md           # WiFi adapter setup guide
-└── README.md               # This file
+├── main.py                    # Entry point: mode selector (BT/WiFi/both)
+├── scanner.py                 # BLE scanning logic using bleak
+├── wifi_scanner.py            # WiFi probe capture using scapy
+├── gps_client.py              # GPSD client for GPS coordinates and UTC time
+├── storage.py                 # SQLite schema and database helpers
+├── supervisor.py              # Watchdog that restarts scanner & backs up DB
+├── settings.py                # Configuration (paths, adapters, scan mode)
+├── bt_manufacturer_ids.py     # Bluetooth SIG company ID mappings
+├── freeze_company_ids.py      # Utility to update company ID database
+├── configs/
+│   ├── btscanner-supervisor       # Environment file (symlink to /etc/default/)
+│   ├── btscanner-supervisor.service  # Systemd unit file
+│   └── logtorate.d-btscanner-supervisor # Log rotation config
+├── WIFI_SETUP.md              # WiFi adapter setup guide
+└── README.md                  # This file
 ```
 
 ---
@@ -70,7 +74,12 @@ SAR_BT_Scan/
 - Raspberry Pi OS (Bookworm or later)
 - Python 3.9+
 - GPSD and BlueZ packages
- aircrack-ng wireless-tools
+- aircrack-ng and wireless-tools for WiFi
+
+### 2. System Setup
+```bash
+sudo apt update
+sudo apt install -y python3 python3-pip bluez sqlite3 gpsd gpsd-clients python3-gps aircrack-ng wireless-tools
 ```
 
 ### 3. Clone the Repository
@@ -86,37 +95,43 @@ pip install bleak scapy
 
 ### 5. WiFi Adapter Setup (if using WiFi scanning)
 See [WIFI_SETUP.md](WIFI_SETUP.md) for detailed instructions on enabling monitor mode on your USB WiFi adapter.
-### 4. Install Python Dependencies
-```bash
-pip install bleak
-```
 
 ---
 
 ## ⚙️ Configuration
 
+Edit `settings.py` to match your hardware setup:
+
+```python
 # Storage paths
 USB_STORAGE = "/mnt/pendrive"  # Path for DB backups
-SD_STORAGE  = "/home/pi/"      # Live working directory
+SD_STORAGE  = "/home/grpck/"   # Live working directory
 DB_FILE     = "results.db"
 
 # Bluetooth configuration
 BLEAK_DEVICE = "hci1"          # BLE adapter (often hci1 for TP-Link UB500)
-SCANNER_ID   = "Scanner_1"     # Identifier written to each DB record
+SCANNER_ID   = "Scanner 1"     # Identifier written to each DB record
 
 # Scanning mode and WiFi configuration
 SCAN_MODE = "both"             # Options: "bt", "wifi", or "both"
 WIFI_INTERFACE = "wlan0"       # USB WiFi adapter interface in monitor mode
 KNOWN_WIFIS = []               # List of SSIDs to identify (empty = capture all)
-
-BLEAK_DEVICE = "hci1"          # BLE adapter (often hci1 for TP-Link UB500)
-SCANNER_ID   = "Scanner_1"     # Identifier written to each DB record
 ```
 
 ### GPS Configuration
 Ensure `gpsd` is active and configured to use your receiver (e.g. `/dev/ttyACM0`):
 
-```bBluetooth Only
+```bash
+sudo systemctl enable gpsd
+sudo systemctl start gpsd
+cgps -s    # Verify GPS fix
+```
+
+---
+
+## ▶️ Running the Scanner
+
+### Bluetooth Only
 ```bash
 # With SCAN_MODE = "bt" in settings.py
 python3 main.py
@@ -136,11 +151,151 @@ sudo python3 main.py
 sudo python3 main.py
 ```
 
-### Supervised (Recommended)
-Run the supervisor, which restarts the scanner if it fails and performs automatic backups:
-Bluetooth Tables
+### Console Output Example
+```
+============================================================
+SAR BT+WiFi Scanner
+============================================================
+Scan Mode: both
+Scanner ID: Scanner 1
+...
+Initializing GPS...
+✓ GPS: 12 satellites, HDOP=1.2
+Initializing database...
 
-**Table: `devices`** (BLE devices)
+[BT] 00:1A:2B:3C:4D:5E - Device Name (RSSI: -65)
+[WiFi] AA:BB:CC:DD:EE:FF -> Home_Network (RSSI: -45)
+```
+
+---
+
+## 🚀 Service Installation & Management
+
+The scanner can be installed as a **systemd service** for automated start-on-boot and supervisor-based restarts.
+
+### Install as Systemd Service
+
+Copy the service files to system directories:
+
+```bash
+# Copy environment file
+sudo cp configs/btscanner-supervisor /etc/default/btscanner-supervisor
+
+# Copy systemd unit file
+sudo cp configs/btscanner-supervisor.service /etc/systemd/system/
+
+# Copy log rotation config (optional)
+sudo cp configs/logtorate.d-btscanner-supervisor /etc/logrotate.d/
+
+# Reload systemd configuration
+sudo systemctl daemon-reload
+```
+
+### Enable Service at Boot
+```bash
+sudo systemctl enable btscanner-supervisor
+sudo systemctl start btscanner-supervisor
+```
+
+### Service Management Commands
+
+**Check Status**
+```bash
+sudo systemctl status btscanner-supervisor
+```
+Shows if the service is running, its PID, and recent logs.
+
+**Start the Service**
+```bash
+sudo systemctl start btscanner-supervisor
+```
+
+**Stop the Service**
+```bash
+sudo systemctl stop btscanner-supervisor
+```
+This immediately halts the service without uninstalling it.
+
+**Restart the Service**
+```bash
+sudo systemctl restart btscanner-supervisor
+```
+
+**View Real-Time Logs**
+```bash
+sudo journalctl -u btscanner-supervisor -f
+```
+Shows live output from the scanner (useful for debugging).
+
+**View Recent Logs**
+```bash
+sudo journalctl -u btscanner-supervisor -n 50
+```
+Shows last 50 log entries.
+
+**Disable Auto-Start**
+```bash
+sudo systemctl disable btscanner-supervisor
+```
+The service will no longer start automatically on boot.
+
+### Configuration Files
+
+The service behavior is controlled by `/etc/default/btscanner-supervisor`:
+
+```bash
+# Main Python command (path to supervisor.py)
+BTS_MAIN_CMD="/usr/bin/python3 /home/grpck/sar_bt_scan/sar_bt_scan/main.py"
+
+# Live database (local storage)
+BTS_DB_PATH="/home/grpck/results.db"
+
+# Backup destination (USB pendrive)
+BTS_DEST_DIR="/mnt/pendrive"
+
+# Log directory
+BTS_LOG_DIR="/var/log/btscanner"
+
+# Backup interval (seconds)
+BTS_BACKUP_INTERVAL="60"
+
+# Max restart backoff (seconds)
+BTS_RESTART_BACKOFF_MAX="60"
+
+# Timezone for timestamps: "local" or "utc"
+BTS_TIMEZONE="utc"
+
+# Touch this file to gracefully stop scanner
+BTS_STOP_FILE="/run/btscanner-supervisor.stop"
+```
+
+To modify settings, edit the file and restart:
+```bash
+sudo nano /etc/default/btscanner-supervisor
+sudo systemctl restart btscanner-supervisor
+```
+
+### Supervisor Behavior
+
+The `supervisor.py` process:
+- Continuously monitors the main scanner
+- Automatically restarts it if it crashes
+- Creates timestamped database backups to the USB pendrive
+- Clears the live database on each restart to prevent mission data mixing
+- Provides resilient operation during long rescue operations
+
+To **gracefully stop** the supervisor without killing the service:
+```bash
+touch /run/btscanner-supervisor.stop
+```
+
+---
+
+## 🗃️ Data Structure
+
+### Bluetooth Tables
+
+**Table: `devices`** (Unique BLE devices)
 | Field | Description |
 |--------|-------------|
 | addr | Bluetooth MAC address |
@@ -151,7 +306,7 @@ Bluetooth Tables
 **Table: `sightings`** (BLE observations)
 | Field | Description |
 |--------|-------------|
-| id | Auto-increment |
+| id | Auto-increment ID |
 | addr | MAC address |
 | ts_unix / ts_gps | Time of sighting |
 | lat / lon / alt | GPS coordinates |
@@ -164,7 +319,7 @@ Bluetooth Tables
 
 ### WiFi Tables
 
-**Table: `wifi_devices`** (WiFi devices seen)
+**Table: `wifi_devices`** (Unique WiFi devices seen)
 | Field | Description |
 |--------|-------------|
 | mac | WiFi MAC address |
@@ -172,86 +327,15 @@ Bluetooth Tables
 | vendor | Vendor name (if available) |
 
 **Table: `wifi_associations`** (WiFi networks devices tried to join)
-| Field | WiFi adapter monitor mode** (if enabled)
-  ```bash
-  iwconfig wlan0  # Should show "Mode:Monitor"
-  ```
-- **Check GPS**
-  ```bash
-  cgps -s
-  ```
-- **Inspect collected data**
-  ```bash
-  sqlite3 /home/pi/results.db 'SELECT COUNT(*) FROM sightings;'
-  sqlite3 /home/pi/results.db 'SELECT COUNT(*) FROM wifi_association
-| rssi | Signal strength (dBm) |
-| scanner_name | Identifier of scanning device=================is is to prevent the scanner from mixing data from various operations. If you boot the device multiple times in a single mission - no worries, you will still have all the database snapshots on the USB memory (unless you wipe it). This wipe was added because it's easier to clean up files from USB memory (you can connect to a computer with screen) than from the scanner itself.
-
-At the end of the mission:
-- Retrieve `.db` files from `/mnt/pendrive`.
-- Analyze with examples:
-  ```bash
-  # All BLE devices
-  sqlite3 results.db "SELECT addr, name, COUNT(*) FROM sightings GROUP BY addr ORDER BY COUNT(*) DESC LIMIT 20;"
-  
-  # All WiFi networks seen
-  sqlite3 results.db "SELECT DISTINCT ssid FROM wifi_associations;"
-  
-  # Devices connecting to a specific network
-  sqlite3 results.db "SELECT DISTINCT mac FROM wifi_associations WHERE ssid='Home_Network';"
-  
-  # Timeline of a single device
-  sqlite3 results.db "SELECT datetime(ts_unix, 'unixepoch'), ssid, rssi, lat, lon FROM wifi_associations WHERE mac='AA:BB:CC:DD:EE:FF' ORDER BY ts_unix;"
-  ```
-- Export to GIS software (QGIS, ArcGIS) as CSV/GeoJSON
-
-[BT] 00:1A:2B:3C:4D:5E - Device Name (RSSI: -65)
-[WiFi] AA:BB:CC:DD:EE:FF -> Home_Network (RSSI: -45)
-``rts the scanner if it fails and performs automatic backups:
-
-```bash
-python3 supervisor.py
-```
-
-ThWiFi adapter not found | Check `iwconfig`/`iw dev`; verify USB connection and drivers installed |
-| Monitor mode not working | Run `sudo airmon-ng check kill` then `sudo airmon-ng start wlan0` |
-| Permission denied on WiFi | WiFi scanning requires `sudo` for raw packet access |
-| Database locked | Use backups created by supervisor instead of live file |
-| High CPU load | Ensure Raspberry Pi 5 has adequate cooling and PSU |
-
-For detailed WiFi setup help, see [WIFI_SETUP.md](WIFI_SETUP.md).
-- Write live data to the main database
-- PeBluetooth scanning  
-- ✅ WiFi probe/association capture  
-- ✅ Manufacturer ID resolution  
-- 🕓 Configurable SSID filtering  
-- 🕓 Meshtastic telemetry for live updates  
-- 🕓 On-device dashboard / map  
-- 🕓 Export to GeoJSON and QGIS project
-
-## 🗃️ Data Structure
-
-### Table: `devices`
 | Field | Description |
 |--------|-------------|
-| addr | Bluetooth MAC address |
-| first_seen / last_seen | Unix timestamps |
-| name | Device name |
-| manufacturer_hex / manufacturer | Bluetooth SIG ID + readable name |
-
-### Table: `sightings`
-| Field | Description |
-|--------|-------------|
-| id | Auto-increment |
-| addr | MAC address |
-| ts_unix / ts_gps | Time of sighting |
+| id | Auto-increment ID |
+| mac | Device MAC address |
+| ts_unix / ts_gps | Time of association attempt |
 | lat / lon / alt | GPS coordinates |
+| ssid | Network name (plaintext, can be `<hidden>`) |
 | rssi | Signal strength (dBm) |
-| tx_power | Transmit power (if available) |
 | scanner_name | Identifier of scanning device |
-| manufacturer | Vendor name |
-| service_uuid | BLE service info |
-| adv_raw | Optional raw advertisement data |
 
 ---
 
@@ -262,27 +346,51 @@ For detailed WiFi setup help, see [WIFI_SETUP.md](WIFI_SETUP.md).
   hciconfig
   bluetoothctl show
   ```
+- **Check WiFi adapter monitor mode** (if enabled)
+  ```bash
+  iwconfig wlan0  # Should show "Mode:Monitor"
+  ```
 - **Check GPS**
   ```bash
   cgps -s
   ```
 - **Inspect collected data**
   ```bash
-  sqlite3 /home/pi/results.db 'SELECT COUNT(*) FROM sightings;'
+  sqlite3 /home/grpck/results.db 'SELECT COUNT(*) FROM sightings;'
+  sqlite3 /home/grpck/results.db 'SELECT COUNT(*) FROM wifi_associations;'
   ```
 
 ---
 
 ## 📤 Data Offload & Analysis
 
-Keep in mind - the supervisor will wipe the DB file on every service start. Thsi is to prevent the scanner from mixing data from various operations. If you boot the device multiple times in a single mission - no worries, you will still have all the database snapshots on the USB memory (unless you wipe it). This wipe was added because it's easier to clean up files from USB memory (you can connect to a computer with screen) than from the scanner itself.
+The `supervisor.py` automatically backs up the database to the USB pendrive with timestamps (e.g., `2025-11-04-13-26-08-results.db`). This prevents data mixing when the device boots multiple times during a mission.
 
 At the end of the mission:
-- Retrieve `.db` files from `/mnt/pendrive`.
-- Analyze with:
-  - QGIS or other GIS software (convert to GeoJSON/CSV)
-  - Python notebooks or your own tools
-- Filter out known rescuer devices (Samsung, Garmin, etc.) before analysis.
+- Retrieve `.db` files from `/mnt/pendrive`
+- Analyze with examples:
+
+```bash
+# All BLE devices (by observation count)
+sqlite3 results.db "SELECT addr, name, COUNT(*) FROM sightings GROUP BY addr ORDER BY COUNT(*) DESC LIMIT 20;"
+
+# All WiFi networks seen
+sqlite3 results.db "SELECT DISTINCT ssid FROM wifi_associations;"
+
+# Devices connecting to a specific network
+sqlite3 results.db "SELECT DISTINCT mac FROM wifi_associations WHERE ssid='Home_Network';"
+
+# Timeline of a single device
+sqlite3 results.db "SELECT datetime(ts_unix, 'unixepoch'), ssid, rssi, lat, lon FROM wifi_associations WHERE mac='AA:BB:CC:DD:EE:FF' ORDER BY ts_unix;"
+
+# Last hour of activity
+sqlite3 results.db "SELECT mac, ssid, rssi, datetime(ts_unix, 'unixepoch') FROM wifi_associations WHERE ts_unix > (SELECT MAX(ts_unix) - 3600 FROM wifi_associations) ORDER BY ts_unix DESC;"
+```
+
+Export to GIS software:
+- Convert `.db` to CSV/GeoJSON
+- Analyze in QGIS, ArcGIS, or ArcGIS Online
+- Filter out known rescuer devices (Samsung, Garmin, etc.) before analysis
 
 Example post-processing map:
 
@@ -295,19 +403,27 @@ Example post-processing map:
 | Issue | Solution |
 |-------|-----------|
 | GPS not updating | Check `gpsd` status and cable; ensure antenna has sky view |
-| BLE adapter missing | Check with `hciconfig`; correct adapter in `settings.py` |
+| BLE adapter missing | Check with `hciconfig`; verify adapter name in `settings.py` |
+| WiFi adapter not found | Check `iwconfig`/`iw dev`; verify USB connection and drivers installed |
+| Monitor mode not working | Check [WIFI_SETUP.md](WIFI_SETUP.md) for manual setup instructions |
+| Permission denied on WiFi | WiFi scanning requires `sudo` for raw packet access |
 | Database locked | Use backups created by supervisor instead of live file |
-| High CPU load | Ensure Raspberry Pi 5 has adequate cooling and PSU |
+| High CPU load | Ensure Raspberry Pi 5 has adequate cooling and power supply |
+| Service won't start | Check logs: `sudo journalctl -u btscanner-supervisor -n 50` |
 
 ---
 
 ## 🗺️ Roadmap
 
 - ✅ GPS integration  
+- ✅ Bluetooth scanning  
+- ✅ WiFi probe/association capture  
 - ✅ Manufacturer ID resolution  
+- ✅ Systemd service management
+- 🕓 Configurable SSID filtering  
 - 🕓 Meshtastic telemetry for live updates  
 - 🕓 On-device dashboard / map  
-- 🕓 Export to GeoJSON and QGIS project  
+- 🕓 Export to GeoJSON and QGIS project
 
 ---
 
@@ -322,8 +438,9 @@ Contributions are welcome!
 
 All code should:
 - Be compatible with Raspberry Pi OS (Python 3.9+)
-- Use standard libraries (avoid heavy dependencies)
+- Use standard libraries (minimize heavy dependencies)
 - Include clear comments or docstrings
+- Work on both `main` and `wifi-scanner` branches as appropriate
 
 ---
 
@@ -348,6 +465,7 @@ Always operate under proper authorization and in compliance with local regulatio
 Developed by **Grupa Ratownictwa PCK Poznań**  
 Thanks to the maintainers of:
 - `bleak` for Bluetooth scanning  
+- `scapy` for WiFi packet capture
 - `gpsd` for GPS data  
 - The Bluetooth SIG for public manufacturer databases  
 - Raspberry Pi Foundation for the hardware platform
