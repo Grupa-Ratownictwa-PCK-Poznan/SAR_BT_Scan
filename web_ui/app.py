@@ -443,7 +443,7 @@ async def get_heatmap_data(
         with db() as con:
             # BT sightings
             if data_type in ("bt", "all"):
-                query = "SELECT lat, lon, rssi FROM sightings WHERE lat IS NOT NULL AND lon IS NOT NULL"
+                query = "SELECT lat, lon, rssi, addr, ts_unix FROM sightings WHERE lat IS NOT NULL AND lon IS NOT NULL"
                 params = []
                 
                 if mac_filter:
@@ -467,19 +467,21 @@ async def get_heatmap_data(
                     params.append(time_end)
                 
                 cursor = con.execute(query, params)
-                for lat, lon, rssi in cursor.fetchall():
+                for lat, lon, rssi, mac, ts_unix in cursor.fetchall():
                     if lat and lon:
                         heatmap_points.append({
                             "lat": lat,
                             "lon": lon,
                             "rssi": rssi,
                             "type": "bt",
+                            "mac": mac,
+                            "timestamp": ts_unix,
                             "intensity": max(0, min(1, (rssi + 100) / 100))  # Normalize RSSI to 0-1
                         })
             
             # WiFi associations
             if data_type in ("wifi", "assoc", "all"):
-                query = "SELECT lat, lon, rssi FROM wifi_associations WHERE lat IS NOT NULL AND lon IS NOT NULL"
+                query = "SELECT lat, lon, rssi, mac, ssid, ts_unix FROM wifi_associations WHERE lat IS NOT NULL AND lon IS NOT NULL"
                 params = []
                 
                 if mac_filter:
@@ -507,13 +509,16 @@ async def get_heatmap_data(
                     params.append(time_end)
                 
                 cursor = con.execute(query, params)
-                for lat, lon, rssi in cursor.fetchall():
+                for lat, lon, rssi, mac, ssid, ts_unix in cursor.fetchall():
                     if lat and lon:
                         heatmap_points.append({
                             "lat": lat,
                             "lon": lon,
                             "rssi": rssi,
                             "type": "assoc",
+                            "mac": mac,
+                            "ssid": ssid,
+                            "timestamp": ts_unix,
                             "intensity": max(0, min(1, (rssi + 100) / 100))
                         })
     

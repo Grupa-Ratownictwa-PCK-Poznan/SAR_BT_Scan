@@ -1133,6 +1133,37 @@
                     // Determine radius based on intensity
                     const radius = 5 + (intensity * 15);
                     
+                    // Format popup content
+                    let popupHTML = `
+                        <div style="font-size: 12px; width: 200px;">
+                            <b>Signal Details</b><hr style="margin: 5px 0;">
+                    `;
+                    
+                    // Device MAC
+                    if (point.mac) {
+                        popupHTML += `<b>MAC:</b> ${point.mac}<br>`;
+                    }
+                    
+                    // SSID (for WiFi)
+                    if (point.ssid) {
+                        popupHTML += `<b>SSID:</b> ${point.ssid}<br>`;
+                    }
+                    
+                    // Signal strength
+                    popupHTML += `<b>Signal:</b> ${rssi} dBm<br>`;
+                    popupHTML += `<b>Intensity:</b> ${(intensity * 100).toFixed(0)}%<br>`;
+                    
+                    // Type (BT or WiFi)
+                    popupHTML += `<b>Type:</b> ${point.type === 'assoc' ? 'WiFi' : 'Bluetooth'}<br>`;
+                    
+                    // Timestamp
+                    if (point.timestamp) {
+                        const date = new Date(point.timestamp * 1000);
+                        popupHTML += `<b>Time:</b> ${date.toLocaleString()}<br>`;
+                    }
+                    
+                    popupHTML += `</div>`;
+                    
                     const circleMarker = L.circleMarker([point.lat, point.lon], {
                         radius: Math.min(radius, 20),
                         fillColor: color,
@@ -1140,10 +1171,10 @@
                         weight: 1,
                         opacity: 0.7,
                         fillOpacity: intensity,
-                        title: `RSSI: ${rssi}, Type: ${point.type || 'unknown'}`
+                        title: `${point.mac || 'Unknown'} - ${point.ssid || 'BT'}`
                     });
                     
-                    circleMarker.bindPopup(`<b>Signal Strength:</b> ${rssi} dBm<br><b>Intensity:</b> ${(intensity * 100).toFixed(0)}%<br><b>Type:</b> ${point.type || 'unknown'}`);
+                    circleMarker.bindPopup(popupHTML);
                     circleMarker.addTo(map);
                     mapMarkers.push(circleMarker);
                 });
