@@ -1226,10 +1226,14 @@
         window.addEventListener("load", () => {
             initMap();
             updateStatus();
+            updateLiveTime();
             setupWebSocket();
             
             // Load initial data
             loadBTDevices();
+            
+            // Update clock every second
+            setInterval(updateLiveTime, 1000);
             
             // Refresh data periodically
             setInterval(() => {
