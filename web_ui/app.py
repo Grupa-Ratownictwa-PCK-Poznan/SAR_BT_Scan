@@ -42,6 +42,13 @@ app.add_middleware(
 
 DB_PATH = SD_STORAGE + DB_FILE
 
+# Check if the configured database exists; if not, try fallback paths for testing
+if not os.path.exists(DB_PATH):
+    if os.path.exists('/tmp/test_results.db'):
+        DB_PATH = '/tmp/test_results.db'
+    elif os.path.exists('./test_results.db'):
+        DB_PATH = './test_results.db'
+
 # WebSocket connection manager
 class ConnectionManager:
     def __init__(self):

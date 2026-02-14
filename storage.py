@@ -1,11 +1,19 @@
 # file: storage.py
 import sqlite3
 import time
+import os
 from contextlib import contextmanager
 
 from settings import SD_STORAGE, DB_FILE, SCANNER_ID
 
 DB_PATH = SD_STORAGE + DB_FILE  #"/var/lib/ble/ble_scanner.db"
+
+# Check if the configured database exists; if not, try fallback paths for testing on macOS
+if not os.path.exists(DB_PATH):
+    if os.path.exists('/tmp/test_results.db'):
+        DB_PATH = '/tmp/test_results.db'
+    elif os.path.exists('./test_results.db'):
+        DB_PATH = './test_results.db'
 
 def init_db():
     print("Saving to DB on location: " + DB_PATH)
