@@ -14,20 +14,43 @@ import gps_client as gc
 from storage import init_db
 
 def _sync_gps_time():
-    """Background thread: sync system time from GPS as soon as available."""
-    max_attempts = 30  # Try for ~30 seconds
-    for attempt in range(max_attempts):
+    """Background thread: continuously sync system time from GPS when available.
+    
+    Non-blocking: starts immediately and retries periodically with exponential backoff.
+    Keeps trying even if GPS time isn't available at startup.
+    """
+    attempt = 0
+    synced = False
+    
+    while not synced:
         gps_time = gc.get_gps_time()
         if gps_time:
             # Try to sync system time
             if gc.sync_system_time():
                 print(f"✓ System time synced from GPS: {gps_time}")
-                return
+                synced = True
             else:
-                print("⚠ Failed to sync system time (may need root)")
-                return
-        time.sleep(1)
-    print("⚠ GPS time not available for sync")
+                print("⚠ Failed to sync system time (may need root privileges)")
+                synced = True  # Don't keep retrying if sync fails
+        else:
+            # GPS time not available yet, retry with backoff
+            attempt += 1
+            if attempt <= 5:
+                # Quick retries: every 1 second for first 5 attempts
+                sleep_time = 1
+            elif attempt <= 20:
+                # Medium retries: every 5 seconds for next 15 attempts (~1 min total)
+                sleep_time = 5
+            else:
+                # Long retries: every 30 seconds indefinitely
+                sleep_time = 30
+            
+            if attempt == 1:
+                print("⏳ Waiting for GPS time...")
+            elif attempt in (6, 21):
+                print(f"⏳ Still waiting for GPS time (attempt {attempt})...")
+            
+            time.sleep(sleep_time)
 
 def main():
     # Main logic of the program goes here
