@@ -15,11 +15,10 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Query
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio
-import json
 import time
 import threading
 from typing import Optional, List, Dict, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 import sys
 import os
 
@@ -293,7 +292,7 @@ async def get_status():
     
     return {
         "timestamp": time.time(),
-        "timestamp_str": datetime.now().isoformat(),
+        "timestamp_str": datetime.now(timezone.utc).isoformat(),
         "gps": {
             "fix_ok": gps_status.fix_ok if gps_status else False,
             "mode": gps_status.mode if gps_status else 0,

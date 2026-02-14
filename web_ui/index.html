@@ -737,10 +737,6 @@
             }
         }
 
-        // Update time every second
-        setInterval(updateLiveTime, 1000);
-        updateLiveTime();
-
         // ============= Live Status Updates =============
         async function updateLiveStatus(data) {
             // Update GPS indicator
@@ -1181,7 +1177,6 @@
     </script>
 </body>
 </html>
-    </style>
 </head>
 <body>
     <div class="container">
@@ -1797,26 +1792,3 @@
             });
         });
 
-        // ============= Initialization on Page Load =============
-        window.addEventListener("load", () => {
-            initMap();
-            updateStatus();
-            setupWebSocket();
-            
-            // Load initial data
-            loadBTDevices();
-            
-            // Refresh data periodically
-            setInterval(() => {
-                if (currentTab === "bt-devices") loadBTDevices();
-                else if (currentTab === "bt-sightings") loadBTSightings();
-                else if (currentTab === "wifi-devices") loadWiFiDevices();
-                else if (currentTab === "wifi-assoc") loadWiFiAssociations();
-                
-                updateHeatmap();
-                updateStatus();
-            }, 5000);
-        });
-    </script>
-</body>
-</html>
