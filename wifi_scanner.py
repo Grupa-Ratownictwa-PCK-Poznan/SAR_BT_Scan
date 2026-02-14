@@ -51,23 +51,13 @@ def _is_monitor_mode(interface: str) -> bool:
 
 
 def _enable_monitor_mode(interface: str) -> bool:
-    """Try to enable monitor mode on the interface."""
-    try:
-        # First try airmon-ng
-        subprocess.run(["sudo", "airmon-ng", "check", "kill"], capture_output=True, timeout=5)
-        result = subprocess.run(
-            ["sudo", "airmon-ng", "start", interface],
-            capture_output=True,
-            text=True,
-            timeout=10
-        )
-        time.sleep(1)  # Wait for mode change
-        return _is_monitor_mode(interface)
-    except Exception:
-        pass
+    """Try to enable monitor mode on the interface (non-destructive).
     
+    Uses iw method which only affects the target interface.
+    Avoids airmon-ng which can disrupt network management globally.
+    """
     try:
-        # Fallback: try iw
+        # Use iw to set monitor mode (non-destructive, interface-specific)
         subprocess.run(["sudo", "ifconfig", interface, "down"], capture_output=True, timeout=5)
         time.sleep(0.5)
         subprocess.run(
@@ -77,9 +67,19 @@ def _enable_monitor_mode(interface: str) -> bool:
         )
         subprocess.run(["sudo", "ifconfig", interface, "up"], capture_output=True, timeout=5)
         time.sleep(1)
-        return _is_monitor_mode(interface)
-    except Exception:
-        pass
+        
+        if _is_monitor_mode(interface):
+            return True
+    except Exception as e:
+        print(f"  Failed to enable monitor mode: {e}")
+    
+    # If automatic enabling fails, provide manual instructions
+    print(f"\n  ⚠ Could not automatically enable monitor mode on {interface}")
+    print(f"  Please enable it manually before running the scanner:")
+    print(f"  $ sudo ifconfig {interface} down")
+    print(f"  $ sudo iw dev {interface} set type monitor")
+    print(f"  $ sudo ifconfig {interface} up")
+    print(f"  $ iwconfig {interface}  # verify Mode:Monitor\n")
     
     return False
 
