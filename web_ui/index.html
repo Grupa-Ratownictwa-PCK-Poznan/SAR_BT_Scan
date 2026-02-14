@@ -707,6 +707,9 @@
 
     <!-- Leaflet JS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    
+    <!-- Leaflet.heat plugin for heatmap rendering -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.min.js"></script>
 
     <!-- Main Application JS -->
     <script>
@@ -717,6 +720,7 @@
 
         // ============= State =============
         let map = null;
+        let heatmapLayer = null;
         let mapMarkers = [];
         let mapDataType = "wifi";
         let currentTab = "bt-devices";
