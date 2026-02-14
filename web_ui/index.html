@@ -12,6 +12,19 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     
     <style>
+        /* Red Cross Color Scheme */
+        :root {
+            --rc-red: #C60C30;
+            --rc-dark-red: #A00826;
+            --rc-white: #FFFFFF;
+            --rc-black: #1a1a1a;
+            --rc-light-gray: #f5f5f5;
+            --rc-dark-gray: #333333;
+            --accent-blue: #0066cc;
+            --accent-green: #2ecc71;
+            --accent-orange: #e67e22;
+            --accent-red-light: #e74c3c;
+        }
         * {
             margin: 0;
             padding: 0;
@@ -20,84 +33,108 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #1a1a2e;
-            color: #fff;
+            background: var(--rc-light-gray);
+            color: var(--rc-black);
             overflow: hidden;
         }
 
         .container {
             display: flex;
             height: 100vh;
-            gap: 10px;
-            padding: 10px;
-            background: #0f0f1e;
+            gap: 0;
+            padding: 0;
+            background: var(--rc-light-gray);
+        }
+
+        /* Resizable divider */
+        .divider {
+            width: 5px;
+            background: var(--rc-red);
+            cursor: col-resize;
+            transition: background 0.2s;
+            z-index: 100;
+            flex-shrink: 0;
+        }
+
+        .divider:hover {
+            background: var(--rc-dark-red);
+            box-shadow: 0 0 5px rgba(198, 12, 48, 0.5);
         }
 
         .sidebar {
-            width: 350px;
+            width: 380px;
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 8px;
             overflow-y: auto;
+            padding: 10px;
+            background: var(--rc-white);
+            border-right: 2px solid var(--rc-red);
         }
 
         .main-content {
             flex: 1;
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 0;
+            padding: 10px;
         }
 
         .panel {
-            background: #16213e;
-            border: 1px solid #0f3460;
-            border-radius: 8px;
-            padding: 15px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            background: var(--rc-white);
+            border: 2px solid var(--rc-red);
+            border-radius: 4px;
+            padding: 12px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         .panel-title {
-            font-size: 14px;
+            font-size: 13px;
             font-weight: bold;
             text-transform: uppercase;
-            color: #e94560;
-            margin-bottom: 10px;
+            color: var(--rc-white);
+            background: var(--rc-red);
+            margin: -12px -12px 10px -12px;
+            padding: 8px 12px;
             display: flex;
             align-items: center;
             gap: 8px;
+            border-radius: 2px 2px 0 0;
         }
 
         /* Indicators */
         .indicators {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 10px;
+            gap: 8px;
         }
 
         .indicator {
-            background: #0f3460;
-            border-left: 4px solid #0f3460;
-            padding: 12px;
-            border-radius: 4px;
+            background: var(--rc-light-gray);
+            border-left: 4px solid var(--rc-red);
+            padding: 10px;
+            border-radius: 2px;
             display: flex;
             flex-direction: column;
             gap: 4px;
+            transition: all 0.3s;
         }
 
         .indicator.active {
-            background: rgba(46, 125, 50, 0.2);
-            border-left-color: #2e7d32;
+            background: #e8f5e9;
+            border-left-color: var(--accent-green);
         }
 
         .indicator.inactive {
-            background: rgba(215, 61, 40, 0.2);
-            border-left-color: #c6362b;
+            background: #ffebee;
+            border-left-color: var(--accent-red-light);
         }
 
         .indicator-label {
-            font-size: 11px;
-            color: #aaa;
+            font-size: 10px;
+            color: #666;
             text-transform: uppercase;
+            font-weight: 600;
         }
 
         .indicator-value {
@@ -106,111 +143,118 @@
         }
 
         .indicator-value.good {
-            color: #4caf50;
+            color: var(--accent-green);
         }
 
         .indicator-value.warning {
-            color: #ff9800;
+            color: var(--accent-orange);
         }
 
         .indicator-value.error {
-            color: #f44336;
+            color: var(--accent-red-light);
         }
 
         /* Live time */
         #liveTime {
-            font-size: 24px;
+            font-size: 28px;
             font-weight: bold;
             font-family: 'Courier New', monospace;
             text-align: center;
-            color: #00d4ff;
-            padding: 15px;
-            background: rgba(0, 212, 255, 0.1);
+            color: var(--rc-white);
+            background: var(--rc-red);
+            padding: 12px;
             border-radius: 4px;
-            margin-bottom: 10px;
+            margin-bottom: 5px;
         }
 
         /* Tabs */
         .tabs {
             display: flex;
-            gap: 5px;
-            border-bottom: 1px solid #0f3460;
-            margin-bottom: 10px;
+            gap: 4px;
+            border-bottom: 2px solid var(--rc-red);
+            margin-bottom: 8px;
+            flex-wrap: wrap;
         }
 
         .tab-btn {
-            background: transparent;
-            border: 1px solid #0f3460;
-            color: #aaa;
-            padding: 8px 12px;
+            background: var(--rc-light-gray);
+            border: 1px solid var(--rc-red);
+            color: var(--rc-black);
+            padding: 6px 10px;
             cursor: pointer;
-            font-size: 12px;
-            border-radius: 4px 4px 0 0;
-            transition: all 0.3s;
+            font-size: 11px;
+            border-radius: 2px 2px 0 0;
+            transition: all 0.2s;
+            font-weight: 500;
         }
 
         .tab-btn.active {
-            background: #0f3460;
-            color: #00d4ff;
-            border-color: #00d4ff;
+            background: var(--rc-red);
+            color: var(--rc-white);
+            border-color: var(--rc-dark-red);
         }
 
         .tab-btn:hover {
-            color: #fff;
+            background: var(--rc-red);
+            color: var(--rc-white);
         }
 
         /* Tables */
         .table-container {
             overflow-y: auto;
             flex: 1;
-            max-height: 400px;
+            max-height: 300px;
+            border: 1px solid #ddd;
+            border-radius: 2px;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 12px;
+            font-size: 11px;
         }
 
         th {
             position: sticky;
             top: 0;
-            background: #0f3460;
+            background: var(--rc-red);
+            color: var(--rc-white);
             padding: 8px;
             text-align: left;
             font-weight: bold;
-            color: #00d4ff;
-            border-bottom: 2px solid #e94560;
+            border-bottom: 2px solid var(--rc-dark-red);
         }
 
         td {
-            padding: 8px;
-            border-bottom: 1px solid #0f3460;
+            padding: 7px;
+            border-bottom: 1px solid #eee;
         }
 
         tr:hover {
-            background: rgba(0, 212, 255, 0.05);
+            background: #fff3e0;
         }
 
         .mac-addr {
             font-family: 'Courier New', monospace;
-            color: #00d4ff;
+            color: var(--rc-red);
+            font-weight: 500;
         }
 
         .rssi-bar {
             display: inline-block;
             width: 50px;
-            height: 16px;
-            background: #333;
+            height: 14px;
+            background: #ddd;
             border-radius: 2px;
-            border: 1px solid #555;
+            border: 1px solid #999;
             overflow: hidden;
             position: relative;
+            margin-right: 4px;
         }
 
         .rssi-fill {
             height: 100%;
-            background: linear-gradient(90deg, #f44336, #ff9800, #4caf50);
+            background: linear-gradient(90deg, #e74c3c, #e67e22, var(--accent-green));
             width: 100%;
             transition: width 0.3s;
         }
@@ -218,38 +262,71 @@
         /* Map */
         #map {
             height: 100%;
-            border-radius: 8px;
-            border: 1px solid #0f3460;
+            border-radius: 4px;
+            border: 2px solid var(--rc-red);
+            background: var(--rc-white);
+        }
+
+        .map-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .map-controls {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 5px;
+            align-items: center;
+        }
+
+        .collapse-btn {
+            background: var(--rc-red);
+            color: var(--rc-white);
+            border: none;
+            padding: 6px 10px;
+            border-radius: 2px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        .collapse-btn:hover {
+            background: var(--rc-dark-red);
         }
 
         /* Filters */
         .filter-group {
             display: flex;
             flex-direction: column;
-            gap: 8px;
-            margin-bottom: 10px;
+            gap: 6px;
+            margin-bottom: 8px;
         }
 
         .filter-group label {
-            font-size: 12px;
-            color: #aaa;
+            font-size: 10px;
+            color: #666;
             text-transform: uppercase;
+            font-weight: 600;
         }
 
         input[type="text"],
         input[type="range"],
         input[type="number"],
         select {
-            background: #0f3460;
-            border: 1px solid #00d4ff;
-            color: #fff;
+            background: var(--rc-white);
+            border: 1px solid var(--rc-red);
+            color: var(--rc-black);
             padding: 6px;
-            border-radius: 4px;
-            font-size: 12px;
+            border-radius: 2px;
+            font-size: 11px;
+            font-weight: 500;
         }
 
         input[type="text"]::placeholder {
-            color: #666;
+            color: #999;
         }
 
         input[type="range"] {
@@ -257,54 +334,64 @@
             cursor: pointer;
         }
 
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        select:focus {
+            outline: none;
+            border-color: var(--rc-dark-red);
+            box-shadow: 0 0 0 2px rgba(198, 12, 48, 0.1);
+        }
+
         .range-values {
             display: flex;
             justify-content: space-between;
-            font-size: 11px;
-            color: #aaa;
-            margin-top: 4px;
+            font-size: 10px;
+            color: #666;
+            margin-top: 3px;
         }
 
         /* Stats */
         .stats-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            margin-bottom: 10px;
+            gap: 6px;
+            margin-bottom: 8px;
         }
 
         .stat-box {
-            background: #0f3460;
-            padding: 10px;
-            border-radius: 4px;
+            background: var(--rc-light-gray);
+            padding: 8px;
+            border-radius: 2px;
             text-align: center;
-            border-left: 3px solid #00d4ff;
+            border-left: 3px solid var(--rc-red);
         }
 
         .stat-label {
-            font-size: 11px;
-            color: #aaa;
-            margin-bottom: 4px;
+            font-size: 9px;
+            color: #666;
+            margin-bottom: 3px;
+            text-transform: uppercase;
+            font-weight: 600;
         }
 
         .stat-value {
-            font-size: 18px;
+            font-size: 16px;
             font-weight: bold;
-            color: #00d4ff;
+            color: var(--rc-red);
         }
 
         .loading {
             text-align: center;
             padding: 20px;
-            color: #aaa;
+            color: #999;
         }
 
         .spinner {
             display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid #0f3460;
-            border-top: 3px solid #00d4ff;
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--rc-light-gray);
+            border-top: 2px solid var(--rc-red);
             border-radius: 50%;
             animation: spin 1s linear infinite;
         }
@@ -314,54 +401,786 @@
             100% { transform: rotate(360deg); }
         }
 
-        /* Responsive */
-        @media (max-width: 1200px) {
-            .container {
-                flex-direction: column;
-            }
-            .sidebar {
-                width: 100%;
-                max-height: 30%;
-            }
+        /* Tooltip */
+        .leaflet-popup-content-wrapper {
+            background: var(--rc-white);
+            border: 2px solid var(--rc-red);
+        }
+
+        .leaflet-popup-content {
+            font-size: 11px;
+            color: var(--rc-black);
+        }
+
+        .leaflet-popup-content strong {
+            color: var(--rc-red);
+        }
+
+        /* Marker */
+        .marker-bt {
+            filter: hue-rotate(200deg) saturate(1.2);
+        }
+
+        .marker-wifi {
+            filter: hue-rotate(30deg) saturate(1.2);
         }
 
         ::-webkit-scrollbar {
-            width: 8px;
+            width: 6px;
+            height: 6px;
         }
 
         ::-webkit-scrollbar-track {
-            background: #0f3460;
-            border-radius: 4px;
+            background: var(--rc-light-gray);
+            border-radius: 3px;
         }
 
         ::-webkit-scrollbar-thumb {
-            background: #00d4ff;
-            border-radius: 4px;
+            background: var(--rc-red);
+            border-radius: 3px;
         }
 
         ::-webkit-scrollbar-thumb:hover {
-            background: #00a8cc;
+            background: var(--rc-dark-red);
         }
 
         .legend {
-            font-size: 11px;
-            padding: 8px;
-            background: rgba(0, 0, 0, 0.5);
-            border-radius: 4px;
+            font-size: 10px;
+            padding: 6px;
+            background: var(--rc-white);
+            border: 1px solid var(--rc-red);
+            border-radius: 2px;
+            margin: 5px;
         }
 
         .legend-item {
             display: flex;
             align-items: center;
-            gap: 6px;
-            margin: 4px 0;
+            gap: 4px;
+            margin: 3px 0;
         }
 
         .legend-color {
-            width: 16px;
-            height: 16px;
+            width: 14px;
+            height: 14px;
             border-radius: 50%;
+            border: 1px solid #999;
         }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar -->
+        <div class="sidebar" id="sidebar">
+            <!-- Live Time -->
+            <div id="liveTime">--:--:--</div>
+
+            <!-- Status Indicators Panel -->
+            <div class="panel">
+                <div class="panel-title">
+                    <i class="fas fa-heartbeat"></i> Status
+                </div>
+                <div class="indicators">
+                    <div class="indicator" id="gpsIndicator">
+                        <div class="indicator-label">GPS Fix</div>
+                        <div class="indicator-value error">--</div>
+                    </div>
+                    <div class="indicator" id="satsIndicator">
+                        <div class="indicator-label">Satellites</div>
+                        <div class="indicator-value">0</div>
+                    </div>
+                    <div class="indicator" id="scanModeIndicator">
+                        <div class="indicator-label">Scan Mode</div>
+                        <div class="indicator-value">--</div>
+                    </div>
+                    <div class="indicator" id="wifiMonitorIndicator">
+                        <div class="indicator-label">WiFi Monitor</div>
+                        <div class="indicator-value error">OFF</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statistics Panel -->
+            <div class="panel">
+                <div class="panel-title">
+                    <i class="fas fa-chart-bar"></i> Statistics
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <div class="stat-label">BT Devices</div>
+                        <div class="stat-value" id="btDeviceCount">0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">WiFi Devices</div>
+                        <div class="stat-value" id="wifiDeviceCount">0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">BT Sightings</div>
+                        <div class="stat-value" id="btSightingCount">0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">WiFi Assoc</div>
+                        <div class="stat-value" id="wifiAssocCount">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Data Table with Tabs -->
+            <div class="panel" style="flex: 1; display: flex; flex-direction: column;">
+                <div class="panel-title">
+                    <i class="fas fa-table"></i> Data
+                </div>
+
+                <!-- Tabs -->
+                <div class="tabs">
+                    <button class="tab-btn active" data-tab="bt-devices">BT Devices</button>
+                    <button class="tab-btn" data-tab="bt-sightings">BT Sightings</button>
+                    <button class="tab-btn" data-tab="wifi-devices">WiFi Devices</button>
+                    <button class="tab-btn" data-tab="wifi-assoc">WiFi Assoc</button>
+                </div>
+
+                <!-- Filters -->
+                <div class="filter-group">
+                    <input type="text" id="macFilter" placeholder="Filter by MAC..." style="font-size: 11px;">
+                    <input type="text" id="ssidFilter" placeholder="Filter by SSID..." style="display: none; font-size: 11px;">
+                </div>
+
+                <div class="filter-group">
+                    <label>RSSI Range (dBm)</label>
+                    <div style="display: flex; gap: 5px;">
+                        <input type="range" id="rssiMin" min="-100" max="0" value="-100" style="flex: 1;">
+                        <input type="range" id="rssiMax" min="-100" max="0" value="0" style="flex: 1;">
+                    </div>
+                    <div class="range-values">
+                        <span id="rssiMinValue">-100</span>
+                        <span id="rssiMaxValue">0</span>
+                    </div>
+                </div>
+
+                <div class="filter-group">
+                    <label>Recent Hours</label>
+                    <input type="number" id="timeFilter" min="0" max="24" value="1" style="font-size: 11px;">
+                </div>
+
+                <!-- Tables -->
+                <div id="bt-devices" class="table-container" style="display: block;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>MAC Address</th>
+                                <th>Name</th>
+                                <th>Last Seen</th>
+                            </tr>
+                        </thead>
+                        <tbody id="btDevicesTable">
+                            <tr><td colspan="3" class="loading">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div id="bt-sightings" class="table-container" style="display: none;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>MAC</th>
+                                <th>RSSI</th>
+                                <th>Time</th>
+                            </tr>
+                        </thead>
+                        <tbody id="btSightingsTable">
+                            <tr><td colspan="3" class="loading">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div id="wifi-devices" class="table-container" style="display: none;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>MAC Address</th>
+                                <th>Vendor</th>
+                                <th>Last Seen</th>
+                            </tr>
+                        </thead>
+                        <tbody id="wifiDevicesTable">
+                            <tr><td colspan="3" class="loading">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div id="wifi-assoc" class="table-container" style="display: none;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>MAC</th>
+                                <th>SSID</th>
+                                <th>RSSI</th>
+                            </tr>
+                        </thead>
+                        <tbody id="wifiAssocTable">
+                            <tr><td colspan="3" class="loading">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Map Type Selector -->
+            <div class="panel">
+                <div class="panel-title">
+                    <i class="fas fa-map"></i> Map Display
+                </div>
+                <div style="display: flex; gap: 4px;">
+                    <button class="tab-btn" id="mapBtBtn" data-map-type="bt" style="flex: 1;">BT</button>
+                    <button class="tab-btn active" id="mapWifiBtn" data-map-type="wifi" style="flex: 1;">WiFi</button>
+                    <button class="tab-btn" id="mapAllBtn" data-map-type="all" style="flex: 1;">Both</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Resizable Divider -->
+        <div class="divider" id="divider"></div>
+
+        <!-- Main Content Area -->
+        <div class="main-content">
+            <!-- Map with collapse button -->
+            <div class="map-container">
+                <div class="map-controls">
+                    <div class="panel-title" style="flex: 1; margin: 0;">
+                        <i class="fas fa-map-location-dot"></i> Heatmap Overlay
+                    </div>
+                    <button class="collapse-btn" id="collapseMapBtn" title="Minimize map for tables">
+                        <i class="fas fa-chevron-down"></i> Minimize
+                    </button>
+                </div>
+                <div id="map" style="flex: 1;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
+    <!-- Main Application JS -->
+    <script>
+        // ============= Configuration =============
+        const API_BASE = "";
+        const WS_PROTOCOL = window.location.protocol === "https:" ? "wss://" : "ws://";
+        const WS_URL = `${WS_PROTOCOL}${window.location.host}/ws/live`;
+
+        // ============= State =============
+        let map = null;
+        let mapMarkers = [];
+        let mapDataType = "wifi";
+        let currentTab = "bt-devices";
+        let wsConnection = null;
+        let sidebarWidth = 380;
+        let isDraggingDivider = false;
+        let mapMinimized = false;
+
+        // ============= Initialization =============
+        function initMap() {
+            map = L.map("map").setView([51.505, -0.09], 13);
+
+            L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+                attribution: "© OpenStreetMap contributors",
+                maxZoom: 19
+            }).addTo(map);
+
+            updateHeatmap();
+        }
+
+        function setupWebSocket() {
+            try {
+                wsConnection = new WebSocket(WS_URL);
+
+                wsConnection.onopen = () => {
+                    console.log("WebSocket connected");
+                };
+
+                wsConnection.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    if (data.type === "live_update") {
+                        updateLiveStatus(data);
+                    }
+                };
+
+                wsConnection.onerror = (error) => {
+                    console.error("WebSocket error:", error);
+                };
+
+                wsConnection.onclose = () => {
+                    console.log("WebSocket disconnected, reconnecting in 3s...");
+                    setTimeout(setupWebSocket, 3000);
+                };
+            } catch (error) {
+                console.error("Failed to connect WebSocket:", error);
+                setTimeout(setupWebSocket, 3000);
+            }
+        }
+
+        // ============= Server Time Display =============
+        async function updateLiveTime() {
+            try {
+                const response = await fetch(`${API_BASE}/api/status`);
+                const data = await response.json();
+                const serverDate = new Date(data.timestamp_str);
+                
+                const timeStr = serverDate.toLocaleTimeString("en-US", {
+                    hour12: false,
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    second: "2-digit"
+                });
+                document.getElementById("liveTime").textContent = timeStr;
+            } catch (error) {
+                console.error("Error fetching server time:", error);
+            }
+        }
+
+        // Update time every second
+        setInterval(updateLiveTime, 1000);
+        updateLiveTime();
+
+        // ============= Live Status Updates =============
+        async function updateLiveStatus(data) {
+            // Update GPS indicator
+            const gpsIndicator = document.getElementById("gpsIndicator");
+            const gpsValue = gpsIndicator.querySelector(".indicator-value");
+            if (data.gps.fix_ok) {
+                gpsIndicator.className = "indicator active";
+                gpsValue.className = "indicator-value good";
+                gpsValue.textContent = "✓ FIXED";
+            } else {
+                gpsIndicator.className = "indicator inactive";
+                gpsValue.className = "indicator-value error";
+                gpsValue.textContent = "✗ NO FIX";
+            }
+
+            // Update satellites
+            const satsIndicator = document.getElementById("satsIndicator");
+            const satsValue = satsIndicator.querySelector(".indicator-value");
+            if (data.gps.sats_used !== null) {
+                satsValue.textContent = data.gps.sats_used;
+                satsIndicator.className = data.gps.sats_used >= 4 ? "indicator active" : "indicator";
+                satsValue.className = data.gps.sats_used >= 4 ? "indicator-value good" : "indicator-value";
+            }
+
+            // Update stats
+            document.getElementById("btDeviceCount").textContent = data.stats.bt_devices;
+            document.getElementById("wifiDeviceCount").textContent = data.stats.wifi_devices;
+            document.getElementById("btSightingCount").textContent = data.stats.bt_sightings;
+            document.getElementById("wifiAssocCount").textContent = data.stats.wifi_associations;
+        }
+
+        // ============= Status Update on Page Load =============
+        async function updateStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/api/status`);
+                const status = await response.json();
+
+                // Update GPS
+                const gpsIndicator = document.getElementById("gpsIndicator");
+                const gpsValue = gpsIndicator.querySelector(".indicator-value");
+                if (status.gps.fix_ok) {
+                    gpsIndicator.className = "indicator active";
+                    gpsValue.className = "indicator-value good";
+                    gpsValue.textContent = `✓ MODE ${status.gps.mode}`;
+                } else {
+                    gpsIndicator.className = "indicator inactive";
+                    gpsValue.className = "indicator-value error";
+                    gpsValue.textContent = "✗ NO FIX";
+                }
+
+                // Update satellites
+                const satsIndicator = document.getElementById("satsIndicator");
+                const satsValue = satsIndicator.querySelector(".indicator-value");
+                satsValue.textContent = status.gps.sats_used ? status.gps.sats_used : "0";
+                if (status.gps.sats_used >= 4) {
+                    satsIndicator.className = "indicator active";
+                    satsValue.className = "indicator-value good";
+                }
+
+                // Update scan mode
+                const scanModeIndicator = document.getElementById("scanModeIndicator");
+                const scanModeValue = scanModeIndicator.querySelector(".indicator-value");
+                scanModeValue.textContent = (status.scanner.mode || "N/A").toUpperCase();
+                if (status.scanner.mode) {
+                    scanModeIndicator.className = "indicator active";
+                    scanModeValue.className = "indicator-value good";
+                }
+
+                // Update WiFi monitor mode
+                const wifiMonitorIndicator = document.getElementById("wifiMonitorIndicator");
+                const wifiMonitorValue = wifiMonitorIndicator.querySelector(".indicator-value");
+                if (status.scanner.wifi_monitor_mode) {
+                    wifiMonitorIndicator.className = "indicator active";
+                    wifiMonitorValue.className = "indicator-value good";
+                    wifiMonitorValue.textContent = "✓ ON";
+                } else {
+                    wifiMonitorIndicator.className = "indicator inactive";
+                    wifiMonitorValue.className = "indicator-value error";
+                    wifiMonitorValue.textContent = "✗ OFF";
+                }
+            } catch (error) {
+                console.error("Error updating status:", error);
+            }
+        }
+
+        // ============= Data Loading Functions =============
+        async function loadBTDevices() {
+            try {
+                const macFilter = document.getElementById("macFilter").value;
+                const params = new URLSearchParams({
+                    limit: 100,
+                    ...(macFilter && { mac_filter: macFilter })
+                });
+
+                const response = await fetch(`${API_BASE}/api/bt/devices?${params}`);
+                const data = await response.json();
+
+                updateBTDevicesTable(data.devices);
+            } catch (error) {
+                console.error("Error loading BT devices:", error);
+            }
+        }
+
+        async function loadBTSightings() {
+            try {
+                const macFilter = document.getElementById("macFilter").value;
+                const rssiMin = parseInt(document.getElementById("rssiMin").value);
+                const rssiMax = parseInt(document.getElementById("rssiMax").value);
+                const timeFilter = parseInt(document.getElementById("timeFilter").value);
+
+                const params = new URLSearchParams({
+                    limit: 500,
+                    ...(macFilter && { mac_filter: macFilter }),
+                    ...(rssiMin !== -100 && { rssi_min: rssiMin }),
+                    ...(rssiMax !== 0 && { rssi_max: rssiMax }),
+                    ...(timeFilter > 0 && { hours_back: timeFilter })
+                });
+
+                const response = await fetch(`${API_BASE}/api/bt/sightings?${params}`);
+                const data = await response.json();
+
+                updateBTSightingsTable(data.sightings);
+            } catch (error) {
+                console.error("Error loading BT sightings:", error);
+            }
+        }
+
+        async function loadWiFiDevices() {
+            try {
+                const macFilter = document.getElementById("macFilter").value;
+                const params = new URLSearchParams({
+                    limit: 100,
+                    ...(macFilter && { mac_filter: macFilter })
+                });
+
+                const response = await fetch(`${API_BASE}/api/wifi/devices?${params}`);
+                const data = await response.json();
+
+                updateWiFiDevicesTable(data.devices);
+            } catch (error) {
+                console.error("Error loading WiFi devices:", error);
+            }
+        }
+
+        async function loadWiFiAssociations() {
+            try {
+                const macFilter = document.getElementById("macFilter").value;
+                const ssidFilter = document.getElementById("ssidFilter").value;
+                const rssiMin = parseInt(document.getElementById("rssiMin").value);
+                const rssiMax = parseInt(document.getElementById("rssiMax").value);
+                const timeFilter = parseInt(document.getElementById("timeFilter").value);
+
+                const params = new URLSearchParams({
+                    limit: 500,
+                    ...(macFilter && { mac_filter: macFilter }),
+                    ...(ssidFilter && { ssid_filter: ssidFilter }),
+                    ...(rssiMin !== -100 && { rssi_min: rssiMin }),
+                    ...(rssiMax !== 0 && { rssi_max: rssiMax }),
+                    ...(timeFilter > 0 && { hours_back: timeFilter })
+                });
+
+                const response = await fetch(`${API_BASE}/api/wifi/associations?${params}`);
+                const data = await response.json();
+
+                updateWiFiAssociationsTable(data.associations);
+            } catch (error) {
+                console.error("Error loading WiFi associations:", error);
+            }
+        }
+
+        // ============= Table Update Functions =============
+        function updateBTDevicesTable(devices) {
+            const tbody = document.getElementById("btDevicesTable");
+            if (devices.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" class="loading">No devices found</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = devices.map(device => `
+                <tr>
+                    <td class="mac-addr">${device.mac}</td>
+                    <td>${device.name || "—"}</td>
+                    <td>${new Date(device.last_seen * 1000).toLocaleTimeString()}</td>
+                </tr>
+            `).join("");
+        }
+
+        function updateBTSightingsTable(sightings) {
+            const tbody = document.getElementById("btSightingsTable");
+            if (sightings.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" class="loading">No sightings found</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = sightings.map(s => {
+                const rssiPercent = Math.max(0, Math.min(100, (s.rssi + 100)));
+                const rssiColor = rssiPercent > 70 ? "#2ecc71" : rssiPercent > 40 ? "#e67e22" : "#e74c3c";
+                return `
+                    <tr>
+                        <td class="mac-addr">${s.mac}</td>
+                        <td>
+                            <div class="rssi-bar">
+                                <div class="rssi-fill" style="width: ${rssiPercent}%; background: ${rssiColor};"></div>
+                            </div>
+                            ${s.rssi}
+                        </td>
+                        <td>${new Date(s.timestamp * 1000).toLocaleTimeString()}</td>
+                    </tr>
+                `;
+            }).join("");
+        }
+
+        function updateWiFiDevicesTable(devices) {
+            const tbody = document.getElementById("wifiDevicesTable");
+            if (devices.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" class="loading">No devices found</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = devices.map(device => `
+                <tr>
+                    <td class="mac-addr">${device.mac}</td>
+                    <td>${device.vendor || "—"}</td>
+                    <td>${new Date(device.last_seen * 1000).toLocaleTimeString()}</td>
+                </tr>
+            `).join("");
+        }
+
+        function updateWiFiAssociationsTable(associations) {
+            const tbody = document.getElementById("wifiAssocTable");
+            if (associations.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" class="loading">No associations found</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = associations.map(a => {
+                const rssiPercent = Math.max(0, Math.min(100, (a.rssi + 100)));
+                const rssiColor = rssiPercent > 70 ? "#2ecc71" : rssiPercent > 40 ? "#e67e22" : "#e74c3c";
+                return `
+                    <tr>
+                        <td class="mac-addr">${a.mac}</td>
+                        <td>${a.ssid}</td>
+                        <td>
+                            <div class="rssi-bar">
+                                <div class="rssi-fill" style="width: ${rssiPercent}%; background: ${rssiColor};"></div>
+                            </div>
+                            ${a.rssi}
+                        </td>
+                    </tr>
+                `;
+            }).join("");
+        }
+
+        // ============= Heatmap =============
+        async function updateHeatmap() {
+            try {
+                const response = await fetch(`${API_BASE}/api/map/heatmap?data_type=${mapDataType}`);
+                const data = await response.json();
+
+                // Clear old markers
+                mapMarkers.forEach(marker => map.removeLayer(marker));
+                mapMarkers = [];
+
+                if (data.points.length === 0) {
+                    console.log("No heatmap data available");
+                    return;
+                }
+
+                // Create markers with hover popups
+                const bounds = L.latLngBounds();
+                data.points.forEach(point => {
+                    if (point.lat && point.lon) {
+                        const color = point.rssi > -70 ? "#2ecc71" : point.rssi > -85 ? "#e67e22" : "#e74c3c";
+                        
+                        const marker = L.circleMarker([point.lat, point.lon], {
+                            radius: 6 + (point.intensity * 4),
+                            fillColor: color,
+                            color: "white",
+                            weight: 2,
+                            opacity: 0.8,
+                            fillOpacity: 0.7,
+                            className: `marker-${point.type}`
+                        });
+
+                        const popupText = `
+                            <strong>${point.type === 'bt' ? 'BT' : 'WiFi'}</strong><br>
+                            <strong>RSSI:</strong> ${point.rssi} dBm<br>
+                            <strong>Lat:</strong> ${point.lat.toFixed(6)}<br>
+                            <strong>Lon:</strong> ${point.lon.toFixed(6)}<br>
+                            <strong>Intensity:</strong> ${(point.intensity * 100).toFixed(0)}%
+                        `;
+                        
+                        marker.bindPopup(popupText);
+                        marker.addTo(map);
+                        mapMarkers.push(marker);
+                        
+                        bounds.extend([point.lat, point.lon]);
+                    }
+                });
+
+                // Fit map to bounds
+                if (mapMarkers.length > 0) {
+                    map.fitBounds(bounds.pad(0.1));
+                }
+            } catch (error) {
+                console.error("Error updating heatmap:", error);
+            }
+        }
+
+        // ============= Resizable Divider =============
+        const divider = document.getElementById("divider");
+        const sidebar = document.getElementById("sidebar");
+        
+        document.addEventListener("mousedown", (e) => {
+            if (e.target === divider) {
+                isDraggingDivider = true;
+            }
+        });
+
+        document.addEventListener("mousemove", (e) => {
+            if (isDraggingDivider) {
+                const newWidth = e.clientX;
+                if (newWidth > 250 && newWidth < window.innerWidth - 100) {
+                    sidebar.style.width = newWidth + "px";
+                    sidebarWidth = newWidth;
+                }
+            }
+        });
+
+        document.addEventListener("mouseup", () => {
+            isDraggingDivider = false;
+        });
+
+        // ============= Map Collapse =============
+        document.getElementById("collapseMapBtn").addEventListener("click", () => {
+            const mapContainer = document.querySelector(".map-container");
+            const btn = document.getElementById("collapseMapBtn");
+            
+            mapMinimized = !mapMinimized;
+            
+            if (mapMinimized) {
+                mapContainer.style.display = "none";
+                btn.innerHTML = '<i class="fas fa-chevron-up"></i> Show Map';
+            } else {
+                mapContainer.style.display = "flex";
+                btn.innerHTML = '<i class="fas fa-chevron-down"></i> Minimize';
+                setTimeout(() => map.invalidateSize(), 100);
+            }
+        });
+
+        // ============= Event Listeners =============
+        document.querySelectorAll(".tab-btn[data-tab]").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                document.querySelectorAll(".tab-btn[data-tab]").forEach(b => b.classList.remove("active"));
+                e.target.classList.add("active");
+
+                document.querySelectorAll("[id^='bt-'], [id^='wifi-']").forEach(el => {
+                    el.style.display = "none";
+                });
+
+                currentTab = e.target.dataset.tab;
+                document.getElementById(currentTab).style.display = "block";
+
+                // Load data based on current tab
+                if (currentTab === "bt-devices") loadBTDevices();
+                else if (currentTab === "bt-sightings") loadBTSightings();
+                else if (currentTab === "wifi-devices") loadWiFiDevices();
+                else if (currentTab === "wifi-assoc") loadWiFiAssociations();
+            });
+        });
+
+        document.querySelectorAll("[data-map-type]").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                document.querySelectorAll("[data-map-type]").forEach(b => b.classList.remove("active"));
+                e.target.classList.add("active");
+                mapDataType = e.target.dataset.mapType;
+                updateHeatmap();
+            });
+        });
+
+        // Filter listeners
+        document.getElementById("macFilter").addEventListener("input", () => {
+            if (currentTab.includes("bt")) loadBTDevices();
+            else if (currentTab.includes("wifi")) loadWiFiDevices();
+        });
+
+        document.getElementById("ssidFilter").addEventListener("input", loadWiFiAssociations);
+
+        document.getElementById("rssiMin").addEventListener("input", (e) => {
+            document.getElementById("rssiMinValue").textContent = e.target.value;
+            if (currentTab === "bt-sightings") loadBTSightings();
+            else if (currentTab === "wifi-assoc") loadWiFiAssociations();
+        });
+
+        document.getElementById("rssiMax").addEventListener("input", (e) => {
+            document.getElementById("rssiMaxValue").textContent = e.target.value;
+            if (currentTab === "bt-sightings") loadBTSightings();
+            else if (currentTab === "wifi-assoc") loadWiFiAssociations();
+        });
+
+        document.getElementById("timeFilter").addEventListener("input", () => {
+            if (currentTab === "bt-sightings") loadBTSightings();
+            else if (currentTab === "wifi-assoc") loadWiFiAssociations();
+        });
+
+        // Show SSID filter only for WiFi associations
+        document.querySelectorAll(".tab-btn[data-tab]").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                const ssidFilter = document.getElementById("ssidFilter");
+                if (e.target.dataset.tab === "wifi-assoc") {
+                    ssidFilter.style.display = "block";
+                } else {
+                    ssidFilter.style.display = "none";
+                }
+            });
+        });
+
+        // ============= Initialization on Page Load =============
+        window.addEventListener("load", () => {
+            initMap();
+            updateStatus();
+            setupWebSocket();
+            
+            // Load initial data
+            loadBTDevices();
+            
+            // Refresh data periodically
+            setInterval(() => {
+                if (currentTab === "bt-devices") loadBTDevices();
+                else if (currentTab === "bt-sightings") loadBTSightings();
+                else if (currentTab === "wifi-devices") loadWiFiDevices();
+                else if (currentTab === "wifi-assoc") loadWiFiAssociations();
+                
+                updateHeatmap();
+                updateStatus();
+            }, 5000);
+        });
+    </script>
+</body>
+</html>
     </style>
 </head>
 <body>
