@@ -21,6 +21,7 @@ import sys
 import signal
 import threading
 import time
+import subprocess
 from typing import Optional, Callable, Dict, Any
 
 import gps_client as gc
@@ -33,6 +34,54 @@ try:
 except ImportError:
     print("Error: scapy not installed. Install with: pip install scapy")
     sys.exit(1)
+
+
+def _is_monitor_mode(interface: str) -> bool:
+    """Check if interface is in monitor mode."""
+    try:
+        result = subprocess.run(
+            ["iwconfig", interface],
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+        return "Mode:Monitor" in result.stdout
+    except Exception:
+        return False
+
+
+def _enable_monitor_mode(interface: str) -> bool:
+    """Try to enable monitor mode on the interface."""
+    try:
+        # First try airmon-ng
+        subprocess.run(["sudo", "airmon-ng", "check", "kill"], capture_output=True, timeout=5)
+        result = subprocess.run(
+            ["sudo", "airmon-ng", "start", interface],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        time.sleep(1)  # Wait for mode change
+        return _is_monitor_mode(interface)
+    except Exception:
+        pass
+    
+    try:
+        # Fallback: try iw
+        subprocess.run(["sudo", "ifconfig", interface, "down"], capture_output=True, timeout=5)
+        time.sleep(0.5)
+        subprocess.run(
+            ["sudo", "iw", "dev", interface, "set", "type", "monitor"],
+            capture_output=True,
+            timeout=5
+        )
+        subprocess.run(["sudo", "ifconfig", interface, "up"], capture_output=True, timeout=5)
+        time.sleep(1)
+        return _is_monitor_mode(interface)
+    except Exception:
+        pass
+    
+    return False
 
 
 class _WiFiScanner:
@@ -49,9 +98,10 @@ class _WiFiScanner:
         if self._thread and self._thread.is_alive():
             return
         
-        # Verify interface exists and is in monitor mode
+        # Verify and enable monitor mode
         if not self._check_interface():
-            print(f"Error: Interface {self.interface} not ready or not in monitor mode")
+            print(f"✗ Error: Could not enable monitor mode on {self.interface}")
+            print(f"  Try manually: sudo airmon-ng start {self.interface}")
             return
         
         self._stop.clear()
@@ -67,13 +117,19 @@ class _WiFiScanner:
         print(f"WiFi scanner stopped. Captured {self._packet_count} packets.")
 
     def _check_interface(self) -> bool:
-        """Check if interface exists and is valid."""
-        try:
-            # Try to get hardware address - if successful, interface exists
-            get_if_hwaddr(self.interface)
+        """Check if interface is in monitor mode, enable if needed."""
+        # First check if already in monitor mode
+        if _is_monitor_mode(self.interface):
+            print(f"✓ WiFi interface {self.interface} is in monitor mode")
             return True
-        except Exception:
-            return False
+        
+        # Try to enable monitor mode
+        print(f"⚠ WiFi interface {self.interface} is not in monitor mode, attempting to enable...")
+        if _enable_monitor_mode(self.interface):
+            print(f"✓ Monitor mode enabled on {self.interface}")
+            return True
+        
+        return False
 
     def _run(self) -> None:
         """Main packet capture loop."""
