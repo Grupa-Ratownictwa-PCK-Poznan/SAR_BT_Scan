@@ -5,12 +5,29 @@ import sys
 import os
 import time
 import subprocess
+import threading
 
 from settings import USB_STORAGE, SD_STORAGE, BLEAK_DEVICE, SCAN_MODE, WIFI_INTERFACE, SCANNER_ID
 from scanner import run as run_bt
 import wifi_scanner as ws
 import gps_client as gc
 from storage import init_db
+
+def _sync_gps_time():
+    """Background thread: sync system time from GPS as soon as available."""
+    max_attempts = 30  # Try for ~30 seconds
+    for attempt in range(max_attempts):
+        gps_time = gc.get_gps_time()
+        if gps_time:
+            # Try to sync system time
+            if gc.sync_system_time():
+                print(f"✓ System time synced from GPS: {gps_time}")
+                return
+            else:
+                print("⚠ Failed to sync system time (may need root)")
+                return
+        time.sleep(1)
+    print("⚠ GPS time not available for sync")
 
 def main():
     # Main logic of the program goes here
@@ -33,6 +50,11 @@ def main():
     print("Initializing GPS...")
     gc.init_gps(wait_for_fix=False)
     time.sleep(1)
+    
+    # Start background thread to sync system time from GPS ASAP
+    time_sync_thread = threading.Thread(target=_sync_gps_time, daemon=True, name="gps-time-sync")
+    time_sync_thread.start()
+    
     gps_status = gc.get_gps_status()
     if gps_status and gps_status.fix_ok:
         print(f"✓ GPS: {gps_status.sats_used} satellites, HDOP={gps_status.hdop}")
