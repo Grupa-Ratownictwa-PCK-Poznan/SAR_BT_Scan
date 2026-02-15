@@ -116,6 +116,16 @@ SCANNER_ID   = "Scanner 1"     # Identifier written to each DB record
 SCAN_MODE = "both"             # Options: "bt", "wifi", or "both"
 WIFI_INTERFACE = "wlan0"       # USB WiFi adapter interface in monitor mode
 KNOWN_WIFIS = []               # List of SSIDs to identify (empty = capture all)
+
+# Database configuration
+CLEAN_DB_ON_STARTUP = False    # Set True to delete DB on each supervisor start
+                               # When False, data persists and can be managed via web UI
+
+# Web UI configuration
+WEB_UI_ENABLED = True          # Set to False to disable web interface
+WEB_UI_HOST = "0.0.0.0"        # Listen on all interfaces
+WEB_UI_PORT = 8000             # Local port for web UI
+WEB_UI_REFRESH_INTERVAL = 1.0  # Seconds between live updates (WebSocket)
 ```
 
 ### GPS Configuration
@@ -166,6 +176,99 @@ Initializing database...
 [BT] 00:1A:2B:3C:4D:5E - Device Name (RSSI: -65)
 [WiFi] AA:BB:CC:DD:EE:FF -> Home_Network (RSSI: -45)
 ```
+
+---
+
+## 🌐 Web UI Dashboard
+
+A modern web-based dashboard provides **live monitoring** of scanning activity and data visualization.
+
+### Accessing the Dashboard
+
+Once the scanner is running, open your browser and navigate to:
+```
+http://localhost:8000
+```
+
+If running on a Raspberry Pi in your network:
+```
+http://<raspberry-pi-ip>:8000
+```
+
+### Dashboard Features
+
+#### 📊 **Left Sidebar Panel**
+- **GPS Status**: Shows fix status, satellites, HDOP, and last GPS coordinate
+- **Scanner Mode**: Current scan mode (Bluetooth, WiFi, or Both)
+- **WiFi Monitor**: Active WiFi scanner status
+- **Live Statistics**: 
+  - Total BT devices
+  - Total WiFi devices
+  - Total BT sightings
+  - Total WiFi associations
+- **Live Clock**: Real-time date and time with auto-updating display
+- **Filtering Controls**: Filter by MAC address, RSSI, SSID, time range
+- **Database Management**:
+  - **Download DB**: Export complete database file for backup/analysis
+  - **Purge DB**: Clear all data with automatic backup creation (with confirmation)
+
+#### 🗺️ **Interactive Map**
+- **GPS Heatmap**: Visual representation of signal detections on OpenStreetMap
+- **Color Gradient**: Intensity visualization (blue → cyan → green → yellow → red)
+- **Point Details**: Click any marker for:
+  - Device MAC address
+  - SSID (for WiFi)
+  - Signal strength (dBm)
+  - Detection timestamp
+  - Signal intensity percentage
+  - Device type (WiFi/Bluetooth)
+- **Map Controls**: Zoom, pan, layer selection (BT/WiFi/Both)
+
+#### 📋 **Data Tables**
+Four tabs display filtered, sortable data:
+1. **BT Devices**: Unique Bluetooth devices with first/last seen times
+2. **BT Sightings**: Individual Bluetooth observations with RSSI and timestamps
+3. **WiFi Devices**: Unique WiFi MAC addresses observed
+4. **WiFi Associations**: Networks devices attempted to join with GPS and timing
+
+#### ⚙️ **Filter & Time Controls**
+- **MAC Filter**: Search specific device by address
+- **SSID Filter**: Find WiFi networks
+- **RSSI Range**: Filter by signal strength (dBm)
+- **Time Presets**:
+  - All time
+  - Last 1 hour
+  - Last 24 hours
+  - Custom date range
+
+#### ℹ️ **About Button**
+Link to this GitHub repository for documentation, issues, and contributions.
+
+### WebSocket Live Updates
+
+The dashboard uses WebSocket to receive **real-time** updates:
+- Live counter refreshes (no page reload needed)
+- GPS position updates
+- Statistics streaming at 1-second intervals (configurable)
+
+### Troubleshooting the Dashboard
+
+**Map not showing points?**
+- See [MAP_DEBUGGING_GUIDE.md](MAP_DEBUGGING_GUIDE.md) for detailed troubleshooting
+- Points render as:
+  - **Heatmap layer** if heat.js library loads successfully
+  - **Colored circle markers** as fallback (guaranteed method)
+- Check browser console (F12) for JavaScript errors
+
+**Dashboard not loading?**
+- Verify web UI is enabled: `WEB_UI_ENABLED = True` in `settings.py`
+- Check port 8000 is not blocked: `lsof -i :8000`
+- Ensure server is running: Check supervisor logs
+
+**Filters not working?**
+- Ensure database has data matching filter criteria
+- Check that time range includes the data
+- Verify GPS data exists for map (latitude/longitude required)
 
 ---
 
@@ -281,7 +384,9 @@ The `supervisor.py` process:
 - Continuously monitors the main scanner
 - Automatically restarts it if it crashes
 - Creates timestamped database backups to the USB pendrive
-- Clears the live database on each restart to prevent mission data mixing
+- (Optional) Clears the live database on startup based on `CLEAN_DB_ON_STARTUP` setting in `settings.py`:
+  - **`CLEAN_DB_ON_STARTUP = False`** (default): Database is preserved across supervisor restarts. Use web UI's "Purge DB" button to manage data.
+  - **`CLEAN_DB_ON_STARTUP = True`**: Database is deleted on each restart (legacy behavior)
 - Provides resilient operation during long rescue operations
 
 To **gracefully stop** the supervisor without killing the service:
@@ -398,7 +503,15 @@ Example post-processing map:
 
 ---
 
-## 🛠 Troubleshooting
+## � Additional Documentation
+
+- [WIFI_SETUP.md](WIFI_SETUP.md) — Detailed WiFi adapter configuration and monitor mode setup
+- [MAP_DEBUGGING_GUIDE.md](MAP_DEBUGGING_GUIDE.md) — Troubleshooting map visualization issues
+- [MAP_FIX_SUMMARY.md](MAP_FIX_SUMMARY.md) — Technical details on map rendering and SDK integration
+
+---
+
+## �🛠 Troubleshooting
 
 | Issue | Solution |
 |-------|-----------|
@@ -410,6 +523,10 @@ Example post-processing map:
 | Database locked | Use backups created by supervisor instead of live file |
 | High CPU load | Ensure Raspberry Pi 5 has adequate cooling and power supply |
 | Service won't start | Check logs: `sudo journalctl -u btscanner-supervisor -n 50` |
+| Web UI not accessible | Check `WEB_UI_ENABLED = True`; verify port 8000 not blocked; check `lsof -i :8000` |
+| Map shows no points | See [MAP_DEBUGGING_GUIDE.md](MAP_DEBUGGING_GUIDE.md) for detailed troubleshooting |
+| Database export fails | Ensure database file has read permissions; try backup created by supervisor |
+| Purge DB button not visible | Verify web UI is enabled and page reloads after each action |
 
 ---
 
@@ -420,10 +537,12 @@ Example post-processing map:
 - ✅ WiFi probe/association capture  
 - ✅ Manufacturer ID resolution  
 - ✅ Systemd service management
+- ✅ On-device web dashboard with live map visualization
+- ✅ Database download and purge functionality
 - 🕓 Configurable SSID filtering  
 - 🕓 Meshtastic telemetry for live updates  
-- 🕓 On-device dashboard / map  
 - 🕓 Export to GeoJSON and QGIS project
+- 🕓 Custom map tiles and offline mode
 
 ---
 
