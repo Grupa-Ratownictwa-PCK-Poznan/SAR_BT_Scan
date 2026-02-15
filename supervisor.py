@@ -24,6 +24,13 @@ from datetime import datetime, timezone
 import sqlite3
 from pathlib import Path
 
+# Import settings for configuration
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+try:
+    from settings import CLEAN_DB_ON_STARTUP
+except ImportError:
+    CLEAN_DB_ON_STARTUP = False  # Default fallback
+
 # --- Config through environment variables (see /etc/default/btscanner-supervisor) ---
 MAIN_CMD = os.getenv("BTS_MAIN_CMD", "/opt/btscanner/main_scanner.py")
 DB_PATH = Path(os.getenv("BTS_DB_PATH", "/opt/btscanner/data/BTlog.db"))
@@ -135,9 +142,12 @@ def do_minute_backup():
 def start_child():
     global child_proc
     with child_lock:
-        logger.info(f"Removal of DB file under: {DB_PATH}")
-        Path(DB_PATH).unlink(missing_ok=True)
-        logger.info(f"Start of the main process: {MAIN_CMD}")
+        if CLEAN_DB_ON_STARTUP:
+            logger.info(f"Removing DB file (CLEAN_DB_ON_STARTUP=True): {DB_PATH}")
+            Path(DB_PATH).unlink(missing_ok=True)
+        else:
+            logger.info(f"Keeping DB file (CLEAN_DB_ON_STARTUP=False): {DB_PATH}")
+        logger.info(f"Start of the main process: {MAIN_CMD}"))
         # If a single string is provided, run it with shell=True; we maintain flexibility.
         child_proc = subprocess.Popen(
             MAIN_CMD,

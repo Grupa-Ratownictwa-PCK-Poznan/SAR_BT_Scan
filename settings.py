@@ -11,6 +11,9 @@ SCAN_MODE = "both"  # Options: "bt", "wifi", or "both"
 WIFI_INTERFACE = "wlan1"  # USB WiFi adapter interface in monitor mode
 KNOWN_WIFIS = []  # List of known SSIDs to identify (empty = capture all)
 
+# Database configuration
+CLEAN_DB_ON_STARTUP = False  # Set to True to delete database file on each supervisor start
+
 # Web UI configuration
 WEB_UI_ENABLED = True  # Set to False to disable web interface
 WEB_UI_HOST = "0.0.0.0"  # Listen on all interfaces
