@@ -683,6 +683,18 @@
                     <button class="tab-btn" id="mapAllBtn" data-map-type="all" style="flex: 1;">Both</button>
                 </div>
             </div>
+
+            <!-- Database Actions -->
+            <div class="panel" style="margin-top: auto;">
+                <div style="display: flex; gap: 8px; flex-direction: column;">
+                    <button id="downloadDbBtn" style="flex: 1; padding: 10px; background: #27ae60; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 5px;">
+                        <i class="fas fa-download"></i> Download DB
+                    </button>
+                    <button id="purgeDbBtn" style="flex: 1; padding: 10px; background: #e74c3c; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 5px;">
+                        <i class="fas fa-trash"></i> Purge DB
+                    </button>
+                </div>
+            </div>
         </div>
 
         <!-- Resizable Divider -->
@@ -696,9 +708,9 @@
                     <div class="panel-title" style="flex: 1; margin: 0;">
                         <i class="fas fa-map-location-dot"></i> Heatmap Overlay
                     </div>
-                    <button class="collapse-btn" id="collapseMapBtn" title="Minimize map for tables">
-                        <i class="fas fa-chevron-down"></i> Minimize
-                    </button>
+                    <a href="https://github.com/Grupa-Ratownictwa-PCK-Poznan/SAR_BT_Scan" target="_blank" class="collapse-btn" title="About this project">
+                        <i class="fas fa-info-circle"></i> About
+                    </a>
                 </div>
                 <div id="map" style="flex: 1;"></div>
             </div>
@@ -1307,20 +1319,52 @@
             isDraggingDivider = false;
         });
 
-        // ============= Map Collapse =============
-        document.getElementById("collapseMapBtn").addEventListener("click", () => {
-            const mapContainer = document.querySelector(".map-container");
-            const btn = document.getElementById("collapseMapBtn");
+        // ============= Database Actions =============
+        document.getElementById("downloadDbBtn").addEventListener("click", async () => {
+            try {
+                const response = await fetch(`${API_BASE}/api/download-db`);
+                if (!response.ok) {
+                    alert("Error downloading database: " + response.statusText);
+                    return;
+                }
+                
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "results.db";
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            } catch (err) {
+                console.error("Error downloading database:", err);
+                alert("Error downloading database: " + err.message);
+            }
+        });
+
+        document.getElementById("purgeDbBtn").addEventListener("click", async () => {
+            const confirmed = confirm("⚠️ WARNING: This will delete ALL data in the database!\n\nA backup will be created as 'results_bak.db'.\n\nAre you sure?");
+            if (!confirmed) return;
             
-            mapMinimized = !mapMinimized;
-            
-            if (mapMinimized) {
-                mapContainer.style.display = "none";
-                btn.innerHTML = '<i class="fas fa-chevron-up"></i> Show Map';
-            } else {
-                mapContainer.style.display = "flex";
-                btn.innerHTML = '<i class="fas fa-chevron-down"></i> Minimize';
-                setTimeout(() => map.invalidateSize(), 100);
+            try {
+                const response = await fetch(`${API_BASE}/api/purge-db`, {
+                    method: "POST"
+                });
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    alert("Error purging database: " + (data.error || response.statusText));
+                    return;
+                }
+                
+                alert("✅ Database purged successfully!\nBackup saved as: " + data.backup_path);
+                
+                // Refresh the page to show cleared data
+                setTimeout(() => location.reload(), 1000);
+            } catch (err) {
+                console.error("Error purging database:", err);
+                alert("Error purging database: " + err.message);
             }
         });
 

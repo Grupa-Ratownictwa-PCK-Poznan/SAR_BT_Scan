@@ -17,6 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 import time
 import threading
+import shutil
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone, timedelta
 import sys
@@ -608,6 +609,57 @@ async def get_asset(file_path: str):
     if os.path.exists(asset_path):
         return FileResponse(asset_path)
     return JSONResponse({"error": "Not found"}, status_code=404)
+
+
+@app.get("/api/download-db")
+async def download_db():
+    """Download the complete results.db database file."""
+    db_path = get_db_path()
+    if not os.path.exists(db_path):
+        return JSONResponse({"error": "Database not found"}, status_code=404)
+    
+    return FileResponse(db_path, filename="results.db", media_type="application/octet-stream")
+
+
+@app.post("/api/purge-db")
+async def purge_db():
+    """Purge all tables in the database and create a backup."""
+    db_path = get_db_path()
+    
+    if not os.path.exists(db_path):
+        return JSONResponse({"error": "Database not found"}, status_code=404)
+    
+    # Create backup with _bak suffix (will overwrite existing backup)
+    backup_path = db_path.replace(".db", "_bak.db")
+    try:
+        shutil.copy2(db_path, backup_path)
+        print(f"Database backup created: {backup_path}")
+    except Exception as e:
+        return JSONResponse({"error": f"Failed to create backup: {str(e)}"}, status_code=500)
+    
+    # Purge all tables
+    try:
+        with db() as con:
+            # Get all table names
+            cursor = con.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';"
+            )
+            tables = [row[0] for row in cursor.fetchall()]
+            
+            # Delete all rows from each table
+            for table in tables:
+                con.execute(f"DELETE FROM {table};")
+                print(f"Purged table: {table}")
+            
+            con.commit()
+    except Exception as e:
+        return JSONResponse({"error": f"Failed to purge database: {str(e)}"}, status_code=500)
+    
+    return {
+        "success": True,
+        "message": "Database purged successfully",
+        "backup_path": backup_path
+    }
 
 
 def update_scanner_state(scan_mode: str, wifi_monitor_mode: bool):
