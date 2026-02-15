@@ -147,7 +147,7 @@ def start_child():
             Path(DB_PATH).unlink(missing_ok=True)
         else:
             logger.info(f"Keeping DB file (CLEAN_DB_ON_STARTUP=False): {DB_PATH}")
-        logger.info(f"Start of the main process: {MAIN_CMD}"))
+        logger.info(f"Start of the main process: {MAIN_CMD}")
         # If a single string is provided, run it with shell=True; we maintain flexibility.
         child_proc = subprocess.Popen(
             MAIN_CMD,
