@@ -663,6 +663,7 @@
                                 <th>MAC</th>
                                 <th>SSID</th>
                                 <th>RSSI</th>
+                                <th>Timestamp</th>
                             </tr>
                         </thead>
                         <tbody id="wifiAssocTable">
@@ -1099,13 +1100,14 @@
         function updateWiFiAssociationsTable(associations) {
             const tbody = document.getElementById("wifiAssocTable");
             if (associations.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="3" class="loading">No associations found</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="4" class="loading">No associations found</td></tr>';
                 return;
             }
 
             tbody.innerHTML = associations.map(a => {
                 const rssiPercent = Math.max(0, Math.min(100, (a.rssi + 100)));
                 const rssiColor = rssiPercent > 70 ? "#2ecc71" : rssiPercent > 40 ? "#e67e22" : "#e74c3c";
+                const timestamp = new Date(a.timestamp * 1000).toLocaleString();
                 return `
                     <tr>
                         <td class="mac-addr">${a.mac}</td>
@@ -1116,6 +1118,7 @@
                             </div>
                             ${a.rssi}
                         </td>
+                        <td>${timestamp}</td>
                     </tr>
                 `;
             }).join("");
