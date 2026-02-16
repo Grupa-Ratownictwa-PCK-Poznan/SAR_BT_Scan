@@ -537,6 +537,21 @@
                 </div>
             </div>
 
+            </div>
+
+            <!-- Pause/Resume Panel -->
+            <div class="panel">
+                <div class="panel-title" style="display: flex; align-items: center; justify-content: space-between;">
+                    <span><i class="fas fa-pause-circle"></i> Updates</span>
+                </div>
+                <button id="pauseResumeBtn" style="width: 100%; padding: 10px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <i class="fas fa-play"></i> <span>All Systems Running</span>
+                </button>
+                <div style="font-size: 11px; color: #666; margin-top: 8px; text-align: center;">
+                    <span id="pauseStatus">Live updates active</span>
+                </div>
+            </div>
+
             <!-- Statistics Panel -->
             <div class="panel">
                 <div class="panel-title">
@@ -747,6 +762,7 @@
         let sidebarWidth = 380;
         let isDraggingDivider = false;
         let mapMinimized = false;
+        let isPaused = false;  // Pause/resume data updates
         
         // Time filter state
         let currentTimePreset = 0; // hours, 0 = all (DEFAULT)
@@ -825,6 +841,7 @@
                 };
 
                 wsConnection.onmessage = (event) => {
+                    if (isPaused) return;  // Skip updates if paused
                     const data = JSON.parse(event.data);
                     if (data.type === "live_update") {
                         updateLiveStatus(data);
@@ -1372,6 +1389,24 @@
         });
 
         // ============= Event Listeners =============
+        document.getElementById("pauseResumeBtn").addEventListener("click", () => {
+            isPaused = !isPaused;
+            const btn = document.getElementById("pauseResumeBtn");
+            const statusSpan = document.getElementById("pauseStatus");
+            
+            if (isPaused) {
+                btn.style.background = "#e74c3c";
+                btn.innerHTML = '<i class="fas fa-pause"></i> <span>PAUSED - Data Frozen</span>';
+                statusSpan.textContent = "Updates paused - data frozen for analysis";
+                statusSpan.style.color = "#e74c3c";
+            } else {
+                btn.style.background = "#3498db";
+                btn.innerHTML = '<i class="fas fa-play"></i> <span>All Systems Running</span>';
+                statusSpan.textContent = "Live updates active";
+                statusSpan.style.color = "#666";
+            }
+        });
+        
         document.querySelectorAll(".tab-btn[data-tab]").forEach(btn => {
             btn.addEventListener("click", (e) => {
                 document.querySelectorAll(".tab-btn[data-tab]").forEach(b => b.classList.remove("active"));
@@ -1498,6 +1533,7 @@
             
             // Refresh data periodically
             setInterval(() => {
+                if (isPaused) return;  // Skip updates if paused
                 if (currentTab === "bt-devices") loadBTDevices();
                 else if (currentTab === "bt-sightings") loadBTSightings();
                 else if (currentTab === "wifi-devices") loadWiFiDevices();
