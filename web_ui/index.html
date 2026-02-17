@@ -362,6 +362,25 @@
             transition: width 0.3s;
         }
 
+        .confidence-bar {
+            display: inline-block;
+            width: 50px;
+            height: 14px;
+            background: #ddd;
+            border-radius: 2px;
+            border: 1px solid #999;
+            overflow: hidden;
+            position: relative;
+            margin-right: 4px;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #e74c3c, #e67e22, var(--accent-green));
+            width: 100%;
+            transition: width 0.3s;
+        }
+
         /* Map */
         #map {
             height: 100%;
@@ -711,6 +730,18 @@
                 </div>
 
                 <div class="filter-group">
+                    <label>Confidence Range</label>
+                    <div style="display: flex; gap: 5px;">
+                        <input type="range" id="confidenceMin" min="0" max="100" value="0" style="flex: 1;">
+                        <input type="range" id="confidenceMax" min="0" max="100" value="100" style="flex: 1;">
+                    </div>
+                    <div class="range-values">
+                        <span id="confidenceMinValue">0</span>
+                        <span id="confidenceMaxValue">100</span>
+                    </div>
+                </div>
+
+                <div class="filter-group">
                     <label>Time Range</label>
                     <div style="display: flex; gap: 5px; margin-bottom: 8px;">
                         <button id="timePreset1h" class="time-preset-btn" data-hours="1">1h</button>
@@ -733,11 +764,12 @@
                             <tr>
                                 <th>MAC Address</th>
                                 <th>Name</th>
+                                <th>Confidence</th>
                                 <th>Last Seen</th>
                             </tr>
                         </thead>
                         <tbody id="btDevicesTable">
-                            <tr><td colspan="3" class="loading">Loading...</td></tr>
+                            <tr><td colspan="4" class="loading">Loading...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -763,11 +795,12 @@
                             <tr>
                                 <th>MAC Address</th>
                                 <th>Vendor</th>
+                                <th>Confidence</th>
                                 <th>Last Seen</th>
                             </tr>
                         </thead>
                         <tbody id="wifiDevicesTable">
-                            <tr><td colspan="3" class="loading">Loading...</td></tr>
+                            <tr><td colspan="4" class="loading">Loading...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -1125,9 +1158,13 @@
         async function loadBTDevices() {
             try {
                 const macFilter = document.getElementById("macFilter").value;
+                const confidenceMin = parseInt(document.getElementById("confidenceMin").value);
+                const confidenceMax = parseInt(document.getElementById("confidenceMax").value);
                 const params = new URLSearchParams({
                     limit: 100,
-                    ...(macFilter && { mac_filter: macFilter })
+                    ...(macFilter && { mac_filter: macFilter }),
+                    ...(confidenceMin !== 0 && { confidence_min: confidenceMin }),
+                    ...(confidenceMax !== 100 && { confidence_max: confidenceMax })
                 });
 
                 const response = await fetch(`${API_BASE}/api/bt/devices?${params}`);
@@ -1166,9 +1203,13 @@
         async function loadWiFiDevices() {
             try {
                 const macFilter = document.getElementById("macFilter").value;
+                const confidenceMin = parseInt(document.getElementById("confidenceMin").value);
+                const confidenceMax = parseInt(document.getElementById("confidenceMax").value);
                 const params = new URLSearchParams({
                     limit: 100,
-                    ...(macFilter && { mac_filter: macFilter })
+                    ...(macFilter && { mac_filter: macFilter }),
+                    ...(confidenceMin !== 0 && { confidence_min: confidenceMin }),
+                    ...(confidenceMax !== 100 && { confidence_max: confidenceMax })
                 });
 
                 const response = await fetch(`${API_BASE}/api/wifi/devices?${params}`);
@@ -1210,17 +1251,26 @@
         function updateBTDevicesTable(devices) {
             const tbody = document.getElementById("btDevicesTable");
             if (devices.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="3" class="loading">No devices found</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="4" class="loading">No devices found</td></tr>';
                 return;
             }
 
-            tbody.innerHTML = devices.map(device => `
-                <tr>
-                    <td class="mac-addr">${device.mac}</td>
-                    <td>${device.name || "—"}</td>
-                    <td>${new Date(device.last_seen * 1000).toLocaleTimeString()}</td>
-                </tr>
-            `).join("");
+            tbody.innerHTML = devices.map(device => {
+                const confidenceColor = device.confidence > 70 ? "#2ecc71" : device.confidence > 40 ? "#e67e22" : "#e74c3c";
+                return `
+                    <tr>
+                        <td class="mac-addr">${device.mac}</td>
+                        <td>${device.name || "—"}</td>
+                        <td>
+                            <div class="confidence-bar">
+                                <div class="confidence-fill" style="width: ${device.confidence}%; background: ${confidenceColor};"></div>
+                            </div>
+                            ${device.confidence}
+                        </td>
+                        <td>${new Date(device.last_seen * 1000).toLocaleTimeString()}</td>
+                    </tr>
+                `;
+            }).join("");
         }
 
         function updateBTSightingsTable(sightings) {
@@ -1251,16 +1301,23 @@
         function updateWiFiDevicesTable(devices) {
             const tbody = document.getElementById("wifiDevicesTable");
             if (devices.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="3" class="loading">No devices found</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="4" class="loading">No devices found</td></tr>';
                 return;
             }
 
             tbody.innerHTML = devices.map(device => {
                 const isSelected = selectedWiFiDevice === device.mac;
+                const confidenceColor = device.confidence > 70 ? "#2ecc71" : device.confidence > 40 ? "#e67e22" : "#e74c3c";
                 return `
                     <tr data-mac="${device.mac}" data-vendor="${device.vendor || '—'}" data-last-seen="${device.last_seen}" class="wifi-device-row ${isSelected ? 'selected' : ''}">
                         <td class="mac-addr">${device.mac}</td>
                         <td>${device.vendor || "—"}</td>
+                        <td>
+                            <div class="confidence-bar">
+                                <div class="confidence-fill" style="width: ${device.confidence}%; background: ${confidenceColor};"></div>
+                            </div>
+                            ${device.confidence}
+                        </td>
                         <td>${new Date(device.last_seen * 1000).toLocaleTimeString()}</td>
                     </tr>
                 `;
@@ -1907,6 +1964,18 @@
             if (currentTab === "bt-sightings") loadBTSightings();
             else if (currentTab === "wifi-assoc") loadWiFiAssociations();
             updateHeatmap();
+        });
+
+        document.getElementById("confidenceMin").addEventListener("input", (e) => {
+            document.getElementById("confidenceMinValue").textContent = e.target.value;
+            if (currentTab === "bt-devices") loadBTDevices();
+            else if (currentTab === "wifi-devices") loadWiFiDevices();
+        });
+
+        document.getElementById("confidenceMax").addEventListener("input", (e) => {
+            document.getElementById("confidenceMaxValue").textContent = e.target.value;
+            if (currentTab === "bt-devices") loadBTDevices();
+            else if (currentTab === "wifi-devices") loadWiFiDevices();
         });
 
         // Time preset buttons

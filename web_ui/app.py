@@ -99,6 +99,8 @@ def query_devices(device_type: str, limit: int = 1000, offset: int = 0,
         offset: Pagination offset
         filters: Optional dict with filter keys:
                 - mac_filter: MAC address substring
+                - confidence_min: Minimum confidence (0-100)
+                - confidence_max: Maximum confidence (0-100)
                 - rssi_min: Minimum RSSI
                 - rssi_max: Maximum RSSI
                 - time_start: Unix timestamp
@@ -114,10 +116,16 @@ def query_devices(device_type: str, limit: int = 1000, offset: int = 0,
                 cursor = con.execute(query)
                 
                 for row in cursor.fetchall():
-                    addr, first_seen, last_seen, name, manufacturer_hex, manufacturer = row
+                    addr, first_seen, last_seen, name, manufacturer_hex, manufacturer, confidence = row
                     
                     # Filter by MAC if specified
                     if "mac_filter" in filters and filters["mac_filter"].lower() not in addr.lower():
+                        continue
+                    
+                    # Filter by confidence if specified
+                    if "confidence_min" in filters and confidence < filters["confidence_min"]:
+                        continue
+                    if "confidence_max" in filters and confidence > filters["confidence_max"]:
                         continue
                     
                     results.append({
@@ -128,7 +136,8 @@ def query_devices(device_type: str, limit: int = 1000, offset: int = 0,
                         "manufacturer_hex": manufacturer_hex,
                         "first_seen": first_seen,
                         "last_seen": last_seen,
-                        "last_seen_str": datetime.fromtimestamp(last_seen).isoformat()
+                        "last_seen_str": datetime.fromtimestamp(last_seen).isoformat(),
+                        "confidence": confidence
                     })
             
             elif device_type == "wifi":
@@ -136,10 +145,16 @@ def query_devices(device_type: str, limit: int = 1000, offset: int = 0,
                 cursor = con.execute(query)
                 
                 for row in cursor.fetchall():
-                    mac, first_seen, last_seen, vendor = row
+                    mac, first_seen, last_seen, vendor, confidence = row
                     
                     # Filter by MAC if specified
                     if "mac_filter" in filters and filters["mac_filter"].lower() not in mac.lower():
+                        continue
+                    
+                    # Filter by confidence if specified
+                    if "confidence_min" in filters and confidence < filters["confidence_min"]:
+                        continue
+                    if "confidence_max" in filters and confidence > filters["confidence_max"]:
                         continue
                     
                     results.append({
@@ -148,7 +163,8 @@ def query_devices(device_type: str, limit: int = 1000, offset: int = 0,
                         "vendor": vendor,
                         "first_seen": first_seen,
                         "last_seen": last_seen,
-                        "last_seen_str": datetime.fromtimestamp(last_seen).isoformat()
+                        "last_seen_str": datetime.fromtimestamp(last_seen).isoformat(),
+                        "confidence": confidence
                     })
     
     except Exception as e:
@@ -329,11 +345,17 @@ async def get_status():
 @app.get("/api/bt/devices")
 async def get_bt_devices(limit: int = Query(100, ge=1, le=1000),
                         offset: int = Query(0, ge=0),
-                        mac_filter: Optional[str] = None):
-    """Get BT devices list."""
+                        mac_filter: Optional[str] = None,
+                        confidence_min: Optional[int] = Query(None, ge=0, le=100),
+                        confidence_max: Optional[int] = Query(None, ge=0, le=100)):
+    """Get BT devices list with optional filters."""
     filters = {}
     if mac_filter:
         filters["mac_filter"] = mac_filter
+    if confidence_min is not None:
+        filters["confidence_min"] = confidence_min
+    if confidence_max is not None:
+        filters["confidence_max"] = confidence_max
     
     devices = query_devices("bt", limit=limit, offset=offset, filters=filters)
     return {"devices": devices, "count": len(devices)}
@@ -374,11 +396,17 @@ async def get_bt_sightings(
 @app.get("/api/wifi/devices")
 async def get_wifi_devices(limit: int = Query(100, ge=1, le=1000),
                           offset: int = Query(0, ge=0),
-                          mac_filter: Optional[str] = None):
-    """Get WiFi devices list."""
+                          mac_filter: Optional[str] = None,
+                          confidence_min: Optional[int] = Query(None, ge=0, le=100),
+                          confidence_max: Optional[int] = Query(None, ge=0, le=100)):
+    """Get WiFi devices list with optional filters."""
     filters = {}
     if mac_filter:
         filters["mac_filter"] = mac_filter
+    if confidence_min is not None:
+        filters["confidence_min"] = confidence_min
+    if confidence_max is not None:
+        filters["confidence_max"] = confidence_max
     
     devices = query_devices("wifi", limit=limit, offset=offset, filters=filters)
     return {"devices": devices, "count": len(devices)}

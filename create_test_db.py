@@ -16,7 +16,8 @@ CREATE TABLE IF NOT EXISTS devices (
     last_seen INTEGER NOT NULL,
     name TEXT,
     manufacturer_hex TEXT,
-    manufacturer TEXT
+    manufacturer TEXT,
+    confidence INTEGER DEFAULT 0
 )
 """)
 
@@ -47,7 +48,8 @@ CREATE TABLE IF NOT EXISTS wifi_devices (
     mac TEXT PRIMARY KEY,
     first_seen INTEGER NOT NULL,
     last_seen INTEGER NOT NULL,
-    vendor TEXT
+    vendor TEXT,
+    confidence INTEGER DEFAULT 0
 )
 """)
 

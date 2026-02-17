@@ -30,7 +30,8 @@ def init_db():
         last_seen INTEGER NOT NULL,
         name TEXT,
         manufacturer_hex TEXT,
-        manufacturer TEXT
+        manufacturer TEXT,
+        confidence INTEGER DEFAULT 0
     );
     """)
 
@@ -66,7 +67,8 @@ def init_db():
         mac TEXT PRIMARY KEY,
         first_seen INTEGER NOT NULL,
         last_seen INTEGER NOT NULL,
-        vendor TEXT
+        vendor TEXT,
+        confidence INTEGER DEFAULT 0
     );
     """)
 
