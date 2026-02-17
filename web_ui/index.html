@@ -625,6 +625,161 @@
             border-radius: 50%;
             border: 1px solid #999;
         }
+
+        /* Modal Styles */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 10000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--bg-dark);
+            border: 2px solid var(--rc-red);
+            border-radius: 8px;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            padding: 20px;
+            color: var(--rc-white);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--rc-red);
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            font-size: 18px;
+            color: var(--rc-red);
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--rc-white);
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+            line-height: 1;
+        }
+
+        .modal-close:hover {
+            color: var(--rc-red);
+        }
+
+        .modal-body {
+            margin-bottom: 15px;
+        }
+
+        .modal-footer {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            padding-top: 15px;
+            border-top: 1px solid #444;
+        }
+
+        .modal-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .modal-btn-primary {
+            background: var(--accent-green);
+            color: white;
+        }
+
+        .modal-btn-danger {
+            background: var(--rc-red);
+            color: white;
+        }
+
+        .modal-btn-secondary {
+            background: #666;
+            color: white;
+        }
+
+        .analysis-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 15px 0;
+        }
+
+        .analysis-stat {
+            background: #333;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .analysis-stat-label {
+            font-size: 11px;
+            color: #999;
+        }
+
+        .analysis-stat-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: var(--accent-green);
+        }
+
+        .analysis-device-list {
+            max-height: 200px;
+            overflow-y: auto;
+            background: #222;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 10px;
+        }
+
+        .analysis-device-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid #333;
+            font-size: 12px;
+        }
+
+        .analysis-device-item:last-child {
+            border-bottom: none;
+        }
+
+        .analysis-loading {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .analysis-loading i {
+            font-size: 32px;
+            color: var(--rc-red);
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
@@ -738,6 +893,16 @@
                     <div class="range-values">
                         <span id="confidenceMinValue">0</span>
                         <span id="confidenceMaxValue">100</span>
+                    </div>
+                </div>
+
+                <div class="filter-group">
+                    <label>Confidence Analysis</label>
+                    <button id="analyzeConfidenceBtn" style="width: 100%; font-size: 11px; padding: 8px; background: var(--accent-green); color: white; border: none; border-radius: 3px; cursor: pointer; font-weight: bold;">
+                        <i class="fas fa-brain"></i> Analyze Confidence
+                    </button>
+                    <div style="font-size: 10px; color: #666; margin-top: 4px;">
+                        Recalculate confidence scores based on device patterns
                     </div>
                 </div>
 
@@ -2063,6 +2228,192 @@
                 updateStatus();
             }, 5000);
         });
+
+        // ============= Confidence Analysis Modal =============
+        const analysisModal = document.getElementById("analysisModal");
+        const analysisModalContent = document.getElementById("analysisModalContent");
+        
+        function showAnalysisModal() {
+            analysisModal.classList.add("active");
+        }
+        
+        function hideAnalysisModal() {
+            analysisModal.classList.remove("active");
+        }
+        
+        function renderAnalysisLoading() {
+            analysisModalContent.innerHTML = `
+                <div class="analysis-loading">
+                    <i class="fas fa-spinner"></i>
+                    <p>Analyzing device patterns...</p>
+                </div>
+            `;
+        }
+        
+        function renderAnalysisPreview(data) {
+            const highConfidence = data.devices?.high_confidence || 0;
+            const lowConfidence = data.devices?.low_confidence || 0;
+            const btTotal = data.devices?.bt_total || 0;
+            const wifiTotal = data.devices?.wifi_total || 0;
+            
+            let deviceListHtml = '';
+            if (data.devices_detail && data.devices_detail.length > 0) {
+                deviceListHtml = `
+                    <h4 style="margin-top: 15px;">Top Changes:</h4>
+                    <div class="analysis-device-list">
+                        ${data.devices_detail.slice(0, 15).map(d => `
+                            <div class="analysis-device-item">
+                                <span class="mac-addr">[${d.type.toUpperCase()}] ${d.mac}</span>
+                                <span>${d.old_confidence} → <strong style="color: ${d.new_confidence >= 70 ? '#2ecc71' : d.new_confidence <= 30 ? '#e74c3c' : '#e67e22'}">${d.new_confidence}</strong></span>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+            
+            analysisModalContent.innerHTML = `
+                <p>Analysis complete. Review the results below:</p>
+                
+                <div class="analysis-stats">
+                    <div class="analysis-stat">
+                        <div class="analysis-stat-label">Session Duration</div>
+                        <div class="analysis-stat-value">${data.session?.duration_human || 'N/A'}</div>
+                    </div>
+                    <div class="analysis-stat">
+                        <div class="analysis-stat-label">Total Devices</div>
+                        <div class="analysis-stat-value">${btTotal + wifiTotal}</div>
+                    </div>
+                    <div class="analysis-stat">
+                        <div class="analysis-stat-label">High Confidence (≥70)</div>
+                        <div class="analysis-stat-value" style="color: #2ecc71;">${highConfidence}</div>
+                    </div>
+                    <div class="analysis-stat">
+                        <div class="analysis-stat-label">Low Confidence (≤30)</div>
+                        <div class="analysis-stat-value" style="color: #e74c3c;">${lowConfidence}</div>
+                    </div>
+                </div>
+                
+                ${deviceListHtml}
+                
+                <div class="modal-footer">
+                    <button class="modal-btn modal-btn-secondary" onclick="hideAnalysisModal()">Cancel</button>
+                    <button class="modal-btn modal-btn-danger" onclick="applyAnalysis()">
+                        <i class="fas fa-check"></i> Apply Changes
+                    </button>
+                </div>
+            `;
+        }
+        
+        function renderAnalysisSuccess(data) {
+            const btUpdated = data.updates?.bt_updated || 0;
+            const wifiUpdated = data.updates?.wifi_updated || 0;
+            
+            analysisModalContent.innerHTML = `
+                <div style="text-align: center; padding: 20px;">
+                    <i class="fas fa-check-circle" style="font-size: 48px; color: #2ecc71;"></i>
+                    <h3 style="margin-top: 15px;">Analysis Complete!</h3>
+                    <p>Confidence scores have been updated.</p>
+                    
+                    <div class="analysis-stats" style="margin-top: 20px;">
+                        <div class="analysis-stat">
+                            <div class="analysis-stat-label">BT Devices Updated</div>
+                            <div class="analysis-stat-value">${btUpdated}</div>
+                        </div>
+                        <div class="analysis-stat">
+                            <div class="analysis-stat-label">WiFi Devices Updated</div>
+                            <div class="analysis-stat-value">${wifiUpdated}</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button class="modal-btn modal-btn-primary" onclick="hideAnalysisModal(); loadBTDevices(); loadWiFiDevices();">
+                        <i class="fas fa-check"></i> Done
+                    </button>
+                </div>
+            `;
+        }
+        
+        function renderAnalysisError(error) {
+            analysisModalContent.innerHTML = `
+                <div style="text-align: center; padding: 20px;">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #e74c3c;"></i>
+                    <h3 style="margin-top: 15px;">Analysis Failed</h3>
+                    <p style="color: #e74c3c;">${error}</p>
+                </div>
+                
+                <div class="modal-footer">
+                    <button class="modal-btn modal-btn-secondary" onclick="hideAnalysisModal()">Close</button>
+                </div>
+            `;
+        }
+        
+        async function startAnalysisPreview() {
+            showAnalysisModal();
+            renderAnalysisLoading();
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/analyze/confidence/preview`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    renderAnalysisError(data.error);
+                } else {
+                    renderAnalysisPreview(data);
+                }
+            } catch (error) {
+                renderAnalysisError(error.message);
+            }
+        }
+        
+        async function applyAnalysis() {
+            renderAnalysisLoading();
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/analyze/confidence`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                
+                if (data.error) {
+                    renderAnalysisError(data.error);
+                } else {
+                    renderAnalysisSuccess(data);
+                }
+            } catch (error) {
+                renderAnalysisError(error.message);
+            }
+        }
+        
+        // Analyze button event listener
+        document.getElementById("analyzeConfidenceBtn").addEventListener("click", startAnalysisPreview);
+        
+        // Close modal on overlay click
+        analysisModal.addEventListener("click", (e) => {
+            if (e.target === analysisModal) {
+                hideAnalysisModal();
+            }
+        });
+        
+        // Close modal on Escape key
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "Escape" && analysisModal.classList.contains("active")) {
+                hideAnalysisModal();
+            }
+        });
     </script>
+
+    <!-- Analysis Modal -->
+    <div id="analysisModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-brain"></i> Confidence Analysis</h2>
+                <button class="modal-close" onclick="hideAnalysisModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="analysisModalContent">
+                <!-- Content populated by JavaScript -->
+            </div>
+        </div>
+    </div>
 </body>
 </html>

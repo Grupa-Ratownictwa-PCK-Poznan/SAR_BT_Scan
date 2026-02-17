@@ -825,6 +825,71 @@ async def get_system_status():
         return JSONResponse({"error": f"Failed to get system status: {str(e)}"}, status_code=500)
 
 
+# ============= Confidence Analysis Endpoints =============
+
+@app.get("/api/analyze/confidence/preview")
+async def preview_confidence_analysis():
+    """Preview confidence analysis without applying changes."""
+    try:
+        # Import analyzer module
+        from confidence_analyzer import ConfidenceAnalyzer
+        
+        analyzer = ConfidenceAnalyzer()
+        session, analyses = analyzer.analyze_all()
+        
+        if not session:
+            return JSONResponse({"error": "No data to analyze"}, status_code=400)
+        
+        summary = analyzer.get_summary()
+        
+        # Add detailed device analysis for preview
+        device_details = []
+        for a in sorted(analyses, key=lambda x: -x.new_confidence):
+            device_details.append({
+                "mac": a.mac,
+                "type": a.device_type,
+                "old_confidence": a.old_confidence,
+                "new_confidence": a.new_confidence,
+                "sighting_count": a.sighting_count,
+                "avg_rssi": round(a.avg_rssi, 1) if a.avg_rssi else None,
+                "presence_ratio": round(a.presence_ratio * 100, 1),
+                "factors": a.factors
+            })
+        
+        summary["devices_detail"] = device_details
+        summary["preview"] = True
+        
+        return summary
+    except Exception as e:
+        print(f"Error in confidence analysis preview: {e}")
+        return JSONResponse({"error": f"Analysis failed: {str(e)}"}, status_code=500)
+
+
+@app.post("/api/analyze/confidence")
+async def run_confidence_analysis():
+    """Run confidence analysis and update database."""
+    try:
+        # Import analyzer module
+        from confidence_analyzer import ConfidenceAnalyzer
+        
+        analyzer = ConfidenceAnalyzer()
+        session, analyses = analyzer.analyze_all()
+        
+        if not session:
+            return JSONResponse({"error": "No data to analyze"}, status_code=400)
+        
+        # Apply updates
+        result = analyzer.apply_updates()
+        summary = analyzer.get_summary()
+        summary["updates"] = result
+        summary["applied"] = True
+        
+        return summary
+    except Exception as e:
+        print(f"Error in confidence analysis: {e}")
+        return JSONResponse({"error": f"Analysis failed: {str(e)}"}, status_code=500)
+
+
 def update_scanner_state(scan_mode: str, wifi_monitor_mode: bool):
     """Update scanner state (called from main.py)."""
     state.scanner_mode = scan_mode
