@@ -418,6 +418,30 @@ async def get_wifi_associations(
     return {"associations": associations, "count": len(associations)}
 
 
+@app.get("/api/wifi/device/{mac}/ssids")
+async def get_wifi_device_ssids(mac: str):
+    """Get a list of unique SSIDs associated with a specific WiFi device MAC address.
+    
+    Returns the unique SSIDs and count of SSID occurrences for analysis.
+    """
+    ssids = []
+    
+    try:
+        with db() as con:
+            query = "SELECT DISTINCT ssid FROM wifi_associations WHERE mac = ? ORDER BY ssid"
+            cursor = con.execute(query, (mac,))
+            
+            for row in cursor.fetchall():
+                ssid = row[0]
+                if ssid:  # Skip null/empty SSIDs
+                    ssids.append(ssid)
+    
+    except Exception as e:
+        print(f"Error querying SSIDs for device {mac}: {e}")
+    
+    return {"mac": mac, "ssids": ssids, "count": len(ssids)}
+
+
 @app.get("/api/map/heatmap")
 async def get_heatmap_data(
     data_type: str = Query("all", regex="^(bt|wifi|assoc|all)$"),

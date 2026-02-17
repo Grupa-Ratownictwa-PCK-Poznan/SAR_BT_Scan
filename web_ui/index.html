@@ -234,6 +234,109 @@
             background: #fff3e0;
         }
 
+        /* Interactive row for WiFi devices */
+        tbody#wifiDevicesTable tr {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        tbody#wifiDevicesTable tr.selected {
+            background: #c8e6c9 !important;
+            border-left: 4px solid var(--accent-green);
+            font-weight: 500;
+        }
+
+        /* Device tooltip/popup */
+        .device-tooltip {
+            position: fixed;
+            background: var(--rc-white);
+            border: 2px solid var(--rc-red);
+            border-radius: 4px;
+            padding: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            font-size: 11px;
+            max-width: 300px;
+            max-height: 400px;
+            overflow-y: auto;
+            pointer-events: auto;
+            display: none;
+        }
+
+        .device-tooltip.show {
+            display: block;
+        }
+
+        .device-tooltip-title {
+            font-weight: bold;
+            color: var(--rc-white);
+            background: var(--rc-red);
+            margin: -12px -12px 8px -12px;
+            padding: 8px 12px;
+            border-radius: 2px 2px 0 0;
+        }
+
+        .device-tooltip-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 6px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .device-tooltip-row:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .device-tooltip-label {
+            font-weight: bold;
+            color: var(--rc-red);
+            min-width: 60px;
+        }
+
+        .device-tooltip-value {
+            word-break: break-all;
+            color: var(--rc-black);
+        }
+
+        .device-tooltip-ssids {
+            margin-top: 8px;
+        }
+
+        .device-tooltip-ssids-title {
+            font-weight: bold;
+            color: var(--rc-red);
+            margin-bottom: 4px;
+        }
+
+        .device-tooltip-ssid-item {
+            background: #f5f5f5;
+            padding: 4px 6px;
+            margin: 2px 0;
+            border-radius: 2px;
+            border-left: 3px solid var(--accent-blue);
+            font-family: 'Courier New', monospace;
+            font-size: 10px;
+        }
+
+        .device-tooltip-close {
+            float: right;
+            cursor: pointer;
+            font-weight: bold;
+            color: var(--rc-white);
+            background: rgba(0, 0, 0, 0.2);
+            border: none;
+            padding: 2px 6px;
+            border-radius: 2px;
+            font-size: 10px;
+        }
+
+        .device-tooltip-close:hover {
+            background: rgba(0, 0, 0, 0.4);
+        }
+
         .mac-addr {
             font-family: 'Courier New', monospace;
             color: var(--rc-red);
@@ -763,6 +866,15 @@
                     </a>
                 </div>
                 <div id="map" style="flex: 1;"></div>
+                
+                <!-- Device Tooltip Popup -->
+                <div id="deviceTooltip" class="device-tooltip">
+                    <div class="device-tooltip-title">
+                        WiFi Device Details
+                        <button class="device-tooltip-close" onclick="closeDeviceTooltip()">&times;</button>
+                    </div>
+                    <div id="deviceTooltipContent"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -797,6 +909,10 @@
         let isDraggingDivider = false;
         let mapMinimized = false;
         let isPaused = false;  // Pause/resume data updates
+        
+        // WiFi device selection state
+        let selectedWiFiDevice = null;  // MAC address of selected device
+        let selectedWiFiDeviceData = null;  // Full device data object
         
         // Time filter state
         let currentTimePreset = 0; // hours, 0 = all (DEFAULT)
@@ -1139,13 +1255,21 @@
                 return;
             }
 
-            tbody.innerHTML = devices.map(device => `
-                <tr>
-                    <td class="mac-addr">${device.mac}</td>
-                    <td>${device.vendor || "—"}</td>
-                    <td>${new Date(device.last_seen * 1000).toLocaleTimeString()}</td>
-                </tr>
-            `).join("");
+            tbody.innerHTML = devices.map(device => {
+                const isSelected = selectedWiFiDevice === device.mac;
+                return `
+                    <tr data-mac="${device.mac}" data-vendor="${device.vendor || '—'}" data-last-seen="${device.last_seen}" class="wifi-device-row ${isSelected ? 'selected' : ''}">
+                        <td class="mac-addr">${device.mac}</td>
+                        <td>${device.vendor || "—"}</td>
+                        <td>${new Date(device.last_seen * 1000).toLocaleTimeString()}</td>
+                    </tr>
+                `;
+            }).join("");
+            
+            // Attach click handlers to each row
+            document.querySelectorAll(".wifi-device-row").forEach(row => {
+                row.addEventListener("click", handleWiFiDeviceRowClick);
+            });
         }
 
         function updateWiFiAssociationsTable(associations) {
@@ -1347,6 +1471,201 @@
                 console.error("Error updating heatmap:", error);
                 console.error("Stack trace:", error.stack);
             }
+        }
+
+        // ============= WiFi Device Selection Handlers =============
+        async function handleWiFiDeviceRowClick(e) {
+            const row = e.currentTarget;
+            const mac = row.getAttribute("data-mac");
+            const vendor = row.getAttribute("data-vendor");
+            const lastSeen = parseFloat(row.getAttribute("data-last-seen"));
+
+            // If clicking the same device again, deselect it
+            if (selectedWiFiDevice === mac) {
+                clearWiFiDeviceSelection();
+                return;
+            }
+
+            // Select the new device
+            selectedWiFiDevice = mac;
+            selectedWiFiDeviceData = {
+                mac: mac,
+                vendor: vendor,
+                last_seen: lastSeen
+            };
+
+            // Update table styling
+            document.querySelectorAll(".wifi-device-row").forEach(r => r.classList.remove("selected"));
+            row.classList.add("selected");
+
+            // Show tooltip with device details
+            await showWiFiDeviceTooltip(mac, vendor, lastSeen);
+
+            // Filter the map to show only points from this device
+            filterMapByWiFiDevice(mac);
+        }
+
+        async function showWiFiDeviceTooltip(mac, vendor, lastSeen) {
+            try {
+                const tooltip = document.getElementById("deviceTooltip");
+                const contentDiv = document.getElementById("deviceTooltipContent");
+
+                // Fetch SSIDs for this device
+                let ssids = [];
+                try {
+                    const response = await fetch(`${API_BASE}/api/wifi/device/${encodeURIComponent(mac)}/ssids`);
+                    const data = await response.json();
+                    ssids = data.ssids || [];
+                } catch (error) {
+                    console.error("Error fetching SSIDs:", error);
+                }
+
+                // Build tooltip HTML
+                let html = `
+                    <div class="device-tooltip-row">
+                        <span class="device-tooltip-label">MAC:</span>
+                        <span class="device-tooltip-value" style="font-family: 'Courier New', monospace;">${mac}</span>
+                    </div>
+                `;
+
+                if (vendor && vendor !== "—") {
+                    html += `
+                        <div class="device-tooltip-row">
+                            <span class="device-tooltip-label">Vendor:</span>
+                            <span class="device-tooltip-value">${vendor}</span>
+                        </div>
+                    `;
+                }
+
+                html += `
+                    <div class="device-tooltip-row">
+                        <span class="device-tooltip-label">Last Seen:</span>
+                        <span class="device-tooltip-value">${new Date(lastSeen * 1000).toLocaleString()}</span>
+                    </div>
+                `;
+
+                // Add SSIDs section
+                if (ssids.length > 0) {
+                    html += `
+                        <div class="device-tooltip-ssids">
+                            <div class="device-tooltip-ssids-title">SSIDs (${ssids.length}):</div>
+                    `;
+                    ssids.forEach(ssid => {
+                        html += `<div class="device-tooltip-ssid-item">${ssid || '<em>Hidden Network</em>'}</div>`;
+                    });
+                    html += `</div>`;
+                } else {
+                    html += `
+                        <div class="device-tooltip-ssids">
+                            <div class="device-tooltip-ssids-title">SSIDs:</div>
+                            <div style="color: #999; font-size: 10px; font-style: italic;">No SSIDs found</div>
+                        </div>
+                    `;
+                }
+
+                contentDiv.innerHTML = html;
+
+                // Position the tooltip near the cursor or in the center
+                tooltip.classList.add("show");
+                tooltip.style.top = "50px";
+                tooltip.style.left = "50%";
+                tooltip.style.transform = "translateX(-50%)";
+
+            } catch (error) {
+                console.error("Error showing device tooltip:", error);
+            }
+        }
+
+        function closeDeviceTooltip() {
+            clearWiFiDeviceSelection();
+        }
+
+        function clearWiFiDeviceSelection() {
+            selectedWiFiDevice = null;
+            selectedWiFiDeviceData = null;
+
+            // Remove selected styling from all rows
+            document.querySelectorAll(".wifi-device-row").forEach(row => {
+                row.classList.remove("selected");
+            });
+
+            // Hide tooltip
+            const tooltip = document.getElementById("deviceTooltip");
+            tooltip.classList.remove("show");
+
+            // Clear map filter (re-render with all data)
+            updateHeatmap();
+        }
+
+        function filterMapByWiFiDevice(mac) {
+            // Build query with only the WiFi device MAC filter
+            const params = new URLSearchParams({
+                mac_filter: mac,
+                data_type: "assoc"  // Only show WiFi association points for this device
+            });
+
+            const apiUrl = `${API_BASE}/api/map/heatmap?${params}`;
+            console.log("Filtering map for WiFi device:", mac);
+
+            fetch(apiUrl)
+                .then(response => response.json())
+                .then(data => {
+                    console.log("Filtered heatmap data received:", data.points.length, "points");
+
+                    if (!map) {
+                        console.error("Map not initialized");
+                        return;
+                    }
+
+                    // Remove old heatmap layer
+                    if (heatmapLayer) {
+                        map.removeLayer(heatmapLayer);
+                        heatmapLayer = null;
+                    }
+
+                    if (mapMarkers.length > 0) {
+                        mapMarkers.forEach(m => map.removeLayer(m));
+                        mapMarkers = [];
+                    }
+
+                    if (!data.points || data.points.length === 0) {
+                        console.log("No filtered heatmap data available");
+                        return;
+                    }
+
+                    const points = data.points.map(p => [p.lat, p.lon, p.intensity]);
+                    console.log("Creating filtered heat layer with", points.length, "points");
+
+                    if (!L.heatLayer) {
+                        console.error("L.heatLayer is not defined");
+                        renderHeatmapFallback(points, data.points);
+                        return;
+                    }
+
+                    heatmapLayer = L.heatLayer(points, {
+                        radius: 25,
+                        blur: 15,
+                        maxZoom: 17,
+                        gradient: {
+                            0.0: "blue",
+                            0.25: "cyan",
+                            0.5: "lime",
+                            0.75: "yellow",
+                            1.0: "red"
+                        }
+                    }).addTo(map);
+                    console.log("Filtered heat layer created and added to map");
+
+                    // Fit map to bounds
+                    if (points.length > 0) {
+                        const bounds = L.latLngBounds(points.map(p => [p[0], p[1]]));
+                        map.fitBounds(bounds.pad(0.1));
+                        console.log("Map fitted to filtered bounds");
+                    }
+                })
+                .catch(error => {
+                    console.error("Error filtering map:", error);
+                });
         }
 
         // ============= Event Listeners =============
