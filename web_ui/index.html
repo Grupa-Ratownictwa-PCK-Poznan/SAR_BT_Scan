@@ -2230,19 +2230,28 @@
         });
 
         // ============= Confidence Analysis Modal =============
-        const analysisModal = document.getElementById("analysisModal");
-        const analysisModalContent = document.getElementById("analysisModalContent");
+        // Note: Elements are retrieved lazily because modal HTML is at end of document
+        function getAnalysisModal() {
+            return document.getElementById("analysisModal");
+        }
+        
+        function getAnalysisModalContent() {
+            return document.getElementById("analysisModalContent");
+        }
         
         function showAnalysisModal() {
-            analysisModal.classList.add("active");
+            const modal = getAnalysisModal();
+            if (modal) modal.classList.add("active");
         }
         
         function hideAnalysisModal() {
-            analysisModal.classList.remove("active");
+            const modal = getAnalysisModal();
+            if (modal) modal.classList.remove("active");
         }
         
         function renderAnalysisLoading() {
-            analysisModalContent.innerHTML = `
+            const content = getAnalysisModalContent();
+            if (content) content.innerHTML = `
                 <div class="analysis-loading">
                     <i class="fas fa-spinner"></i>
                     <p>Analyzing device patterns...</p>
@@ -2271,7 +2280,8 @@
                 `;
             }
             
-            analysisModalContent.innerHTML = `
+            const content = getAnalysisModalContent();
+            if (content) content.innerHTML = `
                 <p>Analysis complete. Review the results below:</p>
                 
                 <div class="analysis-stats">
@@ -2308,7 +2318,8 @@
             const btUpdated = data.updates?.bt_updated || 0;
             const wifiUpdated = data.updates?.wifi_updated || 0;
             
-            analysisModalContent.innerHTML = `
+            const content = getAnalysisModalContent();
+            if (content) content.innerHTML = `
                 <div style="text-align: center; padding: 20px;">
                     <i class="fas fa-check-circle" style="font-size: 48px; color: #2ecc71;"></i>
                     <h3 style="margin-top: 15px;">Analysis Complete!</h3>
@@ -2335,7 +2346,8 @@
         }
         
         function renderAnalysisError(error) {
-            analysisModalContent.innerHTML = `
+            const content = getAnalysisModalContent();
+            if (content) content.innerHTML = `
                 <div style="text-align: center; padding: 20px;">
                     <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #e74c3c;"></i>
                     <h3 style="margin-top: 15px;">Analysis Failed</h3>
@@ -2385,19 +2397,29 @@
             }
         }
         
-        // Analyze button event listener
-        document.getElementById("analyzeConfidenceBtn").addEventListener("click", startAnalysisPreview);
-        
-        // Close modal on overlay click
-        analysisModal.addEventListener("click", (e) => {
-            if (e.target === analysisModal) {
-                hideAnalysisModal();
+        // Setup analysis modal event listeners after DOM is ready
+        document.addEventListener("DOMContentLoaded", () => {
+            // Analyze button event listener
+            const analyzeBtn = document.getElementById("analyzeConfidenceBtn");
+            if (analyzeBtn) {
+                analyzeBtn.addEventListener("click", startAnalysisPreview);
+            }
+            
+            // Close modal on overlay click
+            const modal = document.getElementById("analysisModal");
+            if (modal) {
+                modal.addEventListener("click", (e) => {
+                    if (e.target === modal) {
+                        hideAnalysisModal();
+                    }
+                });
             }
         });
         
-        // Close modal on Escape key
+        // Close modal on Escape key (can be set up immediately)
         document.addEventListener("keydown", (e) => {
-            if (e.key === "Escape" && analysisModal.classList.contains("active")) {
+            const modal = getAnalysisModal();
+            if (e.key === "Escape" && modal && modal.classList.contains("active")) {
                 hideAnalysisModal();
             }
         });
