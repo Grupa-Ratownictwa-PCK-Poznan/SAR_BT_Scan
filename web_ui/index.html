@@ -1423,7 +1423,7 @@
         });
 
         document.getElementById("clearUsbBtn").addEventListener("click", async () => {
-            const confirmed = confirm("⚠️ WARNING: This will delete ALL files in the USB storage!\n\nA backup directory will be created.\n\nAre you sure?");
+            const confirmed = confirm("⚠️ WARNING: This will delete ALL files in the USB storage!\n\nAre you sure?");
             if (!confirmed) return;
             
             try {
@@ -1437,7 +1437,7 @@
                     return;
                 }
                 
-                alert("✅ USB storage cleared successfully!\nBackup saved as: " + data.backup_path);
+                alert("✅ USB storage cleared successfully!");
                 
                 // Update system status to show new disk space
                 updateSystemStatus();

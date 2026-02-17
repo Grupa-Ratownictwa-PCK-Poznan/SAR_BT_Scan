@@ -666,20 +666,9 @@ async def purge_db():
 
 @app.post("/api/clear-usb-storage")
 async def clear_usb_storage():
-    """Clear all contents of USB_STORAGE directory and create a backup."""
+    """Clear all contents of USB_STORAGE directory."""
     if not os.path.exists(USB_STORAGE):
         return JSONResponse({"error": "USB storage not found"}, status_code=404)
-    
-    # Create backup directory with timestamp
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    backup_dir = f"{USB_STORAGE}_backup_{timestamp}"
-    
-    try:
-        # Copy entire USB_STORAGE to backup
-        shutil.copytree(USB_STORAGE, backup_dir)
-        print(f"USB_STORAGE backup created: {backup_dir}")
-    except Exception as e:
-        return JSONResponse({"error": f"Failed to create backup: {str(e)}"}, status_code=500)
     
     # Clear all contents
     try:
@@ -698,8 +687,7 @@ async def clear_usb_storage():
     
     return {
         "success": True,
-        "message": "USB storage cleared successfully",
-        "backup_path": backup_dir
+        "message": "USB storage cleared successfully"
     }
 
 
