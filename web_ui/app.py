@@ -22,11 +22,13 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone, timedelta
 import sys
 import os
+import psutil
+import subprocess
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from settings import WEB_UI_HOST, WEB_UI_PORT, WEB_UI_REFRESH_INTERVAL, DB_FILE, SD_STORAGE
+from settings import WEB_UI_HOST, WEB_UI_PORT, WEB_UI_REFRESH_INTERVAL, DB_FILE, SD_STORAGE, USB_STORAGE
 from storage import db
 import gps_client as gc
 
@@ -660,6 +662,127 @@ async def purge_db():
         "message": "Database purged successfully",
         "backup_path": backup_path
     }
+
+
+@app.post("/api/clear-usb-storage")
+async def clear_usb_storage():
+    """Clear all contents of USB_STORAGE directory and create a backup."""
+    if not os.path.exists(USB_STORAGE):
+        return JSONResponse({"error": "USB storage not found"}, status_code=404)
+    
+    # Create backup directory with timestamp
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup_dir = f"{USB_STORAGE}_backup_{timestamp}"
+    
+    try:
+        # Copy entire USB_STORAGE to backup
+        shutil.copytree(USB_STORAGE, backup_dir)
+        print(f"USB_STORAGE backup created: {backup_dir}")
+    except Exception as e:
+        return JSONResponse({"error": f"Failed to create backup: {str(e)}"}, status_code=500)
+    
+    # Clear all contents
+    try:
+        for filename in os.listdir(USB_STORAGE):
+            file_path = os.path.join(USB_STORAGE, filename)
+            try:
+                if os.path.isfile(file_path) or os.path.islink(file_path):
+                    os.unlink(file_path)
+                elif os.path.isdir(file_path):
+                    shutil.rmtree(file_path)
+                print(f"Removed: {file_path}")
+            except Exception as e:
+                print(f"Failed to remove {file_path}: {e}")
+    except Exception as e:
+        return JSONResponse({"error": f"Failed to clear USB storage: {str(e)}"}, status_code=500)
+    
+    return {
+        "success": True,
+        "message": "USB storage cleared successfully",
+        "backup_path": backup_dir
+    }
+
+
+@app.get("/api/system-status")
+async def get_system_status():
+    """Get current system status: disk space, memory, CPU, temperature, power draw."""
+    try:
+        # Get disk usage
+        root_usage = shutil.disk_usage("/")
+        usb_usage = None
+        if os.path.exists(USB_STORAGE):
+            usb_usage = shutil.disk_usage(USB_STORAGE)
+        
+        # Get memory usage
+        memory = psutil.virtual_memory()
+        
+        # Get CPU usage
+        cpu_percent = psutil.cpu_percent(interval=0.1)
+        
+        # Get temperature (if available)
+        temperature = None
+        try:
+            temps = psutil.sensors_temperatures()
+            if temps:
+                # Try to get CPU temperature
+                if 'coretemp' in temps:
+                    temperature = temps['coretemp'][0].current
+                elif 'acpitz' in temps:
+                    temperature = temps['acpitz'][0].current
+                elif len(temps) > 0:
+                    temperature = list(temps.values())[0][0].current
+        except Exception as e:
+            print(f"Failed to get temperature: {e}")
+        
+        # Get power draw (if available)
+        power_draw = None
+        try:
+            # Try to read power consumption from various sources
+            with open('/sys/class/power_supply/BAT0/power_now', 'r') as f:
+                power_uw = int(f.read().strip())
+                power_draw = power_uw / 1000000  # Convert to watts
+        except Exception:
+            try:
+                # Try alternative path
+                with open('/sys/class/power_supply/BAT1/power_now', 'r') as f:
+                    power_uw = int(f.read().strip())
+                    power_draw = power_uw / 1000000
+            except Exception:
+                # Power draw not available on this system
+                pass
+        
+        return {
+            "timestamp": time.time(),
+            "timestamp_str": datetime.now(timezone.utc).isoformat(),
+            "disk": {
+                "root": {
+                    "total": root_usage.total,
+                    "used": root_usage.used,
+                    "free": root_usage.free,
+                    "percent": root_usage.total > 0 and (root_usage.used / root_usage.total) * 100 or 0
+                },
+                "usb": {
+                    "total": usb_usage.total if usb_usage else None,
+                    "used": usb_usage.used if usb_usage else None,
+                    "free": usb_usage.free if usb_usage else None,
+                    "percent": usb_usage and (usb_usage.used / usb_usage.total) * 100 or None
+                } if usb_usage else None
+            },
+            "memory": {
+                "total": memory.total,
+                "used": memory.used,
+                "available": memory.available,
+                "percent": memory.percent
+            },
+            "cpu": {
+                "percent": cpu_percent
+            },
+            "temperature": temperature,
+            "power_draw": power_draw
+        }
+    except Exception as e:
+        print(f"Error getting system status: {e}")
+        return JSONResponse({"error": f"Failed to get system status: {str(e)}"}, status_code=500)
 
 
 def update_scanner_state(scan_mode: str, wifi_monitor_mode: bool):

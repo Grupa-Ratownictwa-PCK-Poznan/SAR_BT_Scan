@@ -707,6 +707,42 @@
                     <button id="purgeDbBtn" style="flex: 1; padding: 10px; background: #e74c3c; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 5px;">
                         <i class="fas fa-trash"></i> Purge DB
                     </button>
+                    <button id="clearUsbBtn" style="flex: 1; padding: 10px; background: #f39c12; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 5px;">
+                        <i class="fas fa-hdd"></i> Clear USB
+                    </button>
+                </div>
+                
+                <!-- System Status Section -->
+                <div style="margin-top: 12px; border-top: 2px solid var(--rc-red); padding-top: 12px;">
+                    <div style="font-size: 12px; font-weight: bold; color: var(--rc-red); margin-bottom: 8px;">
+                        <i class="fas fa-info-circle"></i> System Status
+                    </div>
+                    <div id="systemStatus" style="font-size: 11px; line-height: 1.6; color: #666;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span><i class="fas fa-hdd" style="color: #3498db;"></i> Root Disk:</span>
+                            <span id="diskRoot">-</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span><i class="fas fa-usb" style="color: #e74c3c;"></i> USB:</span>
+                            <span id="diskUsb">-</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span><i class="fas fa-memory" style="color: #2ecc71;"></i> Memory:</span>
+                            <span id="memory">-</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span><i class="fas fa-microchip" style="color: #9b59b6;"></i> CPU:</span>
+                            <span id="cpu">-</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;" id="tempRow">
+                            <span><i class="fas fa-thermometer-half" style="color: #e67e22;"></i> Temp:</span>
+                            <span id="temperature">-</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;" id="powerRow">
+                            <span><i class="fas fa-bolt" style="color: #f39c12;"></i> Power:</span>
+                            <span id="power">-</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1386,6 +1422,100 @@
             }
         });
 
+        document.getElementById("clearUsbBtn").addEventListener("click", async () => {
+            const confirmed = confirm("⚠️ WARNING: This will delete ALL files in the USB storage!\n\nA backup directory will be created.\n\nAre you sure?");
+            if (!confirmed) return;
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/clear-usb-storage`, {
+                    method: "POST"
+                });
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    alert("Error clearing USB storage: " + (data.error || response.statusText));
+                    return;
+                }
+                
+                alert("✅ USB storage cleared successfully!\nBackup saved as: " + data.backup_path);
+                
+                // Update system status to show new disk space
+                updateSystemStatus();
+            } catch (err) {
+                console.error("Error clearing USB storage:", err);
+                alert("Error clearing USB storage: " + err.message);
+            }
+        });
+
+        // System Status Update Function
+        async function updateSystemStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/api/system-status`);
+                if (!response.ok) {
+                    console.error("Failed to fetch system status");
+                    return;
+                }
+                
+                const data = await response.json();
+                
+                // Format byte sizes to human readable format
+                const formatBytes = (bytes) => {
+                    if (!bytes) return '-';
+                    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+                    let size = bytes;
+                    let unitIndex = 0;
+                    while (size >= 1024 && unitIndex < units.length - 1) {
+                        size /= 1024;
+                        unitIndex++;
+                    }
+                    return `${size.toFixed(1)} ${units[unitIndex]}`;
+                };
+                
+                // Update disk space for root
+                if (data.disk.root) {
+                    const rootPercent = data.disk.root.percent.toFixed(1);
+                    const rootFree = formatBytes(data.disk.root.free);
+                    document.getElementById("diskRoot").textContent = `${rootPercent}% (${rootFree} free)`;
+                }
+                
+                // Update disk space for USB
+                if (data.disk.usb) {
+                    const usbPercent = data.disk.usb.percent.toFixed(1);
+                    const usbFree = formatBytes(data.disk.usb.free);
+                    document.getElementById("diskUsb").textContent = `${usbPercent}% (${usbFree} free)`;
+                } else {
+                    document.getElementById("diskUsb").textContent = "Not mounted";
+                }
+                
+                // Update memory
+                const memPercent = data.memory.percent.toFixed(1);
+                const memUsed = formatBytes(data.memory.used);
+                const memTotal = formatBytes(data.memory.total);
+                document.getElementById("memory").textContent = `${memPercent}% (${memUsed} / ${memTotal})`;
+                
+                // Update CPU
+                document.getElementById("cpu").textContent = `${data.cpu.percent.toFixed(1)}%`;
+                
+                // Update temperature
+                if (data.temperature !== null) {
+                    document.getElementById("temperature").textContent = `${data.temperature.toFixed(1)}°C`;
+                    document.getElementById("tempRow").style.display = "flex";
+                } else {
+                    document.getElementById("tempRow").style.display = "none";
+                }
+                
+                // Update power draw
+                if (data.power_draw !== null) {
+                    document.getElementById("power").textContent = `${data.power_draw.toFixed(1)}W`;
+                    document.getElementById("powerRow").style.display = "flex";
+                } else {
+                    document.getElementById("powerRow").style.display = "none";
+                }
+            } catch (err) {
+                console.error("Error updating system status:", err);
+            }
+        }
+
         // ============= Event Listeners =============
         document.getElementById("pauseResumeBtn").addEventListener("click", () => {
             isPaused = !isPaused;
@@ -1522,12 +1652,16 @@
             updateStatus();
             updateLiveTime();
             setupWebSocket();
+            updateSystemStatus();
             
             // Load initial data
             loadBTDevices();
             
             // Update clock every second
             setInterval(updateLiveTime, 1000);
+            
+            // Update system status every 5 seconds
+            setInterval(updateSystemStatus, 5000);
             
             // Refresh data periodically
             setInterval(() => {
