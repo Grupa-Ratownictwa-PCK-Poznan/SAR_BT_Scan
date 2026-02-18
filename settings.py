@@ -32,3 +32,12 @@ DEVICE_WHITELIST_FILE = "device_whitelist.txt"
 
 # Multi-session detection: minimum gap (seconds) between sightings to start new session
 SESSION_GAP_SECONDS = 7200  # 2 hours = new session boundary
+
+# BLE GATT Publisher configuration
+# Publishes sightings over BLE to a companion app (uses built-in BT, not scanner's hci1)
+BLE_PUBLISH_ENABLED = False              # Disabled by default - enable to broadcast sightings
+BLE_PUBLISH_INTERFACE = "hci0"           # Built-in BT interface (scanner uses hci1)
+BLE_PUBLISH_DEVICE_NAME = "SAR-Scanner"  # Advertised BLE device name
+BLE_PUBLISH_POLL_INTERVAL = 0.5          # Database poll interval in seconds
+BLE_PUBLISH_AGGREGATION_MS = 200         # Min interval between BLE notifications (ms)
+BLE_PUBLISH_MIN_RSSI = -100              # Default RSSI filter in dBm

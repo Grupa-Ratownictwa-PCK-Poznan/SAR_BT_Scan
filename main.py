@@ -9,6 +9,11 @@ import threading
 
 from settings import USB_STORAGE, SD_STORAGE, BLEAK_DEVICE, SCAN_MODE, WIFI_INTERFACE, SCANNER_ID
 from settings import WEB_UI_ENABLED, WEB_UI_PORT, WEB_UI_HOST
+try:
+    from settings import BLE_PUBLISH_ENABLED, BLE_PUBLISH_INTERFACE
+except ImportError:
+    BLE_PUBLISH_ENABLED = False
+    BLE_PUBLISH_INTERFACE = "hci0"
 from scanner import run as run_bt
 import wifi_scanner as ws
 import gps_client as gc
@@ -117,6 +122,28 @@ def main():
             print(f"⚠ Failed to start Web UI: {e}")
     else:
         print("⚠ Web UI is disabled in settings")
+
+    # Start BLE GATT Publisher if enabled (uses hci0, independent of scanner)
+    if BLE_PUBLISH_ENABLED:
+        print(f"\nStarting BLE GATT Publisher on {BLE_PUBLISH_INTERFACE}...")
+        try:
+            from ble_publisher import BLEGATTPublisher
+            ble_publisher = BLEGATTPublisher(interface=BLE_PUBLISH_INTERFACE)
+            ble_thread = threading.Thread(
+                target=ble_publisher.run,
+                daemon=True,
+                name="ble-publisher"
+            )
+            ble_thread.start()
+            print(f"✓ BLE Publisher started (advertising as SAR-Scanner)")
+            time.sleep(1)  # Give the server time to start
+        except ImportError as e:
+            print(f"⚠ BLE Publisher dependencies not installed: {e}")
+            print("  Install with: sudo apt install python3-dbus python3-gi")
+        except Exception as e:
+            print(f"⚠ Failed to start BLE Publisher: {e}")
+    else:
+        print("⚠ BLE Publisher is disabled in settings")
 
     try:
         if SCAN_MODE == "bt":
