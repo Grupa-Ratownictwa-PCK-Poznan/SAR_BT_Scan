@@ -88,6 +88,11 @@ sudo apt update
 sudo apt install -y python3 python3-pip bluez sqlite3 gpsd gpsd-clients python3-gps aircrack-ng wireless-tools
 ```
 
+**Optional** (for BLE GATT publishing to companion app):
+```bash
+sudo apt install -y python3-dbus python3-gi
+```
+
 ### 3. Clone the Repository
 ```bash
 git clone https://github.com/GRPCK-Poznan/SAR_BT_Scan.git
