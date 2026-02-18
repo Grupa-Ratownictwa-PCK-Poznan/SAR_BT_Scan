@@ -1,0 +1,8 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^/Users/leszek\\.tasiemski/Documents/GIT_BT-scan/SAR_BT_Scan/\\.venv/bin/python -m uvicorn web_ui\\.app:app --host 0\\.0\\.0\\.0 --port 8000 2>&1$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}

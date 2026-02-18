@@ -19,3 +19,16 @@ WEB_UI_ENABLED = True  # Set to False to disable web interface
 WEB_UI_HOST = "0.0.0.0"  # Listen on all interfaces
 WEB_UI_PORT = 8000  # Local port for web UI
 WEB_UI_REFRESH_INTERVAL = 1.0  # Seconds between live updates (WebSocket)
+
+# Confidence Analyzer configuration
+# HQ/base location for GPS clustering analysis (set to your staging area coordinates)
+# If set to (None, None), the analyzer will auto-detect HQ from first session sighting
+HQ_LATITUDE = None   # e.g., 52.2297
+HQ_LONGITUDE = None  # e.g., 21.0122
+HQ_RADIUS_METERS = 100  # Devices seen only within this radius of HQ get lower confidence
+
+# Path to device whitelist file (team equipment MACs)
+DEVICE_WHITELIST_FILE = "device_whitelist.txt"
+
+# Multi-session detection: minimum gap (seconds) between sightings to start new session
+SESSION_GAP_SECONDS = 7200  # 2 hours = new session boundary

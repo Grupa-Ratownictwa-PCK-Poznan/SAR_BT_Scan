@@ -1,0 +1,15 @@
+# SAR Scanner - Device Whitelist
+# 
+# Add MAC addresses of known SAR team devices (one per line).
+# These devices will automatically get confidence = 0 (SAR equipment).
+# 
+# Format: MAC address (case-insensitive, colons or dashes accepted)
+# Lines starting with # are comments.
+#
+# Examples:
+# AA:BB:CC:DD:EE:FF
+# 11-22-33-44-55-66
+# aa:bb:cc:dd:ee:ff
+#
+# --- Add your team's devices below ---
+

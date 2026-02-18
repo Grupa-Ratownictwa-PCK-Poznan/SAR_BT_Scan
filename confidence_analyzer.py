@@ -31,12 +31,17 @@ import sqlite3
 import argparse
 import sys
 import os
+import math
 from datetime import datetime
-from typing import Dict, List, Tuple, Optional
-from dataclasses import dataclass
+from typing import Dict, List, Tuple, Optional, Set
+from dataclasses import dataclass, field
 
-# Import settings for database path
-from settings import SD_STORAGE, DB_FILE
+# Import settings for database path and analyzer config
+from settings import (
+    SD_STORAGE, DB_FILE,
+    HQ_LATITUDE, HQ_LONGITUDE, HQ_RADIUS_METERS,
+    DEVICE_WHITELIST_FILE, SESSION_GAP_SECONDS
+)
 
 # Database path resolution (same logic as storage.py)
 DB_PATH = SD_STORAGE + DB_FILE
@@ -76,6 +81,12 @@ class DeviceAnalysis:
     old_confidence: int
     new_confidence: int
     factors: List[str]  # Explanation of scoring factors
+    # GPS clustering fields
+    hq_ratio: Optional[float] = None  # Ratio of sightings near HQ
+    avg_distance_from_hq: Optional[float] = None  # Meters
+    # Multi-session fields
+    session_count: int = 1  # Number of distinct sessions
+    whitelisted: bool = False  # Is this a known SAR device
 
 
 class ConfidenceAnalyzer:
@@ -88,10 +99,157 @@ class ConfidenceAnalyzer:
     MEDIUM_PRESENCE_RATIO = 0.50  # Device present for >50% of session
     HIGH_SIGHTING_RATE = 0.70  # Sighting rate relative to expected
     
+    # GPS clustering thresholds
+    HQ_RATIO_HIGH = 0.90  # >90% sightings near HQ = very likely SAR team
+    HQ_RATIO_LOW = 0.20   # <20% sightings near HQ = likely in field
+    
     def __init__(self, db_path: str = None):
         self.db_path = db_path or DB_PATH
         self.session_stats: Optional[SessionStats] = None
         self.analyses: List[DeviceAnalysis] = []
+        self.whitelist: Set[str] = set()
+        self.hq_coords: Optional[Tuple[float, float]] = None
+        
+        # Load whitelist
+        self._load_whitelist()
+        
+        # Set HQ coordinates
+        self._init_hq_location()
+    
+    def _load_whitelist(self):
+        """Load device whitelist from file."""
+        whitelist_path = DEVICE_WHITELIST_FILE
+        if not os.path.isabs(whitelist_path):
+            # Look in same directory as script, then current directory
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            possible_paths = [
+                os.path.join(script_dir, whitelist_path),
+                os.path.join(SD_STORAGE, whitelist_path),
+                whitelist_path
+            ]
+        else:
+            possible_paths = [whitelist_path]
+        
+        for path in possible_paths:
+            if os.path.exists(path):
+                try:
+                    with open(path, 'r') as f:
+                        for line in f:
+                            line = line.strip()
+                            if line and not line.startswith('#'):
+                                # Normalize MAC addresses (uppercase, colons)
+                                mac = line.upper().replace('-', ':')
+                                self.whitelist.add(mac)
+                except Exception as e:
+                    print(f"Warning: Could not read whitelist {path}: {e}")
+                break
+    
+    def _init_hq_location(self):
+        """Initialize HQ coordinates from settings or auto-detect."""
+        if HQ_LATITUDE is not None and HQ_LONGITUDE is not None:
+            self.hq_coords = (HQ_LATITUDE, HQ_LONGITUDE)
+        else:
+            # Auto-detect: use first sighting location as HQ
+            self.hq_coords = self._auto_detect_hq()
+    
+    def _auto_detect_hq(self) -> Optional[Tuple[float, float]]:
+        """Auto-detect HQ location from first sighting with GPS."""
+        con = self.connect()
+        try:
+            # Try BT sightings first
+            result = con.execute("""
+                SELECT lat, lon FROM sightings 
+                WHERE lat IS NOT NULL AND lon IS NOT NULL AND lat != 0 AND lon != 0
+                ORDER BY ts_unix ASC LIMIT 1
+            """).fetchone()
+            
+            if result:
+                return (result[0], result[1])
+            
+            # Try WiFi associations
+            result = con.execute("""
+                SELECT lat, lon FROM wifi_associations 
+                WHERE lat IS NOT NULL AND lon IS NOT NULL AND lat != 0 AND lon != 0
+                ORDER BY ts_unix ASC LIMIT 1
+            """).fetchone()
+            
+            if result:
+                return (result[0], result[1])
+            
+            return None
+        finally:
+            con.close()
+    
+    def _haversine_distance(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+        """Calculate distance between two GPS coordinates in meters using Haversine formula."""
+        R = 6371000  # Earth's radius in meters
+        
+        phi1 = math.radians(lat1)
+        phi2 = math.radians(lat2)
+        delta_phi = math.radians(lat2 - lat1)
+        delta_lambda = math.radians(lon2 - lon1)
+        
+        a = math.sin(delta_phi/2)**2 + math.cos(phi1) * math.cos(phi2) * math.sin(delta_lambda/2)**2
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+        
+        return R * c
+    
+    def _analyze_gps_clustering(self, sightings_with_gps: List[Tuple[float, float]]) -> Tuple[Optional[float], Optional[float]]:
+        """
+        Analyze GPS coordinates to determine HQ proximity.
+        
+        Args:
+            sightings_with_gps: List of (lat, lon) tuples for device sightings
+            
+        Returns:
+            Tuple of (hq_ratio, avg_distance) where hq_ratio is 0-1 fraction of sightings near HQ
+        """
+        if not self.hq_coords or not sightings_with_gps:
+            return None, None
+        
+        hq_lat, hq_lon = self.hq_coords
+        near_hq_count = 0
+        total_distance = 0
+        
+        for lat, lon in sightings_with_gps:
+            distance = self._haversine_distance(hq_lat, hq_lon, lat, lon)
+            total_distance += distance
+            if distance <= HQ_RADIUS_METERS:
+                near_hq_count += 1
+        
+        hq_ratio = near_hq_count / len(sightings_with_gps) if sightings_with_gps else None
+        avg_distance = total_distance / len(sightings_with_gps) if sightings_with_gps else None
+        
+        return hq_ratio, avg_distance
+    
+    def _detect_sessions(self, timestamps: List[int]) -> int:
+        """
+        Detect number of distinct sessions from timestamps.
+        
+        A new session starts when there's a gap > SESSION_GAP_SECONDS.
+        
+        Args:
+            timestamps: Sorted list of Unix timestamps
+            
+        Returns:
+            Number of distinct sessions
+        """
+        if not timestamps or len(timestamps) < 2:
+            return 1
+        
+        session_count = 1
+        for i in range(1, len(timestamps)):
+            gap = timestamps[i] - timestamps[i-1]
+            if gap > SESSION_GAP_SECONDS:
+                session_count += 1
+        
+        return session_count
+    
+    def is_whitelisted(self, mac: str) -> bool:
+        """Check if a MAC address is in the whitelist."""
+        # Normalize MAC for comparison
+        normalized = mac.upper().replace('-', ':')
+        return normalized in self.whitelist
         
     def connect(self) -> sqlite3.Connection:
         """Create database connection."""
@@ -143,6 +301,9 @@ class ConfidenceAnalyzer:
     
     def analyze_bt_device(self, addr: str, session: SessionStats) -> DeviceAnalysis:
         """Analyze a single Bluetooth device."""
+        # Check whitelist first
+        is_whitelisted = self.is_whitelisted(addr)
+        
         con = self.connect()
         try:
             # Get device info
@@ -156,9 +317,9 @@ class ConfidenceAnalyzer:
             
             first_seen, last_seen, old_confidence = device
             
-            # Get all sightings for this device
+            # Get all sightings for this device with GPS data
             sightings = con.execute("""
-                SELECT ts_unix, rssi FROM sightings 
+                SELECT ts_unix, rssi, lat, lon FROM sightings 
                 WHERE addr = ? AND ts_unix IS NOT NULL
                 ORDER BY ts_unix
             """, (addr,)).fetchall()
@@ -169,6 +330,17 @@ class ConfidenceAnalyzer:
             rssi_values = [s[1] for s in sightings if s[1] is not None]
             avg_rssi = sum(rssi_values) / len(rssi_values) if rssi_values else None
             
+            # Extract GPS coordinates
+            gps_coords = [(s[2], s[3]) for s in sightings 
+                         if s[2] is not None and s[3] is not None and s[2] != 0 and s[3] != 0]
+            
+            # Analyze GPS clustering
+            hq_ratio, avg_distance = self._analyze_gps_clustering(gps_coords)
+            
+            # Detect sessions from timestamps
+            timestamps = [s[0] for s in sightings]
+            session_count = self._detect_sessions(timestamps)
+            
             # Calculate presence ratio (capped at 1.0)
             device_duration = last_seen - first_seen
             presence_ratio = min(1.0, device_duration / session.duration) if session.duration > 0 else 0
@@ -178,8 +350,8 @@ class ConfidenceAnalyzer:
             early_cutoff = session.start_time + boundary_window
             late_cutoff = session.end_time - boundary_window
             
-            early_sightings = [(ts, rssi) for ts, rssi in sightings if ts <= early_cutoff]
-            late_sightings = [(ts, rssi) for ts, rssi in sightings if ts >= late_cutoff]
+            early_sightings = [(ts, rssi) for ts, rssi, _, _ in sightings if ts <= early_cutoff]
+            late_sightings = [(ts, rssi) for ts, rssi, _, _ in sightings if ts >= late_cutoff]
             
             early_presence = len(early_sightings) > 0
             late_presence = len(late_sightings) > 0
@@ -191,16 +363,24 @@ class ConfidenceAnalyzer:
             late_rssi = sum(late_rssi_vals) / len(late_rssi_vals) if late_rssi_vals else None
             
             # Calculate new confidence
-            new_confidence, factors = self._calculate_confidence(
-                presence_ratio=presence_ratio,
-                sighting_count=sighting_count,
-                session_duration=session.duration,
-                early_presence=early_presence,
-                late_presence=late_presence,
-                early_rssi=early_rssi,
-                late_rssi=late_rssi,
-                avg_rssi=avg_rssi
-            )
+            if is_whitelisted:
+                # Whitelisted devices automatically get confidence 0
+                new_confidence = 0
+                factors = ["Whitelisted device (SAR team equipment) → 0"]
+            else:
+                new_confidence, factors = self._calculate_confidence(
+                    presence_ratio=presence_ratio,
+                    sighting_count=sighting_count,
+                    session_duration=session.duration,
+                    early_presence=early_presence,
+                    late_presence=late_presence,
+                    early_rssi=early_rssi,
+                    late_rssi=late_rssi,
+                    avg_rssi=avg_rssi,
+                    hq_ratio=hq_ratio,
+                    avg_distance_from_hq=avg_distance,
+                    session_count=session_count
+                )
             
             return DeviceAnalysis(
                 mac=addr,
@@ -216,13 +396,20 @@ class ConfidenceAnalyzer:
                 late_rssi=late_rssi,
                 old_confidence=old_confidence,
                 new_confidence=new_confidence,
-                factors=factors
+                factors=factors,
+                hq_ratio=hq_ratio,
+                avg_distance_from_hq=avg_distance,
+                session_count=session_count,
+                whitelisted=is_whitelisted
             )
         finally:
             con.close()
     
     def analyze_wifi_device(self, mac: str, session: SessionStats) -> DeviceAnalysis:
         """Analyze a single WiFi device."""
+        # Check whitelist first
+        is_whitelisted = self.is_whitelisted(mac)
+        
         con = self.connect()
         try:
             # Get device info
@@ -236,9 +423,9 @@ class ConfidenceAnalyzer:
             
             first_seen, last_seen, old_confidence = device
             
-            # Get all associations for this device
+            # Get all associations for this device with GPS data
             associations = con.execute("""
-                SELECT ts_unix, rssi FROM wifi_associations 
+                SELECT ts_unix, rssi, lat, lon FROM wifi_associations 
                 WHERE mac = ? AND ts_unix IS NOT NULL
                 ORDER BY ts_unix
             """, (mac,)).fetchall()
@@ -249,6 +436,17 @@ class ConfidenceAnalyzer:
             rssi_values = [a[1] for a in associations if a[1] is not None]
             avg_rssi = sum(rssi_values) / len(rssi_values) if rssi_values else None
             
+            # Extract GPS coordinates
+            gps_coords = [(a[2], a[3]) for a in associations 
+                         if a[2] is not None and a[3] is not None and a[2] != 0 and a[3] != 0]
+            
+            # Analyze GPS clustering
+            hq_ratio, avg_distance = self._analyze_gps_clustering(gps_coords)
+            
+            # Detect sessions from timestamps
+            timestamps = [a[0] for a in associations]
+            session_count = self._detect_sessions(timestamps)
+            
             # Calculate presence ratio (capped at 1.0)
             device_duration = last_seen - first_seen
             presence_ratio = min(1.0, device_duration / session.duration) if session.duration > 0 else 0
@@ -258,8 +456,8 @@ class ConfidenceAnalyzer:
             early_cutoff = session.start_time + boundary_window
             late_cutoff = session.end_time - boundary_window
             
-            early_associations = [(ts, rssi) for ts, rssi in associations if ts <= early_cutoff]
-            late_associations = [(ts, rssi) for ts, rssi in associations if ts >= late_cutoff]
+            early_associations = [(ts, rssi) for ts, rssi, _, _ in associations if ts <= early_cutoff]
+            late_associations = [(ts, rssi) for ts, rssi, _, _ in associations if ts >= late_cutoff]
             
             early_presence = len(early_associations) > 0
             late_presence = len(late_associations) > 0
@@ -271,16 +469,24 @@ class ConfidenceAnalyzer:
             late_rssi = sum(late_rssi_vals) / len(late_rssi_vals) if late_rssi_vals else None
             
             # Calculate new confidence
-            new_confidence, factors = self._calculate_confidence(
-                presence_ratio=presence_ratio,
-                sighting_count=sighting_count,
-                session_duration=session.duration,
-                early_presence=early_presence,
-                late_presence=late_presence,
-                early_rssi=early_rssi,
-                late_rssi=late_rssi,
-                avg_rssi=avg_rssi
-            )
+            if is_whitelisted:
+                # Whitelisted devices automatically get confidence 0
+                new_confidence = 0
+                factors = ["Whitelisted device (SAR team equipment) → 0"]
+            else:
+                new_confidence, factors = self._calculate_confidence(
+                    presence_ratio=presence_ratio,
+                    sighting_count=sighting_count,
+                    session_duration=session.duration,
+                    early_presence=early_presence,
+                    late_presence=late_presence,
+                    early_rssi=early_rssi,
+                    late_rssi=late_rssi,
+                    avg_rssi=avg_rssi,
+                    hq_ratio=hq_ratio,
+                    avg_distance_from_hq=avg_distance,
+                    session_count=session_count
+                )
             
             return DeviceAnalysis(
                 mac=mac,
@@ -296,7 +502,11 @@ class ConfidenceAnalyzer:
                 late_rssi=late_rssi,
                 old_confidence=old_confidence,
                 new_confidence=new_confidence,
-                factors=factors
+                factors=factors,
+                hq_ratio=hq_ratio,
+                avg_distance_from_hq=avg_distance,
+                session_count=session_count,
+                whitelisted=is_whitelisted
             )
         finally:
             con.close()
@@ -310,7 +520,10 @@ class ConfidenceAnalyzer:
         late_presence: bool,
         early_rssi: Optional[float],
         late_rssi: Optional[float],
-        avg_rssi: Optional[float]
+        avg_rssi: Optional[float],
+        hq_ratio: Optional[float] = None,
+        avg_distance_from_hq: Optional[float] = None,
+        session_count: int = 1
     ) -> Tuple[int, List[str]]:
         """
         Calculate confidence score based on various factors.
@@ -379,6 +592,36 @@ class ConfidenceAnalyzer:
         elif avg_rssi is not None and avg_rssi > -50:
             confidence -= 5
             factors.append(f"Very strong average signal ({avg_rssi:.0f} dBm) → -5 (close/HQ)")
+        
+        # Factor 6: GPS clustering - HQ proximity analysis
+        # Devices seen mostly near HQ are likely SAR team
+        if hq_ratio is not None:
+            if hq_ratio > self.HQ_RATIO_HIGH:
+                confidence -= 20
+                factors.append(f"Seen mostly near HQ ({hq_ratio:.0%} within {HQ_RADIUS_METERS}m) → -20 (base equipment)")
+            elif hq_ratio < self.HQ_RATIO_LOW:
+                confidence += 15
+                factors.append(f"Rarely seen near HQ ({hq_ratio:.0%}) → +15 (field device)")
+        
+        # Factor 7: Average distance from HQ
+        # Devices consistently far from HQ are more interesting
+        if avg_distance_from_hq is not None:
+            if avg_distance_from_hq > 500:  # > 500m average
+                confidence += 10
+                factors.append(f"Avg distance from HQ: {avg_distance_from_hq:.0f}m → +10 (far from base)")
+            elif avg_distance_from_hq < 50:  # < 50m average
+                confidence -= 10
+                factors.append(f"Avg distance from HQ: {avg_distance_from_hq:.0f}m → -10 (at base)")
+        
+        # Factor 8: Multi-session detection
+        # Devices seen across multiple sessions are more likely SAR team (persistent)
+        if session_count > 1:
+            if session_count >= 3:
+                confidence -= 15
+                factors.append(f"Seen in {session_count} separate sessions → -15 (persistent presence)")
+            else:
+                confidence -= 5
+                factors.append(f"Seen in {session_count} sessions → -5")
         
         # Clamp to valid range
         confidence = max(0, min(100, confidence))
@@ -455,6 +698,11 @@ class ConfidenceAnalyzer:
         
         high_confidence = [a for a in self.analyses if a.new_confidence >= 70]
         low_confidence = [a for a in self.analyses if a.new_confidence <= 30]
+        whitelisted = [a for a in self.analyses if a.whitelisted]
+        
+        # Count devices with GPS data
+        has_gps = [a for a in self.analyses if a.hq_ratio is not None]
+        multi_session = [a for a in self.analyses if a.session_count > 1]
         
         return {
             "session": {
@@ -467,7 +715,16 @@ class ConfidenceAnalyzer:
                 "bt_total": len(bt_analyses),
                 "wifi_total": len(wifi_analyses),
                 "high_confidence": len(high_confidence),
-                "low_confidence": len(low_confidence)
+                "low_confidence": len(low_confidence),
+                "whitelisted": len(whitelisted),
+                "with_gps_data": len(has_gps),
+                "multi_session": len(multi_session)
+            },
+            "config": {
+                "hq_location": self.hq_coords,
+                "hq_radius_meters": HQ_RADIUS_METERS,
+                "session_gap_seconds": SESSION_GAP_SECONDS,
+                "whitelist_count": len(self.whitelist)
             },
             "high_confidence_devices": [
                 {"mac": a.mac, "type": a.device_type, "confidence": a.new_confidence}
