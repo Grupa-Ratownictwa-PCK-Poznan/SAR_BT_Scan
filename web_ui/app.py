@@ -665,6 +665,26 @@ async def get_asset(file_path: str):
     return JSONResponse({"error": "Not found"}, status_code=404)
 
 
+@app.get("/static/{file_path:path}")
+async def get_static(file_path: str):
+    """Serve bundled static files (CSS, JS, webfonts) for offline operation."""
+    static_path = os.path.join(os.path.dirname(__file__), "static", file_path)
+    if os.path.exists(static_path):
+        # Set appropriate content types
+        if file_path.endswith('.css'):
+            return FileResponse(static_path, media_type='text/css')
+        elif file_path.endswith('.js'):
+            return FileResponse(static_path, media_type='application/javascript')
+        elif file_path.endswith('.woff2'):
+            return FileResponse(static_path, media_type='font/woff2')
+        elif file_path.endswith('.woff'):
+            return FileResponse(static_path, media_type='font/woff')
+        elif file_path.endswith('.ttf'):
+            return FileResponse(static_path, media_type='font/ttf')
+        return FileResponse(static_path)
+    return JSONResponse({"error": "Not found"}, status_code=404)
+
+
 @app.get("/api/download-db")
 async def download_db():
     """Download the complete results.db database file."""
