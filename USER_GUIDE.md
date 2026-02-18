@@ -322,9 +322,9 @@ For complete ethical guidelines, see [ETHICS.md](ETHICS.md).
 
 ## Getting Help
 
-- **Technical issues**: Check [README.md](README.md) and [WEB_UI_QUICKSTART.md](WEB_UI_QUICKSTART.md)
-- **Confidence scoring**: See [CONFIDENCE_ANALYZER.md](CONFIDENCE_ANALYZER.md)
-- **WiFi setup**: See [WIFI_SETUP.md](WIFI_SETUP.md)
+- **Technical issues**: Check [README.md](README.md) and [WEB_UI_QUICKSTART.md](docs/WEB_UI_QUICKSTART.md)
+- **Confidence scoring**: See [CONFIDENCE_ANALYZER.md](docs/CONFIDENCE_ANALYZER.md)
+- **WiFi setup**: See [WIFI_SETUP.md](docs/WIFI_SETUP.md)
 - **Project repository**: https://github.com/Grupa-Ratownictwa-PCK-Poznan/SAR_BT_Scan
 
 ---

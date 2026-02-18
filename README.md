@@ -62,7 +62,13 @@ SAR_BT_Scan/
 │   ├── btscanner-supervisor       # Environment file (symlink to /etc/default/)
 │   ├── btscanner-supervisor.service  # Systemd unit file
 │   └── logtorate.d-btscanner-supervisor # Log rotation config
-├── WIFI_SETUP.md              # WiFi adapter setup guide
+├── docs/                      # Documentation folder
+│   ├── CONFIDENCE_ANALYZER.md # Confidence scoring algorithm
+│   ├── WEB_UI_QUICKSTART.md   # Web dashboard quick start
+│   ├── WIFI_SETUP.md          # WiFi adapter setup guide
+│   └── ...                    # Additional technical docs
+├── USER_GUIDE.md              # User guide (English)
+├── USER_GUIDE_PL.md           # User guide (Polish)
 └── README.md                  # This file
 ```
 
@@ -94,7 +100,7 @@ pip install bleak scapy
 ```
 
 ### 5. WiFi Adapter Setup (if using WiFi scanning)
-See [WIFI_SETUP.md](WIFI_SETUP.md) for detailed instructions on enabling monitor mode on your USB WiFi adapter.
+See [WIFI_SETUP.md](docs/WIFI_SETUP.md) for detailed instructions on enabling monitor mode on your USB WiFi adapter.
 
 ---
 
@@ -503,11 +509,14 @@ Example post-processing map:
 
 ---
 
-## � Additional Documentation
+## 📚 Additional Documentation
 
-- [WIFI_SETUP.md](WIFI_SETUP.md) — Detailed WiFi adapter configuration and monitor mode setup
-- [MAP_DEBUGGING_GUIDE.md](MAP_DEBUGGING_GUIDE.md) — Troubleshooting map visualization issues
-- [MAP_FIX_SUMMARY.md](MAP_FIX_SUMMARY.md) — Technical details on map rendering and SDK integration
+- [USER_GUIDE.md](USER_GUIDE.md) — Complete user guide for field operations
+- [USER_GUIDE_PL.md](USER_GUIDE_PL.md) — Podręcznik użytkownika (Polish)
+- [docs/WIFI_SETUP.md](docs/WIFI_SETUP.md) — Detailed WiFi adapter configuration and monitor mode setup
+- [docs/CONFIDENCE_ANALYZER.md](docs/CONFIDENCE_ANALYZER.md) — Device confidence scoring algorithm
+- [docs/WEB_UI_QUICKSTART.md](docs/WEB_UI_QUICKSTART.md) — Web dashboard quick start guide
+- [docs/MAP_DEBUGGING_GUIDE.md](docs/MAP_DEBUGGING_GUIDE.md) — Troubleshooting map visualization issues
 
 ---
 
@@ -518,13 +527,13 @@ Example post-processing map:
 | GPS not updating | Check `gpsd` status and cable; ensure antenna has sky view |
 | BLE adapter missing | Check with `hciconfig`; verify adapter name in `settings.py` |
 | WiFi adapter not found | Check `iwconfig`/`iw dev`; verify USB connection and drivers installed |
-| Monitor mode not working | Check [WIFI_SETUP.md](WIFI_SETUP.md) for manual setup instructions |
+| Monitor mode not working | Check [docs/WIFI_SETUP.md](docs/WIFI_SETUP.md) for manual setup instructions |
 | Permission denied on WiFi | WiFi scanning requires `sudo` for raw packet access |
 | Database locked | Use backups created by supervisor instead of live file |
 | High CPU load | Ensure Raspberry Pi 5 has adequate cooling and power supply |
 | Service won't start | Check logs: `sudo journalctl -u btscanner-supervisor -n 50` |
 | Web UI not accessible | Check `WEB_UI_ENABLED = True`; verify port 8000 not blocked; check `lsof -i :8000` |
-| Map shows no points | See [MAP_DEBUGGING_GUIDE.md](MAP_DEBUGGING_GUIDE.md) for detailed troubleshooting |
+| Map shows no points | See [docs/MAP_DEBUGGING_GUIDE.md](docs/MAP_DEBUGGING_GUIDE.md) for detailed troubleshooting |
 | Database export fails | Ensure database file has read permissions; try backup created by supervisor |
 | Purge DB button not visible | Verify web UI is enabled and page reloads after each action |
 

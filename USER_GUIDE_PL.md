@@ -322,9 +322,9 @@ Pełne wytyczne etyczne znajdziesz w [ETHICS.md](ETHICS.md).
 
 ## Uzyskiwanie pomocy
 
-- **Problemy techniczne**: Sprawdź [README.md](README.md) i [WEB_UI_QUICKSTART.md](WEB_UI_QUICKSTART.md)
-- **Ocenianie pewności**: Zobacz [CONFIDENCE_ANALYZER.md](CONFIDENCE_ANALYZER.md)
-- **Konfiguracja WiFi**: Zobacz [WIFI_SETUP.md](WIFI_SETUP.md)
+- **Problemy techniczne**: Sprawdź [README.md](README.md) i [WEB_UI_QUICKSTART.md](docs/WEB_UI_QUICKSTART.md)
+- **Ocenianie pewności**: Zobacz [CONFIDENCE_ANALYZER.md](docs/CONFIDENCE_ANALYZER.md)
+- **Konfiguracja WiFi**: Zobacz [WIFI_SETUP.md](docs/WIFI_SETUP.md)
 - **Repozytorium projektu**: https://github.com/Grupa-Ratownictwa-PCK-Poznan/SAR_BT_Scan
 
 ---
