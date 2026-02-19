@@ -945,15 +945,18 @@ async def system_reboot():
 async def system_update():
     """Update the SAR BT Scan system via git pull."""
     try:
-        work_dir = os.path.expanduser("~/sar_bt_scan/sar_bt_scan")
+        # Use explicit path to grpck's home directory to ensure correct location
+        # even when running as root (not relying on ~ expansion)
+        work_dir = "/home/grpck/sar_bt_scan/sar_bt_scan"
         
         # Check if directory exists
         if not os.path.exists(work_dir):
             return JSONResponse({"error": f"Directory not found: {work_dir}"}, status_code=404)
         
-        # Run git pull and capture output
+        # Run git pull as grpck user (not as root) to avoid permission issues
+        # grpck is the owner of the directory
         result = subprocess.run(
-            ['git', 'pull'],
+            ['sudo', '-u', 'grpck', 'git', 'pull'],
             cwd=work_dir,
             capture_output=True,
             text=True,
