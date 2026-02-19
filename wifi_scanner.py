@@ -232,6 +232,7 @@ class _WiFiScanner:
                     alt=alt,
                     rssi=signal_strength,
                     scanner=self.scanner_name,
+                    packet_type=frame_type_label,
                 )
             
             # Console output

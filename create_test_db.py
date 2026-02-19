@@ -60,11 +60,15 @@ con.execute("""
 CREATE TABLE IF NOT EXISTS wifi_associations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     mac TEXT,
-    ssid TEXT,
     ts_unix INTEGER NOT NULL,
+    ts_gps TEXT,
     lat REAL,
     lon REAL,
-    rssi INTEGER
+    alt REAL,
+    ssid TEXT,
+    packet_type TEXT DEFAULT 'ProbeRequest',
+    rssi INTEGER,
+    scanner_name TEXT
 )
 """)
 

@@ -86,6 +86,7 @@ def init_db():
         lon REAL,
         alt REAL,
         ssid TEXT NOT NULL,                 -- plaintext SSID from assoc request
+        packet_type TEXT DEFAULT 'ProbeRequest',  -- 'Beacon' (AP) or 'ProbeRequest' (client)
         rssi INTEGER,                       -- signal strength
         scanner_name TEXT,
         FOREIGN KEY(mac) REFERENCES wifi_devices(mac)
@@ -95,6 +96,7 @@ def init_db():
     con.execute("CREATE INDEX IF NOT EXISTS idx_wifi_assoc_ts ON wifi_associations(ts_unix);")
     con.execute("CREATE INDEX IF NOT EXISTS idx_wifi_assoc_mac_ts ON wifi_associations(mac, ts_unix);")
     con.execute("CREATE INDEX IF NOT EXISTS idx_wifi_assoc_ssid ON wifi_associations(ssid);")
+    con.execute("CREATE INDEX IF NOT EXISTS idx_wifi_assoc_packet_type ON wifi_associations(packet_type);")
 
     # Migration: add new columns to existing tables if they don't exist
     _migrate_add_columns(con)
@@ -134,6 +136,18 @@ def _migrate_add_columns(con):
         try:
             con.execute("ALTER TABLE wifi_devices ADD COLUMN notes TEXT DEFAULT ''")
             print("Migration: Added 'notes' column to wifi_devices table")
+        except sqlite3.OperationalError:
+            pass
+    
+    # Get existing columns for wifi_associations table
+    cursor = con.execute("PRAGMA table_info(wifi_associations)")
+    wifi_assoc_columns = {row[1] for row in cursor.fetchall()}
+    
+    # Add 'packet_type' column to wifi_associations if missing
+    if 'packet_type' not in wifi_assoc_columns:
+        try:
+            con.execute("ALTER TABLE wifi_associations ADD COLUMN packet_type TEXT DEFAULT 'ProbeRequest'")
+            print("Migration: Added 'packet_type' column to wifi_associations table")
         except sqlite3.OperationalError:
             pass
     
@@ -323,15 +337,19 @@ def upsert_wifi_device(con, mac, vendor=None, now=None):
     con.execute("COMMIT;")
 
 def add_wifi_association(con, mac, ssid, ts_unix=None, ts_gps=None, lat=None, lon=None, 
-                         alt=None, rssi=None, scanner=None):
-    """Record a WiFi association request (device trying to connect to SSID)."""
+                         alt=None, rssi=None, scanner=None, packet_type="ProbeRequest"):
+    """Record a WiFi association request (device trying to connect to SSID) or beacon frame (AP advertisement).
+    
+    Args:
+        packet_type: 'ProbeRequest' (default) for client probing, 'Beacon' for AP advertisement
+    """
     mac = normalize_mac(mac)  # Normalize MAC to uppercase
     con.execute("BEGIN;")
     con.execute("""
         INSERT INTO wifi_associations(
-            mac, ts_unix, ts_gps, lat, lon, alt, ssid, rssi, scanner_name
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
-    """, (mac, ts_unix, ts_gps, lat, lon, alt, ssid, rssi, scanner))
+            mac, ts_unix, ts_gps, lat, lon, alt, ssid, packet_type, rssi, scanner_name
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+    """, (mac, ts_unix, ts_gps, lat, lon, alt, ssid, packet_type, rssi, scanner))
     con.execute("COMMIT;")
 
 
