@@ -151,7 +151,12 @@ class _WiFiScanner:
             print(f"WiFi scanner error: {e}")
 
     def _packet_callback(self, pkt) -> None:
-        """Process captured packet."""
+        """Process captured packet.
+        
+        Captures:
+        - Probe Requests (subtype 4): Devices searching for networks
+        - Beacon Frames (subtype 8): AP advertisements (e.g., phone hotspots)
+        """
         if self._stop.is_set():
             return
         
@@ -160,12 +165,22 @@ class _WiFiScanner:
             if not pkt.haslayer(Dot11):
                 return
             
-            # Get packet info
-            mac = pkt.addr2  # Source MAC (client)
-            if not mac or mac == "ff:ff:ff:ff:ff:ff":
+            # Filter by frame subtype: 4=ProbeRequest, 8=Beacon
+            frame_subtype = pkt.subtype
+            if frame_subtype == 4:  # Probe Request - client device
+                mac = pkt.addr2  # Source: client device MAC
+                frame_type_label = "ProbeRequest"
+            elif frame_subtype == 8:  # Beacon - AP advertisement
+                mac = pkt.addr3  # BSSID: AP MAC address
+                frame_type_label = "Beacon"
+            else:
+                return  # Ignore other frame subtypes
+            
+            # Skip broadcast/null MACs
+            if not mac or mac == "ff:ff:ff:ff:ff:ff" or mac == "00:00:00:00:00:00":
                 return
             
-            # Parse SSID and other info from probe/assoc requests
+            # Parse SSID and other info from probe/beacon frames
             ssid = None
             signal_strength = None
             
@@ -182,7 +197,7 @@ class _WiFiScanner:
                     elif elt.ID == 3:  # Channel
                         pass
             
-            # Skip if no SSID found and not a broadcast
+            # Skip if no SSID found
             if not ssid:
                 return
             
@@ -222,7 +237,7 @@ class _WiFiScanner:
             # Console output
             with self._lock:
                 self._packet_count += 1
-                print(f"[WiFi] {mac} -> {ssid} (RSSI: {signal_strength})")
+                print(f"[WiFi] {frame_type_label} {mac} -> {ssid} (RSSI: {signal_strength})")
         
         except Exception as e:
             # Silently continue on malformed packets
