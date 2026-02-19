@@ -13,6 +13,7 @@ KNOWN_WIFIS = []  # List of known SSIDs to identify (empty = capture all)
 
 # Database configuration
 CLEAN_DB_ON_STARTUP = False  # Set to True to delete database file on each supervisor start
+USB_BACKUP_ENABLED = False  # Set to True to enable automatic database backups to USB storage
 
 # Web UI configuration
 WEB_UI_ENABLED = True  # Set to False to disable web interface

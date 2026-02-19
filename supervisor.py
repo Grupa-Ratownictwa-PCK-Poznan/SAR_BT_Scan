@@ -27,9 +27,10 @@ from pathlib import Path
 # Import settings for configuration
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 try:
-    from settings import CLEAN_DB_ON_STARTUP
+    from settings import CLEAN_DB_ON_STARTUP, USB_BACKUP_ENABLED
 except ImportError:
     CLEAN_DB_ON_STARTUP = False  # Default fallback
+    USB_BACKUP_ENABLED = False  # Default fallback
 
 # --- Config through environment variables (see /etc/default/btscanner-supervisor) ---
 MAIN_CMD = os.getenv("BTS_MAIN_CMD", "/opt/btscanner/main_scanner.py")
@@ -107,7 +108,9 @@ def do_minute_backup():
     """
     while not stop_event.is_set():
         try:
-            if DB_PATH.exists():
+            if not USB_BACKUP_ENABLED:
+                logger.debug("USB_BACKUP_ENABLED is False, skipping backup")
+            elif DB_PATH.exists():
                 DEST_DIR.mkdir(parents=True, exist_ok=True)
 
                 # temp name and then move
