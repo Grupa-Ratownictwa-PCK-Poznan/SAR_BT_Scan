@@ -862,6 +862,14 @@ async def get_system_status():
                 # Power draw not available on this system
                 pass
         
+        # Get database size
+        database_size = 0
+        try:
+            if os.path.exists(DB_PATH):
+                database_size = os.path.getsize(DB_PATH)
+        except Exception as e:
+            print(f"Failed to get database size: {e}")
+        
         return {
             "timestamp": time.time(),
             "timestamp_str": datetime.now(timezone.utc).isoformat(),
@@ -889,11 +897,86 @@ async def get_system_status():
                 "percent": cpu_percent
             },
             "temperature": temperature,
-            "power_draw": power_draw
+            "power_draw": power_draw,
+            "database_size": database_size
         }
     except Exception as e:
         print(f"Error getting system status: {e}")
         return JSONResponse({"error": f"Failed to get system status: {str(e)}"}, status_code=500)
+
+
+
+@app.post("/api/system/shutdown")
+async def system_shutdown():
+    """Shutdown the Raspberry Pi."""
+    try:
+        # Run shutdown command
+        subprocess.Popen(['sudo', 'shutdown', '-h', 'now'], 
+                        stdout=subprocess.PIPE, 
+                        stderr=subprocess.PIPE)
+        return {
+            "success": True,
+            "message": "System shutdown initiated"
+        }
+    except Exception as e:
+        return JSONResponse({"error": f"Failed to shutdown: {str(e)}"}, status_code=500)
+
+
+@app.post("/api/system/reboot")
+async def system_reboot():
+    """Reboot the Raspberry Pi."""
+    try:
+        # Run reboot command
+        subprocess.Popen(['sudo', 'shutdown', '-r', '+0'], 
+                        stdout=subprocess.PIPE, 
+                        stderr=subprocess.PIPE)
+        return {
+            "success": True,
+            "message": "System reboot initiated"
+        }
+    except Exception as e:
+        return JSONResponse({"error": f"Failed to reboot: {str(e)}"}, status_code=500)
+
+
+@app.post("/api/system/update")
+async def system_update():
+    """Update the SAR BT Scan system via git pull."""
+    try:
+        work_dir = os.path.expanduser("~/sar_bt_scan/sar_bt_scan")
+        
+        # Check if directory exists
+        if not os.path.exists(work_dir):
+            return JSONResponse({"error": f"Directory not found: {work_dir}"}, status_code=404)
+        
+        # Run git pull and capture output
+        result = subprocess.run(
+            ['git', 'pull'],
+            cwd=work_dir,
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+        
+        # Check if command was successful
+        if result.returncode == 0:
+            return {
+                "success": True,
+                "message": "Update completed successfully",
+                "output": result.stdout,
+                "status_code": result.returncode
+            }
+        else:
+            return {
+                "success": False,
+                "message": "Update completed with errors",
+                "output": result.stdout,
+                "error": result.stderr,
+                "status_code": result.returncode
+            }
+    except subprocess.TimeoutExpired:
+        return JSONResponse({"error": "Update operation timed out"}, status_code=504)
+    except Exception as e:
+        return JSONResponse({"error": f"Failed to update: {str(e)}"}, status_code=500)
 
 
 # ============= Confidence Analysis Endpoints =============

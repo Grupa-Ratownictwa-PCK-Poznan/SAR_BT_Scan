@@ -1044,6 +1044,19 @@
                     <button id="clearUsbBtn" style="flex: 1; padding: 10px; background: #f39c12; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 5px;">
                         <i class="fas fa-hdd"></i> Clear USB
                     </button>
+                    
+                    <!-- System Control Buttons -->
+                    <div style="border-top: 2px solid #ddd; margin-top: 12px; padding-top: 8px;">
+                        <button id="updateBtn" style="width: 100%; padding: 10px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 5px; margin-bottom: 8px;">
+                            <i class="fas fa-sync-alt"></i> Update
+                        </button>
+                        <button id="rebootBtn" style="width: 100%; padding: 10px; background: #f39c12; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 5px; margin-bottom: 8px;">
+                            <i class="fas fa-redo"></i> Reboot
+                        </button>
+                        <button id="shutdownBtn" style="width: 100%; padding: 10px; background: #c0392b; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 5px;">
+                            <i class="fas fa-power-off"></i> Shutdown
+                        </button>
+                    </div>
                 </div>
                 
                 <!-- System Status Section -->
@@ -1059,6 +1072,10 @@
                         <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
                             <span><i class="fas fa-usb" style="color: #e74c3c;"></i> USB:</span>
                             <span id="diskUsb">-</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span><i class="fas fa-database" style="color: #9b59b6;"></i> Database:</span>
+                            <span id="dbSize">-</span>
                         </div>
                         <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
                             <span><i class="fas fa-memory" style="color: #2ecc71;"></i> Memory:</span>
@@ -2282,6 +2299,84 @@
             }
         });
 
+        // System control buttons
+        document.getElementById("updateBtn").addEventListener("click", async () => {
+            const confirmed = confirm("⚠️ Update will fetch latest changes from git repository.\n\nContinue?");
+            if (!confirmed) return;
+            
+            const btn = document.getElementById("updateBtn");
+            const originalContent = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/system/update`, {
+                    method: "POST"
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert("✅ Update completed successfully!\n\nOutput:\n" + (data.output || "No output"));
+                } else {
+                    alert("⚠️ Update completed with status:\n\n" + (data.error || data.output || "Unknown status"));
+                }
+            } catch (err) {
+                console.error("Error updating system:", err);
+                alert("❌ Error updating system: " + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalContent;
+            }
+        });
+
+        document.getElementById("rebootBtn").addEventListener("click", async () => {
+            const confirmed = confirm("⚠️ WARNING: System will reboot immediately!\n\nThis will disconnect all active sessions.\n\nContinue?");
+            if (!confirmed) return;
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/system/reboot`, {
+                    method: "POST"
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert("🔄 Reboot initiated! System will restart in a few seconds.");
+                    // Disable the UI to prevent further interactions
+                    document.body.style.opacity = "0.5";
+                    document.body.style.pointerEvents = "none";
+                } else {
+                    alert("❌ Error initiating reboot: " + (data.error || "Unknown error"));
+                }
+            } catch (err) {
+                console.error("Error rebooting system:", err);
+                alert("❌ Error rebooting system: " + err.message);
+            }
+        });
+
+        document.getElementById("shutdownBtn").addEventListener("click", async () => {
+            const confirmed = confirm("⚠️ WARNING: System will shutdown immediately!\n\nYou will need to manually power it back on.\n\nContinue?");
+            if (!confirmed) return;
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/system/shutdown`, {
+                    method: "POST"
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert("⏹️ Shutdown initiated! System will power off in a few seconds.");
+                    // Disable the UI to prevent further interactions
+                    document.body.style.opacity = "0.5";
+                    document.body.style.pointerEvents = "none";
+                } else {
+                    alert("❌ Error initiating shutdown: " + (data.error || "Unknown error"));
+                }
+            } catch (err) {
+                console.error("Error shutting down system:", err);
+                alert("❌ Error shutting down system: " + err.message);
+            }
+        });
+
         // System Status Update Function
         async function updateSystemStatus() {
             try {
@@ -2320,6 +2415,12 @@
                     document.getElementById("diskUsb").textContent = `${usbPercent}% (${usbFree} free)`;
                 } else {
                     document.getElementById("diskUsb").textContent = "Not mounted";
+                }
+                
+                // Update database size
+                if (data.database_size !== undefined) {
+                    const dbSizeFormatted = formatBytes(data.database_size);
+                    document.getElementById("dbSize").textContent = dbSizeFormatted;
                 }
                 
                 // Update memory
