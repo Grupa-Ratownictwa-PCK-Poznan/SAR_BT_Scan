@@ -136,6 +136,140 @@ def _migrate_add_columns(con):
             print("Migration: Added 'notes' column to wifi_devices table")
         except sqlite3.OperationalError:
             pass
+    
+    # Merge case-insensitive MAC address duplicates
+    _migrate_merge_mac_duplicates(con)
+
+
+def _migrate_merge_mac_duplicates(con):
+    """Merge duplicate MAC addresses caused by case sensitivity.
+    
+    This migration finds records that differ only by case (e.g., 'AA:BB:CC' vs 'aa:bb:cc')
+    and merges them into a single uppercase record, keeping:
+    - Earliest first_seen timestamp
+    - Latest last_seen timestamp
+    - Best available data (non-null values)
+    """
+    # Merge BT devices
+    try:
+        # Find duplicates - addresses that when uppercased, have more than one row
+        cursor = con.execute("""
+            SELECT UPPER(addr) as upper_addr, COUNT(*) as cnt 
+            FROM devices 
+            GROUP BY UPPER(addr) 
+            HAVING COUNT(*) > 1
+        """)
+        bt_duplicates = cursor.fetchall()
+        
+        for upper_addr, cnt in bt_duplicates:
+            # Get all rows for this MAC (case-insensitive)
+            cursor = con.execute("""
+                SELECT addr, first_seen, last_seen, name, manufacturer_hex, manufacturer, confidence, notes
+                FROM devices 
+                WHERE UPPER(addr) = ?
+                ORDER BY last_seen DESC
+            """, (upper_addr,))
+            rows = cursor.fetchall()
+            
+            if len(rows) < 2:
+                continue
+            
+            # Calculate merged values
+            first_seen = min(r[1] for r in rows)
+            last_seen = max(r[2] for r in rows)
+            # Prefer non-empty name, manufacturer from most recent
+            name = next((r[3] for r in rows if r[3]), None)
+            manufacturer_hex = next((r[4] for r in rows if r[4]), None)
+            manufacturer = next((r[5] for r in rows if r[5]), None)
+            confidence = max((r[6] or 0) for r in rows)
+            notes = next((r[7] for r in rows if r[7]), '')
+            
+            # Delete all versions
+            con.execute("DELETE FROM devices WHERE UPPER(addr) = ?", (upper_addr,))
+            
+            # Update sightings to use uppercase MAC
+            con.execute("UPDATE sightings SET addr = ? WHERE UPPER(addr) = ?", (upper_addr, upper_addr))
+            
+            # Insert merged record with uppercase MAC
+            con.execute("""
+                INSERT INTO devices(addr, first_seen, last_seen, name, manufacturer_hex, manufacturer, confidence, notes)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (upper_addr, first_seen, last_seen, name, manufacturer_hex, manufacturer, confidence, notes))
+            
+            print(f"Migration: Merged {cnt} BT device records for {upper_addr}")
+    
+    except Exception as e:
+        print(f"Migration warning (BT duplicates): {e}")
+    
+    # Merge WiFi devices
+    try:
+        cursor = con.execute("""
+            SELECT UPPER(mac) as upper_mac, COUNT(*) as cnt 
+            FROM wifi_devices 
+            GROUP BY UPPER(mac) 
+            HAVING COUNT(*) > 1
+        """)
+        wifi_duplicates = cursor.fetchall()
+        
+        for upper_mac, cnt in wifi_duplicates:
+            cursor = con.execute("""
+                SELECT mac, first_seen, last_seen, vendor, device_type, confidence, notes
+                FROM wifi_devices 
+                WHERE UPPER(mac) = ?
+                ORDER BY last_seen DESC
+            """, (upper_mac,))
+            rows = cursor.fetchall()
+            
+            if len(rows) < 2:
+                continue
+            
+            first_seen = min(r[1] for r in rows)
+            last_seen = max(r[2] for r in rows)
+            vendor = next((r[3] for r in rows if r[3]), None)
+            device_type = next((r[4] for r in rows if r[4]), '')
+            confidence = max((r[5] or 0) for r in rows)
+            notes = next((r[6] for r in rows if r[6]), '')
+            
+            # Delete all versions
+            con.execute("DELETE FROM wifi_devices WHERE UPPER(mac) = ?", (upper_mac,))
+            
+            # Update associations to use uppercase MAC
+            con.execute("UPDATE wifi_associations SET mac = ? WHERE UPPER(mac) = ?", (upper_mac, upper_mac))
+            
+            # Insert merged record
+            con.execute("""
+                INSERT INTO wifi_devices(mac, first_seen, last_seen, vendor, device_type, confidence, notes)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (upper_mac, first_seen, last_seen, vendor, device_type, confidence, notes))
+            
+            print(f"Migration: Merged {cnt} WiFi device records for {upper_mac}")
+    
+    except Exception as e:
+        print(f"Migration warning (WiFi duplicates): {e}")
+    
+    # Also normalize any remaining lowercase MACs to uppercase (even if not duplicates)
+    try:
+        # Normalize BT device addresses
+        con.execute("UPDATE devices SET addr = UPPER(addr) WHERE addr != UPPER(addr)")
+        con.execute("UPDATE sightings SET addr = UPPER(addr) WHERE addr != UPPER(addr)")
+        
+        # Normalize WiFi device MACs
+        con.execute("UPDATE wifi_devices SET mac = UPPER(mac) WHERE mac != UPPER(mac)")
+        con.execute("UPDATE wifi_associations SET mac = UPPER(mac) WHERE mac != UPPER(mac)")
+    except Exception as e:
+        print(f"Migration warning (MAC normalization): {e}")
+
+
+def normalize_mac(mac: str) -> str:
+    """Normalize MAC address to uppercase for consistent storage.
+    
+    This ensures that MAC addresses like 'aa:bb:cc:dd:ee:ff' and 
+    'AA:BB:CC:DD:EE:FF' are treated as the same device.
+    """
+    if mac:
+        return mac.upper().strip()
+    return mac
+
 
 @contextmanager
 def db():
@@ -147,6 +281,7 @@ def db():
 
 def upsert_device(con, addr, name=None, manufacturer=None, man_hex=None, now=None):
     now = now or int(time.time())
+    addr = normalize_mac(addr)  # Normalize MAC to uppercase
     con.execute("BEGIN;")
     con.execute("""
         INSERT INTO devices(addr, first_seen, last_seen, name, manufacturer, manufacturer_hex)
@@ -162,6 +297,7 @@ def add_sighting(con, addr, ts_unix=None,ts_gps=None, lat=None, lon=None, alt=No
                  gps_hdop=None, rssi=None, tx_power=None, local_name=None,
                  manufacturer=None, manufacturer_hex=None, service_uuid=None,
                  adv_raw=None, scanner=None):
+    addr = normalize_mac(addr)  # Normalize MAC to uppercase
     con.execute("BEGIN;")
     con.execute("""
         INSERT INTO sightings(
@@ -175,6 +311,7 @@ def add_sighting(con, addr, ts_unix=None,ts_gps=None, lat=None, lon=None, alt=No
 def upsert_wifi_device(con, mac, vendor=None, now=None):
     """Register or update a WiFi device."""
     now = now or int(time.time())
+    mac = normalize_mac(mac)  # Normalize MAC to uppercase
     con.execute("BEGIN;")
     con.execute("""
         INSERT INTO wifi_devices(mac, first_seen, last_seen, vendor)
@@ -188,6 +325,7 @@ def upsert_wifi_device(con, mac, vendor=None, now=None):
 def add_wifi_association(con, mac, ssid, ts_unix=None, ts_gps=None, lat=None, lon=None, 
                          alt=None, rssi=None, scanner=None):
     """Record a WiFi association request (device trying to connect to SSID)."""
+    mac = normalize_mac(mac)  # Normalize MAC to uppercase
     con.execute("BEGIN;")
     con.execute("""
         INSERT INTO wifi_associations(
@@ -221,6 +359,7 @@ def update_wifi_device_enrichment(con, mac, vendor=None, device_type=None, notes
     if not updates:
         return
     
+    mac = normalize_mac(mac)  # Normalize MAC for consistent lookup
     params.append(mac)
     query = f"UPDATE wifi_devices SET {', '.join(updates)} WHERE mac = ?"
     
@@ -234,6 +373,7 @@ def update_bt_device_notes(con, addr, notes):
     
     This allows analysts to add notes to BT devices.
     """
+    addr = normalize_mac(addr)  # Normalize MAC for consistent lookup
     con.execute("BEGIN;")
     con.execute("UPDATE devices SET notes = ? WHERE addr = ?", (notes, addr))
     con.execute("COMMIT;")
@@ -241,6 +381,7 @@ def update_bt_device_notes(con, addr, notes):
 
 def get_wifi_device(con, mac):
     """Get a single WiFi device by MAC address."""
+    mac = normalize_mac(mac)  # Normalize MAC for consistent lookup
     cursor = con.execute(
         "SELECT mac, first_seen, last_seen, vendor, device_type, confidence, notes FROM wifi_devices WHERE mac = ?",
         (mac,)
@@ -261,6 +402,7 @@ def get_wifi_device(con, mac):
 
 def get_bt_device(con, addr):
     """Get a single Bluetooth device by address."""
+    addr = normalize_mac(addr)  # Normalize MAC for consistent lookup
     cursor = con.execute(
         "SELECT addr, first_seen, last_seen, name, manufacturer_hex, manufacturer, confidence, notes FROM devices WHERE addr = ?",
         (addr,)
