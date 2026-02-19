@@ -17,7 +17,8 @@ CREATE TABLE IF NOT EXISTS devices (
     name TEXT,
     manufacturer_hex TEXT,
     manufacturer TEXT,
-    confidence INTEGER DEFAULT 0
+    confidence INTEGER DEFAULT 0,
+    notes TEXT DEFAULT ''
 )
 """)
 
@@ -49,7 +50,9 @@ CREATE TABLE IF NOT EXISTS wifi_devices (
     first_seen INTEGER NOT NULL,
     last_seen INTEGER NOT NULL,
     vendor TEXT,
-    confidence INTEGER DEFAULT 0
+    device_type TEXT DEFAULT '',
+    confidence INTEGER DEFAULT 0,
+    notes TEXT DEFAULT ''
 )
 """)
 
@@ -95,8 +98,8 @@ for addr, ts, lat, lon, rssi in sightings:
 
 # Insert sample WiFi data
 con.execute(
-    'INSERT OR IGNORE INTO wifi_devices (mac, first_seen, last_seen, vendor) VALUES (?, ?, ?, ?)',
-    ('11:22:33:44:55:01', now - 1000, now, 'Test AP')
+    'INSERT OR IGNORE INTO wifi_devices (mac, first_seen, last_seen, vendor, device_type) VALUES (?, ?, ?, ?, ?)',
+    ('11:22:33:44:55:01', now - 1000, now, 'Apple, Inc.', 'phone')
 )
 
 con.commit()

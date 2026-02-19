@@ -112,11 +112,11 @@ def query_devices(device_type: str, limit: int = 1000, offset: int = 0,
     try:
         with db() as con:
             if device_type == "bt":
-                query = "SELECT * FROM devices ORDER BY last_seen DESC"
+                query = "SELECT addr, first_seen, last_seen, name, manufacturer_hex, manufacturer, confidence, notes FROM devices ORDER BY last_seen DESC"
                 cursor = con.execute(query)
                 
                 for row in cursor.fetchall():
-                    addr, first_seen, last_seen, name, manufacturer_hex, manufacturer, confidence = row
+                    addr, first_seen, last_seen, name, manufacturer_hex, manufacturer, confidence, notes = row
                     
                     # Filter by MAC if specified
                     if "mac_filter" in filters and filters["mac_filter"].lower() not in addr.lower():
@@ -137,15 +137,16 @@ def query_devices(device_type: str, limit: int = 1000, offset: int = 0,
                         "first_seen": first_seen,
                         "last_seen": last_seen,
                         "last_seen_str": datetime.fromtimestamp(last_seen).isoformat(),
-                        "confidence": confidence
+                        "confidence": confidence,
+                        "notes": notes or ""
                     })
             
             elif device_type == "wifi":
-                query = "SELECT * FROM wifi_devices ORDER BY last_seen DESC"
+                query = "SELECT mac, first_seen, last_seen, vendor, device_type, confidence, notes FROM wifi_devices ORDER BY last_seen DESC"
                 cursor = con.execute(query)
                 
                 for row in cursor.fetchall():
-                    mac, first_seen, last_seen, vendor, confidence = row
+                    mac, first_seen, last_seen, vendor, device_type_val, confidence, notes = row
                     
                     # Filter by MAC if specified
                     if "mac_filter" in filters and filters["mac_filter"].lower() not in mac.lower():
@@ -160,11 +161,13 @@ def query_devices(device_type: str, limit: int = 1000, offset: int = 0,
                     results.append({
                         "type": "device",
                         "mac": mac,
-                        "vendor": vendor,
+                        "vendor": vendor or "",
+                        "device_type": device_type_val or "",
                         "first_seen": first_seen,
                         "last_seen": last_seen,
                         "last_seen_str": datetime.fromtimestamp(last_seen).isoformat(),
-                        "confidence": confidence
+                        "confidence": confidence,
+                        "notes": notes or ""
                     })
     
     except Exception as e:
@@ -1042,6 +1045,56 @@ async def run_confidence_analysis():
     except Exception as e:
         print(f"Error in confidence analysis: {e}")
         return JSONResponse({"error": f"Analysis failed: {str(e)}"}, status_code=500)
+
+
+@app.post("/api/oui/update")
+async def update_oui_database():
+    """Update the WiFi OUI vendor database from IEEE registry."""
+    try:
+        import subprocess
+        import os
+        
+        # Get path to freeze_wifi_oui.py script
+        script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        script_path = os.path.join(script_dir, "freeze_wifi_oui.py")
+        
+        if not os.path.exists(script_path):
+            return JSONResponse({"error": "OUI update script not found"}, status_code=404)
+        
+        # Run the script
+        result = subprocess.run(
+            ["python3", script_path],
+            capture_output=True,
+            text=True,
+            timeout=120,  # 2 minute timeout
+            cwd=script_dir
+        )
+        
+        if result.returncode != 0:
+            error_msg = result.stderr or result.stdout or "Unknown error"
+            return JSONResponse({"error": f"Script failed: {error_msg}"}, status_code=500)
+        
+        # Parse output to get entry count
+        entries = None
+        for line in result.stdout.split('\n'):
+            if 'OUI entries' in line:
+                import re
+                match = re.search(r'(\d+)\s*OUI entries', line)
+                if match:
+                    entries = int(match.group(1))
+                    break
+        
+        return {
+            "success": True,
+            "message": "OUI database updated successfully",
+            "entries": entries,
+            "output": result.stdout
+        }
+    except subprocess.TimeoutExpired:
+        return JSONResponse({"error": "OUI update timed out"}, status_code=504)
+    except Exception as e:
+        print(f"Error updating OUI database: {e}")
+        return JSONResponse({"error": f"Update failed: {str(e)}"}, status_code=500)
 
 
 def update_scanner_state(scan_mode: str, wifi_monitor_mode: bool):

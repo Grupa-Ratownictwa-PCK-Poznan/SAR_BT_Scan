@@ -43,6 +43,17 @@ from settings import (
     DEVICE_WHITELIST_FILE, SESSION_GAP_SECONDS
 )
 
+# Import WiFi OUI lookup for vendor/device type enrichment
+try:
+    from wifi_oui_lookup import lookup_vendor, guess_device_type, lookup_and_guess
+    OUI_LOOKUP_AVAILABLE = True
+except ImportError:
+    OUI_LOOKUP_AVAILABLE = False
+    print("Warning: wifi_oui_lookup not available. Run freeze_wifi_oui.py to generate.")
+    def lookup_vendor(mac): return ""
+    def guess_device_type(mac, vendor=None): return ""
+    def lookup_and_guess(mac): return ("", "")
+
 # Database path resolution (same logic as storage.py)
 DB_PATH = SD_STORAGE + DB_FILE
 if not os.path.exists(DB_PATH):
@@ -84,6 +95,9 @@ class DeviceAnalysis:
     # GPS clustering fields
     hq_ratio: Optional[float] = None  # Ratio of sightings near HQ
     avg_distance_from_hq: Optional[float] = None  # Meters
+    # OUI-based enrichment (WiFi only)
+    vendor_name: Optional[str] = None  # From OUI lookup
+    guessed_type: Optional[str] = None  # Heuristic device type guess
     # Multi-session fields
     session_count: int = 1  # Number of distinct sessions
     whitelisted: bool = False  # Is this a known SAR device
@@ -468,6 +482,9 @@ class ConfidenceAnalyzer:
             early_rssi = sum(early_rssi_vals) / len(early_rssi_vals) if early_rssi_vals else None
             late_rssi = sum(late_rssi_vals) / len(late_rssi_vals) if late_rssi_vals else None
             
+            # OUI-based vendor and device type enrichment
+            vendor_name, guessed_type = lookup_and_guess(mac)
+            
             # Calculate new confidence
             if is_whitelisted:
                 # Whitelisted devices automatically get confidence 0
@@ -506,7 +523,9 @@ class ConfidenceAnalyzer:
                 hq_ratio=hq_ratio,
                 avg_distance_from_hq=avg_distance,
                 session_count=session_count,
-                whitelisted=is_whitelisted
+                whitelisted=is_whitelisted,
+                vendor_name=vendor_name,
+                guessed_type=guessed_type
             )
         finally:
             con.close()
@@ -659,13 +678,14 @@ class ConfidenceAnalyzer:
         return self.session_stats, self.analyses
     
     def apply_updates(self) -> Dict[str, int]:
-        """Apply confidence updates to the database."""
+        """Apply confidence updates and enrichment data to the database."""
         if not self.analyses:
-            return {"bt_updated": 0, "wifi_updated": 0}
+            return {"bt_updated": 0, "wifi_updated": 0, "wifi_enriched": 0}
         
         con = self.connect()
         bt_count = 0
         wifi_count = 0
+        wifi_enriched = 0
         
         try:
             for analysis in self.analyses:
@@ -676,17 +696,23 @@ class ConfidenceAnalyzer:
                     )
                     bt_count += 1
                 else:
+                    # Update confidence, vendor, and device_type for WiFi devices
                     con.execute(
-                        "UPDATE wifi_devices SET confidence = ? WHERE mac = ?",
-                        (analysis.new_confidence, analysis.mac)
+                        "UPDATE wifi_devices SET confidence = ?, vendor = ?, device_type = ? WHERE mac = ?",
+                        (analysis.new_confidence, 
+                         analysis.vendor_name or "", 
+                         analysis.guessed_type or "", 
+                         analysis.mac)
                     )
                     wifi_count += 1
+                    if analysis.vendor_name or analysis.guessed_type:
+                        wifi_enriched += 1
             
             con.commit()
         finally:
             con.close()
         
-        return {"bt_updated": bt_count, "wifi_updated": wifi_count}
+        return {"bt_updated": bt_count, "wifi_updated": wifi_count, "wifi_enriched": wifi_enriched}
     
     def get_summary(self) -> Dict:
         """Get analysis summary for reporting."""
@@ -781,6 +807,12 @@ def run_analysis(dry_run: bool = False, verbose: bool = False) -> Dict:
             print(f"  Sightings: {analysis.sighting_count}, Avg RSSI: {avg_rssi_str}")
             print(f"  Presence ratio: {analysis.presence_ratio:.1%}")
             print(f"  Boundaries: early={analysis.early_presence}, late={analysis.late_presence}")
+            # Show enrichment for WiFi devices
+            if analysis.device_type == "wifi":
+                if analysis.vendor_name:
+                    print(f"  Vendor (OUI): {analysis.vendor_name}")
+                if analysis.guessed_type:
+                    print(f"  Device Type (guess): {analysis.guessed_type}")
             if analysis.factors:
                 print("  Factors:")
                 for f in analysis.factors:
@@ -808,11 +840,12 @@ def run_analysis(dry_run: bool = False, verbose: bool = False) -> Dict:
         result = analyzer.apply_updates()
         print(f"  Updated {result['bt_updated']} BT devices")
         print(f"  Updated {result['wifi_updated']} WiFi devices")
+        print(f"  Enriched {result.get('wifi_enriched', 0)} WiFi devices with vendor/type info")
         print("Done!")
         summary["updates"] = result
     else:
         print(f"\n[DRY RUN] No changes applied to database.")
-        summary["updates"] = {"bt_updated": 0, "wifi_updated": 0, "dry_run": True}
+        summary["updates"] = {"bt_updated": 0, "wifi_updated": 0, "wifi_enriched": 0, "dry_run": True}
     
     return summary
 

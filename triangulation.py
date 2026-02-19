@@ -269,7 +269,7 @@ class DeviceTriangulator:
         with db() as con:
             # Check if this is a BT device
             cursor = con.execute(
-                "SELECT addr, first_seen, last_seen, name, manufacturer, confidence "
+                "SELECT addr, first_seen, last_seen, name, manufacturer, confidence, notes "
                 "FROM devices WHERE addr = ? COLLATE NOCASE",
                 (self.mac,)
             )
@@ -277,7 +277,7 @@ class DeviceTriangulator:
             
             # Check if this is a WiFi device
             cursor = con.execute(
-                "SELECT mac, first_seen, last_seen, vendor, confidence "
+                "SELECT mac, first_seen, last_seen, vendor, device_type, confidence, notes "
                 "FROM wifi_devices WHERE mac = ? COLLATE NOCASE",
                 (self.mac,)
             )
@@ -289,16 +289,21 @@ class DeviceTriangulator:
                 device_info['name'] = bt_device[3]
                 device_info['manufacturer'] = bt_device[4]
                 device_info['vendor'] = wifi_device[3]
-                device_info['confidence'] = max(bt_device[5] or 0, wifi_device[4] or 0)
+                device_info['wifi_device_type'] = wifi_device[4]
+                device_info['confidence'] = max(bt_device[5] or 0, wifi_device[5] or 0)
+                device_info['notes'] = bt_device[6] or wifi_device[6] or ''
             elif bt_device:
                 device_type = 'bt'
                 device_info['name'] = bt_device[3]
                 device_info['manufacturer'] = bt_device[4]
                 device_info['confidence'] = bt_device[5]
+                device_info['notes'] = bt_device[6] or ''
             elif wifi_device:
                 device_type = 'wifi'
                 device_info['vendor'] = wifi_device[3]
-                device_info['confidence'] = wifi_device[4]
+                device_info['wifi_device_type'] = wifi_device[4]
+                device_info['confidence'] = wifi_device[5]
+                device_info['notes'] = wifi_device[6] or ''
             else:
                 return None, []
             

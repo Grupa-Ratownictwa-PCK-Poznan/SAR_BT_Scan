@@ -62,7 +62,7 @@
         }
 
         .sidebar {
-            width: 380px;
+            width: 550px;
             display: flex;
             flex-direction: column;
             gap: 8px;
@@ -203,7 +203,7 @@
         .table-container {
             overflow-y: auto;
             flex: 1;
-            max-height: 300px;
+            max-height: 600px;
             border: 1px solid #ddd;
             border-radius: 2px;
         }
@@ -940,6 +940,16 @@
                 </div>
 
                 <div class="filter-group">
+                    <label>WiFi Vendor Database</label>
+                    <button id="updateOuiBtn" style="width: 100%; font-size: 11px; padding: 8px; background: #9b59b6; color: white; border: none; border-radius: 3px; cursor: pointer; font-weight: bold;">
+                        <i class="fas fa-download"></i> Update OUI Database
+                    </button>
+                    <div style="font-size: 10px; color: #666; margin-top: 4px;">
+                        Fetch latest MAC vendor mappings from IEEE (requires internet)
+                    </div>
+                </div>
+
+                <div class="filter-group">
                     <label>Time Range</label>
                     <div style="display: flex; gap: 5px; margin-bottom: 8px;">
                         <button id="timePreset1h" class="time-preset-btn" data-hours="1">1h</button>
@@ -964,10 +974,11 @@
                                 <th>Name</th>
                                 <th>Confidence</th>
                                 <th>Last Seen</th>
+                                <th>Notes</th>
                             </tr>
                         </thead>
                         <tbody id="btDevicesTable">
-                            <tr><td colspan="4" class="loading">Loading...</td></tr>
+                            <tr><td colspan="5" class="loading">Loading...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -993,12 +1004,14 @@
                             <tr>
                                 <th>MAC Address</th>
                                 <th>Vendor</th>
+                                <th>Type</th>
                                 <th>Confidence</th>
                                 <th>Last Seen</th>
+                                <th>Notes</th>
                             </tr>
                         </thead>
                         <tbody id="wifiDevicesTable">
-                            <tr><td colspan="4" class="loading">Loading...</td></tr>
+                            <tr><td colspan="6" class="loading">Loading...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -1510,7 +1523,7 @@
         function updateBTDevicesTable(devices) {
             const tbody = document.getElementById("btDevicesTable");
             if (devices.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" class="loading">No devices found</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" class="loading">No devices found</td></tr>';
                 return;
             }
 
@@ -1528,6 +1541,7 @@
                             ${device.confidence}
                         </td>
                         <td>${new Date(device.last_seen * 1000).toLocaleTimeString()}</td>
+                        <td style="max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${device.notes || ''}">${device.notes || "—"}</td>
                     </tr>
                 `;
             }).join("");
@@ -1566,7 +1580,7 @@
         function updateWiFiDevicesTable(devices) {
             const tbody = document.getElementById("wifiDevicesTable");
             if (devices.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" class="loading">No devices found</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" class="loading">No devices found</td></tr>';
                 return;
             }
 
@@ -1574,9 +1588,10 @@
                 const isSelected = selectedWiFiDevice === device.mac;
                 const confidenceColor = device.confidence > 70 ? "#2ecc71" : device.confidence > 40 ? "#e67e22" : "#e74c3c";
                 return `
-                    <tr data-mac="${device.mac}" data-vendor="${device.vendor || '—'}" data-last-seen="${device.last_seen}" class="wifi-device-row ${isSelected ? 'selected' : ''}">
+                    <tr data-mac="${device.mac}" data-vendor="${device.vendor || '—'}" data-device-type="${device.device_type || '—'}" data-last-seen="${device.last_seen}" class="wifi-device-row ${isSelected ? 'selected' : ''}">
                         <td class="mac-addr">${device.mac}</td>
                         <td>${device.vendor || "—"}</td>
+                        <td>${device.device_type || "—"}</td>
                         <td>
                             <div class="confidence-bar">
                                 <div class="confidence-fill" style="width: ${device.confidence}%; background: ${confidenceColor};"></div>
@@ -1584,6 +1599,7 @@
                             ${device.confidence}
                         </td>
                         <td>${new Date(device.last_seen * 1000).toLocaleTimeString()}</td>
+                        <td style="max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${device.notes || ''}">${device.notes || "—"}</td>
                     </tr>
                 `;
             }).join("");
@@ -2800,6 +2816,12 @@
                 analyzeBtn.addEventListener("click", startAnalysisPreview);
             }
             
+            // OUI Update button event listener
+            const ouiBtn = document.getElementById("updateOuiBtn");
+            if (ouiBtn) {
+                ouiBtn.addEventListener("click", updateOuiDatabase);
+            }
+            
             // Close modal on overlay click
             const modal = document.getElementById("analysisModal");
             if (modal) {
@@ -2810,6 +2832,31 @@
                 });
             }
         });
+        
+        // Update OUI Database function
+        async function updateOuiDatabase() {
+            const btn = document.getElementById("updateOuiBtn");
+            const originalText = btn.innerHTML;
+            
+            try {
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
+                btn.disabled = true;
+                
+                const response = await fetch("/api/oui/update", { method: "POST" });
+                const result = await response.json();
+                
+                if (response.ok) {
+                    alert(`OUI database updated successfully!\n\nEntries: ${result.entries || 'N/A'}\n\nRun 'Analyze Confidence' to apply vendor lookups to WiFi devices.`);
+                } else {
+                    alert(`Failed to update OUI database: ${result.error || 'Unknown error'}`);
+                }
+            } catch (error) {
+                alert(`Error updating OUI database: ${error.message}`);
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
         
         // Close modal on Escape key (can be set up immediately)
         document.addEventListener("keydown", (e) => {

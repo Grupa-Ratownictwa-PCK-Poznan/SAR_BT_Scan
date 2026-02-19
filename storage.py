@@ -31,7 +31,8 @@ def init_db():
         name TEXT,
         manufacturer_hex TEXT,
         manufacturer TEXT,
-        confidence INTEGER DEFAULT 0
+        confidence INTEGER DEFAULT 0,
+        notes TEXT DEFAULT ''
     );
     """)
 
@@ -68,7 +69,9 @@ def init_db():
         first_seen INTEGER NOT NULL,
         last_seen INTEGER NOT NULL,
         vendor TEXT,
-        confidence INTEGER DEFAULT 0
+        device_type TEXT DEFAULT '',
+        confidence INTEGER DEFAULT 0,
+        notes TEXT DEFAULT ''
     );
     """)
 
@@ -93,8 +96,46 @@ def init_db():
     con.execute("CREATE INDEX IF NOT EXISTS idx_wifi_assoc_mac_ts ON wifi_associations(mac, ts_unix);")
     con.execute("CREATE INDEX IF NOT EXISTS idx_wifi_assoc_ssid ON wifi_associations(ssid);")
 
+    # Migration: add new columns to existing tables if they don't exist
+    _migrate_add_columns(con)
+
     con.commit()
     con.close()
+
+
+def _migrate_add_columns(con):
+    """Add new columns to existing tables for backward compatibility."""
+    # Get existing columns for devices table
+    cursor = con.execute("PRAGMA table_info(devices)")
+    device_columns = {row[1] for row in cursor.fetchall()}
+    
+    # Add 'notes' column to devices if missing
+    if 'notes' not in device_columns:
+        try:
+            con.execute("ALTER TABLE devices ADD COLUMN notes TEXT DEFAULT ''")
+            print("Migration: Added 'notes' column to devices table")
+        except sqlite3.OperationalError:
+            pass  # Column might already exist
+    
+    # Get existing columns for wifi_devices table
+    cursor = con.execute("PRAGMA table_info(wifi_devices)")
+    wifi_columns = {row[1] for row in cursor.fetchall()}
+    
+    # Add 'device_type' column to wifi_devices if missing
+    if 'device_type' not in wifi_columns:
+        try:
+            con.execute("ALTER TABLE wifi_devices ADD COLUMN device_type TEXT DEFAULT ''")
+            print("Migration: Added 'device_type' column to wifi_devices table")
+        except sqlite3.OperationalError:
+            pass
+    
+    # Add 'notes' column to wifi_devices if missing
+    if 'notes' not in wifi_columns:
+        try:
+            con.execute("ALTER TABLE wifi_devices ADD COLUMN notes TEXT DEFAULT ''")
+            print("Migration: Added 'notes' column to wifi_devices table")
+        except sqlite3.OperationalError:
+            pass
 
 @contextmanager
 def db():
@@ -154,3 +195,86 @@ def add_wifi_association(con, mac, ssid, ts_unix=None, ts_gps=None, lat=None, lo
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
     """, (mac, ts_unix, ts_gps, lat, lon, alt, ssid, rssi, scanner))
     con.execute("COMMIT;")
+
+
+def update_wifi_device_enrichment(con, mac, vendor=None, device_type=None, notes=None):
+    """Update WiFi device with enrichment data (vendor lookup, device type guess, analyst notes).
+    
+    Only updates fields that are provided (not None). Empty strings will overwrite existing values.
+    This function is called by the confidence analyzer to enrich WiFi devices.
+    """
+    updates = []
+    params = []
+    
+    if vendor is not None:
+        updates.append("vendor = ?")
+        params.append(vendor)
+    
+    if device_type is not None:
+        updates.append("device_type = ?")
+        params.append(device_type)
+    
+    if notes is not None:
+        updates.append("notes = ?")
+        params.append(notes)
+    
+    if not updates:
+        return
+    
+    params.append(mac)
+    query = f"UPDATE wifi_devices SET {', '.join(updates)} WHERE mac = ?"
+    
+    con.execute("BEGIN;")
+    con.execute(query, params)
+    con.execute("COMMIT;")
+
+
+def update_bt_device_notes(con, addr, notes):
+    """Update Bluetooth device notes field.
+    
+    This allows analysts to add notes to BT devices.
+    """
+    con.execute("BEGIN;")
+    con.execute("UPDATE devices SET notes = ? WHERE addr = ?", (notes, addr))
+    con.execute("COMMIT;")
+
+
+def get_wifi_device(con, mac):
+    """Get a single WiFi device by MAC address."""
+    cursor = con.execute(
+        "SELECT mac, first_seen, last_seen, vendor, device_type, confidence, notes FROM wifi_devices WHERE mac = ?",
+        (mac,)
+    )
+    row = cursor.fetchone()
+    if row:
+        return {
+            "mac": row[0],
+            "first_seen": row[1],
+            "last_seen": row[2],
+            "vendor": row[3] or "",
+            "device_type": row[4] or "",
+            "confidence": row[5],
+            "notes": row[6] or ""
+        }
+    return None
+
+
+def get_bt_device(con, addr):
+    """Get a single Bluetooth device by address."""
+    cursor = con.execute(
+        "SELECT addr, first_seen, last_seen, name, manufacturer_hex, manufacturer, confidence, notes FROM devices WHERE addr = ?",
+        (addr,)
+    )
+    row = cursor.fetchone()
+    if row:
+        return {
+            "addr": row[0],
+            "first_seen": row[1],
+            "last_seen": row[2],
+            "name": row[3] or "",
+            "manufacturer_hex": row[4] or "",
+            "manufacturer": row[5] or "",
+            "confidence": row[6],
+            "notes": row[7] or ""
+        }
+    return None
