@@ -1,0 +1,1234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAR Scanner - Device Triangulation</title>
+    
+    <!-- Leaflet CSS for maps (bundled locally for offline operation) -->
+    <link rel="stylesheet" href="/static/css/leaflet.min.css" />
+    
+    <!-- Font Awesome for icons (bundled locally for offline operation) -->
+    <link rel="stylesheet" href="/static/css/fontawesome.min.css" />
+    
+    <style>
+        /* Red Cross Color Scheme - matching main app */
+        :root {
+            --rc-red: #C60C30;
+            --rc-dark-red: #A00826;
+            --rc-white: #FFFFFF;
+            --rc-black: #1a1a1a;
+            --rc-light-gray: #f5f5f5;
+            --rc-dark-gray: #333333;
+            --accent-blue: #0066cc;
+            --accent-green: #2ecc71;
+            --accent-orange: #e67e22;
+            --accent-red-light: #e74c3c;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--rc-light-gray);
+            color: var(--rc-black);
+            min-height: 100vh;
+        }
+
+        .header {
+            background: var(--rc-red);
+            color: var(--rc-white);
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .header h1 {
+            font-size: 20px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            background: var(--rc-white);
+            color: var(--rc-red);
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+
+        .btn:hover {
+            background: var(--rc-light-gray);
+            transform: translateY(-1px);
+        }
+
+        .btn-primary {
+            background: var(--rc-dark-red);
+            color: var(--rc-white);
+        }
+
+        .btn-primary:hover {
+            background: #8a0720;
+        }
+
+        .container {
+            display: flex;
+            gap: 15px;
+            padding: 15px;
+            height: calc(100vh - 60px);
+        }
+
+        .sidebar {
+            width: 400px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            min-width: 0;
+        }
+
+        .panel {
+            background: var(--rc-white);
+            border: 2px solid var(--rc-red);
+            border-radius: 4px;
+            padding: 0;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .panel-title {
+            font-size: 13px;
+            font-weight: bold;
+            text-transform: uppercase;
+            color: var(--rc-white);
+            background: var(--rc-red);
+            padding: 10px 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-radius: 2px 2px 0 0;
+        }
+
+        .panel-content {
+            padding: 14px;
+        }
+
+        /* Search form */
+        .search-form {
+            display: flex;
+            gap: 10px;
+            padding: 14px;
+        }
+
+        .search-form input {
+            flex: 1;
+            padding: 10px 14px;
+            border: 2px solid var(--rc-red);
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: 'Courier New', monospace;
+            text-transform: uppercase;
+        }
+
+        .search-form input:focus {
+            outline: none;
+            border-color: var(--rc-dark-red);
+            box-shadow: 0 0 0 3px rgba(198, 12, 48, 0.1);
+        }
+
+        .search-form button {
+            padding: 10px 20px;
+        }
+
+        /* Info rows */
+        .info-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: var(--rc-red);
+            min-width: 120px;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+
+        .info-value {
+            word-break: break-all;
+            color: var(--rc-black);
+            font-size: 13px;
+        }
+
+        .info-value.mono {
+            font-family: 'Courier New', monospace;
+        }
+
+        /* Status badges */
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .status-stationary {
+            background: #e8f5e9;
+            color: var(--accent-green);
+            border: 2px solid var(--accent-green);
+        }
+
+        .status-moving {
+            background: #fff3e0;
+            color: var(--accent-orange);
+            border: 2px solid var(--accent-orange);
+        }
+
+        .confidence-meter {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .confidence-bar {
+            flex: 1;
+            height: 20px;
+            background: #eee;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid #ddd;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-orange), var(--accent-green));
+            transition: width 0.5s ease;
+        }
+
+        .confidence-value {
+            font-weight: bold;
+            font-size: 14px;
+            min-width: 45px;
+        }
+
+        /* Stats grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .stat-box {
+            background: var(--rc-light-gray);
+            padding: 12px;
+            border-radius: 4px;
+            text-align: center;
+            border-left: 4px solid var(--rc-red);
+        }
+
+        .stat-label {
+            font-size: 10px;
+            color: #666;
+            text-transform: uppercase;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--rc-red);
+        }
+
+        .stat-unit {
+            font-size: 10px;
+            color: #666;
+            font-weight: normal;
+        }
+
+        /* SSIDs list */
+        .ssids-list {
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        .ssid-item {
+            background: var(--rc-light-gray);
+            padding: 6px 10px;
+            margin: 4px 0;
+            border-radius: 4px;
+            border-left: 3px solid var(--accent-blue);
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+        }
+
+        /* Clusters list */
+        .clusters-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .cluster-item {
+            background: var(--rc-light-gray);
+            padding: 10px;
+            margin: 6px 0;
+            border-radius: 4px;
+            border-left: 4px solid var(--accent-blue);
+        }
+
+        .cluster-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .cluster-title {
+            font-weight: bold;
+            color: var(--rc-red);
+        }
+
+        .cluster-sightings {
+            font-size: 11px;
+            background: var(--rc-red);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+
+        .cluster-details {
+            font-size: 11px;
+            color: #666;
+        }
+
+        .cluster-coords {
+            font-family: 'Courier New', monospace;
+            font-size: 10px;
+            color: var(--accent-blue);
+            cursor: pointer;
+        }
+
+        .cluster-coords:hover {
+            text-decoration: underline;
+        }
+
+        /* Map */
+        #map {
+            height: 100%;
+            border-radius: 4px;
+            border: 2px solid var(--rc-red);
+            /* Grid pattern background for offline mode (visible when no tiles load) */
+            background: 
+                linear-gradient(rgba(200, 200, 200, 0.3) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(200, 200, 200, 0.3) 1px, transparent 1px),
+                var(--rc-light-gray);
+            background-size: 50px 50px;
+            min-height: 400px;
+        }
+
+        .map-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Path timeline */
+        .timeline {
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+        .timeline-item {
+            display: flex;
+            gap: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+            font-size: 11px;
+        }
+
+        .timeline-time {
+            font-weight: bold;
+            color: var(--rc-red);
+            min-width: 80px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .timeline-info {
+            flex: 1;
+            color: #666;
+        }
+
+        .timeline-source {
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 3px;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+
+        .timeline-source.bt {
+            background: #e3f2fd;
+            color: var(--accent-blue);
+        }
+
+        .timeline-source.wifi {
+            background: #fff3e0;
+            color: var(--accent-orange);
+        }
+
+        /* Loading state */
+        .loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--rc-light-gray);
+            border-top: 4px solid var(--rc-red);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Error state */
+        .error-panel {
+            background: #ffebee;
+            border-color: var(--accent-red-light);
+            color: var(--accent-red-light);
+            text-align: center;
+            padding: 30px;
+        }
+
+        .error-panel i {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        .empty-state i {
+            font-size: 48px;
+            margin-bottom: 15px;
+            color: #ddd;
+        }
+
+        /* Path legend */
+        .map-legend {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: white;
+            padding: 10px 14px;
+            border-radius: 4px;
+            border: 2px solid var(--rc-red);
+            z-index: 1000;
+            font-size: 11px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 4px 0;
+        }
+
+        .legend-marker {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+        }
+
+        .legend-start {
+            background: var(--accent-green);
+        }
+
+        .legend-end {
+            background: var(--rc-red);
+        }
+
+        .legend-path {
+            width: 20px;
+            height: 3px;
+            background: var(--accent-blue);
+        }
+
+        /* Leaflet popup customization */
+        .leaflet-popup-content-wrapper {
+            background: var(--rc-white);
+            border: 2px solid var(--rc-red);
+            border-radius: 4px;
+        }
+
+        .leaflet-popup-content {
+            font-size: 11px;
+            color: var(--rc-black);
+            margin: 10px;
+        }
+
+        .popup-time {
+            font-weight: bold;
+            color: var(--rc-red);
+            font-size: 14px;
+        }
+
+        .popup-info {
+            margin-top: 6px;
+            color: #666;
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--rc-light-gray);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--rc-red);
+            border-radius: 3px;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .container {
+                flex-direction: column;
+                height: auto;
+            }
+
+            .sidebar {
+                width: 100%;
+            }
+
+            #map {
+                min-height: 350px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1><i class="fas fa-crosshairs"></i> Device Triangulation Analysis</h1>
+        <div class="header-actions">
+            <a href="/" class="btn"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Left sidebar -->
+        <div class="sidebar">
+            <!-- Search panel -->
+            <div class="panel">
+                <div class="panel-title">
+                    <i class="fas fa-search"></i> Analyze Device
+                </div>
+                <form class="search-form" onsubmit="return analyzeDevice(event)">
+                    <input type="text" id="macInput" placeholder="Enter MAC address..." 
+                           pattern="^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$"
+                           title="Enter a valid MAC address (e.g., AA:BB:CC:DD:EE:FF)">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search"></i> Analyze
+                    </button>
+                </form>
+            </div>
+
+            <!-- Device info panel -->
+            <div class="panel" id="deviceInfoPanel" style="display: none;">
+                <div class="panel-title">
+                    <i class="fas fa-microchip"></i> Device Information
+                </div>
+                <div class="panel-content" id="deviceInfoContent">
+                    <!-- Filled by JavaScript -->
+                </div>
+            </div>
+
+            <!-- Movement status panel -->
+            <div class="panel" id="movementPanel" style="display: none;">
+                <div class="panel-title">
+                    <i class="fas fa-route"></i> Movement Analysis
+                </div>
+                <div class="panel-content" id="movementContent">
+                    <!-- Filled by JavaScript -->
+                </div>
+            </div>
+
+            <!-- Statistics panel -->
+            <div class="panel" id="statsPanel" style="display: none;">
+                <div class="panel-title">
+                    <i class="fas fa-chart-bar"></i> Statistics
+                </div>
+                <div class="panel-content" id="statsContent">
+                    <!-- Filled by JavaScript -->
+                </div>
+            </div>
+
+            <!-- SSIDs panel (for WiFi devices) -->
+            <div class="panel" id="ssidsPanel" style="display: none;">
+                <div class="panel-title">
+                    <i class="fas fa-wifi"></i> Known SSIDs
+                </div>
+                <div class="panel-content" id="ssidsContent">
+                    <!-- Filled by JavaScript -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Main content area -->
+        <div class="main-content">
+            <!-- Map panel -->
+            <div class="panel map-container">
+                <div class="panel-title">
+                    <i class="fas fa-map-marked-alt"></i> Location Map
+                </div>
+                <div style="flex: 1; position: relative; padding: 10px;">
+                    <div id="map"></div>
+                    <div class="map-legend" id="mapLegend" style="display: none;">
+                        <div class="legend-item">
+                            <div class="legend-marker legend-start"></div>
+                            <span>First sighting</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-marker legend-end"></div>
+                            <span>Last sighting</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-path"></div>
+                            <span>Movement path</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Location clusters panel -->
+            <div class="panel" id="clustersPanel" style="display: none;">
+                <div class="panel-title">
+                    <i class="fas fa-location-dot"></i> Location Clusters
+                </div>
+                <div class="panel-content">
+                    <div class="clusters-list" id="clustersList">
+                        <!-- Filled by JavaScript -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Path timeline panel -->
+            <div class="panel" id="timelinePanel" style="display: none;">
+                <div class="panel-title">
+                    <i class="fas fa-clock"></i> Sighting Timeline
+                </div>
+                <div class="panel-content">
+                    <div class="timeline" id="timelineContent">
+                        <!-- Filled by JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading overlay -->
+    <div id="loadingOverlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.9); z-index: 2000;">
+        <div class="loading" style="height: 100%;">
+            <div class="spinner"></div>
+            <div>Analyzing device sightings...</div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="/static/js/leaflet.min.js"></script>
+
+    <script>
+        // ============= Configuration =============
+        const API_BASE = `http://${window.location.host}`;
+        
+        // ============= State =============
+        let map = null;
+        let pathLayer = null;
+        let markersLayer = null;
+        let currentResult = null;
+
+        // ============= Initialize =============
+        document.addEventListener('DOMContentLoaded', () => {
+            initMap();
+            
+            // Check for MAC in URL parameters
+            const params = new URLSearchParams(window.location.search);
+            const mac = params.get('mac');
+            if (mac) {
+                document.getElementById('macInput').value = mac;
+                runAnalysis(mac);
+            }
+        });
+
+        function initMap() {
+            // Initialize Leaflet map
+            map = L.map('map').setView([52.4064, 16.9252], 13);  // Default to Poznań
+            
+            // Try to add OpenStreetMap tiles (will work if online, gracefully fail if offline)
+            const tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '© OpenStreetMap contributors',
+                errorTileUrl: ''  // Don't show broken image icons
+            });
+            
+            // Handle tile loading errors (offline mode)
+            let tilesLoaded = false;
+            let tilesErrored = false;
+            
+            tileLayer.on('tileerror', function() {
+                if (!tilesErrored) {
+                    tilesErrored = true;
+                    console.log('Map tiles unavailable - running in offline mode');
+                    showOfflineMapNotice();
+                }
+            });
+            
+            tileLayer.on('tileload', function() {
+                tilesLoaded = true;
+            });
+            
+            tileLayer.addTo(map);
+            
+            // Check after a delay if any tiles loaded
+            setTimeout(() => {
+                if (!tilesLoaded && !tilesErrored) {
+                    showOfflineMapNotice();
+                }
+            }, 3000);
+
+            // Initialize layers
+            pathLayer = L.layerGroup().addTo(map);
+            markersLayer = L.layerGroup().addTo(map);
+        }
+        
+        function showOfflineMapNotice() {
+            // Add a notice overlay on the map
+            const mapDiv = document.getElementById('map');
+            if (!document.getElementById('offlineNotice')) {
+                const notice = document.createElement('div');
+                notice.id = 'offlineNotice';
+                notice.innerHTML = '<i class="fas fa-wifi-slash"></i> Offline Mode - Map tiles unavailable';
+                notice.style.cssText = 'position: absolute; top: 10px; left: 50%; transform: translateX(-50%); background: rgba(198, 12, 48, 0.9); color: white; padding: 6px 12px; border-radius: 4px; font-size: 11px; z-index: 1000; pointer-events: none;';
+                mapDiv.parentElement.appendChild(notice);
+            }
+        }
+
+        // ============= Analysis Functions =============
+        function analyzeDevice(event) {
+            event.preventDefault();
+            const mac = document.getElementById('macInput').value.trim();
+            if (!mac) {
+                alert('Please enter a MAC address');
+                return false;
+            }
+            
+            // Update URL without reload
+            const url = new URL(window.location);
+            url.searchParams.set('mac', mac);
+            window.history.pushState({}, '', url);
+            
+            runAnalysis(mac);
+            return false;
+        }
+
+        async function runAnalysis(mac) {
+            showLoading(true);
+            hideAllPanels();
+            clearMap();
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/triangulate/${encodeURIComponent(mac)}`);
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Analysis failed');
+                }
+                
+                const result = await response.json();
+                currentResult = result;
+                
+                displayResults(result);
+            } catch (error) {
+                console.error('Analysis error:', error);
+                showError(error.message);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // ============= Display Functions =============
+        function displayResults(result) {
+            displayDeviceInfo(result);
+            displayMovementAnalysis(result);
+            displayStatistics(result);
+            displaySSIDs(result);
+            displayClusters(result);
+            displayTimeline(result);
+            displayOnMap(result);
+        }
+
+        function displayDeviceInfo(result) {
+            const panel = document.getElementById('deviceInfoPanel');
+            const content = document.getElementById('deviceInfoContent');
+            
+            let html = `
+                <div class="info-row">
+                    <span class="info-label">MAC Address</span>
+                    <span class="info-value mono">${result.mac}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Device Type</span>
+                    <span class="info-value">${result.device_type.toUpperCase()}</span>
+                </div>
+            `;
+            
+            if (result.name) {
+                html += `
+                    <div class="info-row">
+                        <span class="info-label">Name</span>
+                        <span class="info-value">${result.name}</span>
+                    </div>
+                `;
+            }
+            
+            if (result.manufacturer) {
+                html += `
+                    <div class="info-row">
+                        <span class="info-label">Manufacturer</span>
+                        <span class="info-value">${result.manufacturer}</span>
+                    </div>
+                `;
+            }
+            
+            if (result.vendor) {
+                html += `
+                    <div class="info-row">
+                        <span class="info-label">Vendor</span>
+                        <span class="info-value">${result.vendor}</span>
+                    </div>
+                `;
+            }
+            
+            if (result.confidence !== null) {
+                html += `
+                    <div class="info-row">
+                        <span class="info-label">Confidence</span>
+                        <span class="info-value">${result.confidence}%</span>
+                    </div>
+                `;
+            }
+            
+            html += `
+                <div class="info-row">
+                    <span class="info-label">First Seen</span>
+                    <span class="info-value">${formatDateTime(result.first_seen)}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Last Seen</span>
+                    <span class="info-value">${formatDateTime(result.last_seen)}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Duration</span>
+                    <span class="info-value">${result.observation_duration_str}</span>
+                </div>
+            `;
+            
+            content.innerHTML = html;
+            panel.style.display = 'block';
+        }
+
+        function displayMovementAnalysis(result) {
+            const panel = document.getElementById('movementPanel');
+            const content = document.getElementById('movementContent');
+            
+            const statusClass = result.is_stationary ? 'status-stationary' : 'status-moving';
+            const statusText = result.is_stationary ? 'Stationary' : 'Moving';
+            const statusIcon = result.is_stationary ? 'fa-location-dot' : 'fa-person-walking';
+            
+            let html = `
+                <div style="text-align: center; margin-bottom: 15px;">
+                    <span class="status-badge ${statusClass}">
+                        <i class="fas ${statusIcon}"></i> ${statusText}
+                    </span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Confidence</span>
+                    <div class="confidence-meter">
+                        <div class="confidence-bar">
+                            <div class="confidence-fill" style="width: ${result.movement_confidence}%"></div>
+                        </div>
+                        <span class="confidence-value">${result.movement_confidence}%</span>
+                    </div>
+                </div>
+            `;
+            
+            if (result.estimated_location) {
+                html += `
+                    <div class="info-row">
+                        <span class="info-label">Est. Location</span>
+                        <span class="info-value">
+                            <a href="https://www.google.com/maps?q=${result.estimated_location.lat},${result.estimated_location.lon}" 
+                               target="_blank" style="color: var(--accent-blue);">
+                                ${result.estimated_location.lat.toFixed(6)}, ${result.estimated_location.lon.toFixed(6)}
+                                <i class="fas fa-external-link-alt" style="font-size: 10px;"></i>
+                            </a>
+                        </span>
+                    </div>
+                `;
+            }
+            
+            content.innerHTML = html;
+            panel.style.display = 'block';
+        }
+
+        function displayStatistics(result) {
+            const panel = document.getElementById('statsPanel');
+            const content = document.getElementById('statsContent');
+            
+            content.innerHTML = `
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <div class="stat-label">Total Sightings</div>
+                        <div class="stat-value">${result.total_sightings}</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">With Location</div>
+                        <div class="stat-value">${result.sightings_with_location}</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Total Distance</div>
+                        <div class="stat-value">${formatDistance(result.total_distance_meters)}</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Area Covered</div>
+                        <div class="stat-value">${formatArea(result.area_covered_sq_meters)}</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Avg Speed</div>
+                        <div class="stat-value">${result.avg_speed_kmh.toFixed(1)} <span class="stat-unit">km/h</span></div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Max Speed</div>
+                        <div class="stat-value">${result.max_speed_kmh.toFixed(1)} <span class="stat-unit">km/h</span></div>
+                    </div>
+                </div>
+            `;
+            
+            panel.style.display = 'block';
+        }
+
+        function displaySSIDs(result) {
+            const panel = document.getElementById('ssidsPanel');
+            const content = document.getElementById('ssidsContent');
+            
+            if (!result.ssids || result.ssids.length === 0) {
+                panel.style.display = 'none';
+                return;
+            }
+            
+            let html = '<div class="ssids-list">';
+            result.ssids.forEach(ssid => {
+                html += `<div class="ssid-item">${ssid || '<em>Hidden Network</em>'}</div>`;
+            });
+            html += '</div>';
+            
+            content.innerHTML = html;
+            panel.style.display = 'block';
+        }
+
+        function displayClusters(result) {
+            const panel = document.getElementById('clustersPanel');
+            const content = document.getElementById('clustersList');
+            
+            if (!result.location_clusters || result.location_clusters.length === 0) {
+                panel.style.display = 'none';
+                return;
+            }
+            
+            let html = '';
+            result.location_clusters.forEach((cluster, index) => {
+                html += `
+                    <div class="cluster-item">
+                        <div class="cluster-header">
+                            <span class="cluster-title">Cluster #${index + 1}</span>
+                            <span class="cluster-sightings">${cluster.sighting_count} sightings</span>
+                        </div>
+                        <div class="cluster-details">
+                            <div class="cluster-coords" onclick="focusCluster(${cluster.center_lat}, ${cluster.center_lon})">
+                                <i class="fas fa-map-marker-alt"></i>
+                                ${cluster.center_lat.toFixed(6)}, ${cluster.center_lon.toFixed(6)}
+                            </div>
+                            <div style="margin-top: 4px;">
+                                ${cluster.avg_rssi ? `RSSI: ${cluster.avg_rssi.toFixed(1)} dBm | ` : ''}
+                                ${cluster.first_seen_str ? formatTime(cluster.first_seen) : ''} 
+                                - ${cluster.last_seen_str ? formatTime(cluster.last_seen) : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            content.innerHTML = html;
+            panel.style.display = 'block';
+        }
+
+        function displayTimeline(result) {
+            const panel = document.getElementById('timelinePanel');
+            const content = document.getElementById('timelineContent');
+            
+            if (!result.path_points || result.path_points.length === 0) {
+                panel.style.display = 'none';
+                return;
+            }
+            
+            // Show last 50 points
+            const points = result.path_points.slice(-50);
+            
+            let html = '';
+            points.forEach(point => {
+                const sourceClass = point.source === 'bt' ? 'bt' : 'wifi';
+                html += `
+                    <div class="timeline-item">
+                        <span class="timeline-time">${point.time_display}</span>
+                        <span class="timeline-source ${sourceClass}">${point.source}</span>
+                        <span class="timeline-info">
+                            ${point.rssi ? `${point.rssi} dBm` : ''}
+                            ${point.ssid ? ` | ${point.ssid}` : ''}
+                            ${point.name ? ` | ${point.name}` : ''}
+                        </span>
+                    </div>
+                `;
+            });
+            
+            if (result.path_points.length > 50) {
+                html = `<div style="text-align: center; color: #999; font-size: 11px; margin-bottom: 10px;">
+                    Showing last 50 of ${result.path_points.length} sightings
+                </div>` + html;
+            }
+            
+            content.innerHTML = html;
+            panel.style.display = 'block';
+        }
+
+        function displayOnMap(result) {
+            clearMap();
+            
+            if (!result.path_points || result.path_points.length === 0) {
+                return;
+            }
+            
+            const points = result.path_points;
+            const bounds = [];
+            
+            // Draw path line if multiple points
+            if (points.length > 1) {
+                const pathCoords = points.map(p => [p.lat, p.lon]);
+                const pathLine = L.polyline(pathCoords, {
+                    color: '#0066cc',
+                    weight: 3,
+                    opacity: 0.7,
+                    dashArray: '5, 10'
+                }).addTo(pathLayer);
+            }
+            
+            // Add markers for each point
+            points.forEach((point, index) => {
+                const isFirst = index === 0;
+                const isLast = index === points.length - 1;
+                
+                let color = '#0066cc';
+                let radius = 6;
+                let zIndex = 100;
+                
+                if (isFirst) {
+                    color = '#2ecc71';  // Green for start
+                    radius = 10;
+                    zIndex = 200;
+                } else if (isLast) {
+                    color = '#C60C30';  // Red for end
+                    radius = 10;
+                    zIndex = 200;
+                }
+                
+                const marker = L.circleMarker([point.lat, point.lon], {
+                    radius: radius,
+                    fillColor: color,
+                    color: '#fff',
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                }).addTo(markersLayer);
+                
+                // Add popup
+                let popupContent = `
+                    <div class="popup-time">${point.time_display}</div>
+                    <div class="popup-info">
+                        <strong>${point.source.toUpperCase()}</strong><br>
+                `;
+                if (point.rssi) popupContent += `RSSI: ${point.rssi} dBm<br>`;
+                if (point.ssid) popupContent += `SSID: ${point.ssid}<br>`;
+                if (point.name) popupContent += `Name: ${point.name}<br>`;
+                popupContent += `
+                        <small>${point.lat.toFixed(6)}, ${point.lon.toFixed(6)}</small>
+                    </div>
+                `;
+                
+                marker.bindPopup(popupContent);
+                bounds.push([point.lat, point.lon]);
+            });
+            
+            // Add cluster markers
+            if (result.location_clusters && result.location_clusters.length > 0) {
+                result.location_clusters.forEach((cluster, index) => {
+                    const clusterMarker = L.circle([cluster.center_lat, cluster.center_lon], {
+                        radius: 30,
+                        fillColor: '#e67e22',
+                        color: '#d35400',
+                        weight: 2,
+                        opacity: 0.7,
+                        fillOpacity: 0.3
+                    }).addTo(markersLayer);
+                    
+                    clusterMarker.bindPopup(`
+                        <div class="popup-time">Cluster #${index + 1}</div>
+                        <div class="popup-info">
+                            ${cluster.sighting_count} sightings<br>
+                            ${cluster.avg_rssi ? `Avg RSSI: ${cluster.avg_rssi.toFixed(1)} dBm` : ''}
+                        </div>
+                    `);
+                });
+            }
+            
+            // Fit map to bounds
+            if (bounds.length > 0) {
+                map.fitBounds(bounds, { padding: [30, 30] });
+            }
+            
+            // Show legend
+            document.getElementById('mapLegend').style.display = 'block';
+        }
+
+        function clearMap() {
+            pathLayer.clearLayers();
+            markersLayer.clearLayers();
+            document.getElementById('mapLegend').style.display = 'none';
+        }
+
+        function focusCluster(lat, lon) {
+            map.setView([lat, lon], 17);
+        }
+
+        // ============= Utility Functions =============
+        function formatDateTime(timestamp) {
+            if (!timestamp) return '—';
+            const date = new Date(timestamp * 1000);
+            return date.toLocaleString();
+        }
+
+        function formatTime(timestamp) {
+            if (!timestamp) return '—';
+            const date = new Date(timestamp * 1000);
+            return date.toLocaleTimeString();
+        }
+
+        function formatDistance(meters) {
+            if (meters < 1000) {
+                return `${meters.toFixed(0)} m`;
+            }
+            return `${(meters / 1000).toFixed(2)} km`;
+        }
+
+        function formatArea(sqMeters) {
+            if (sqMeters < 10000) {
+                return `${sqMeters.toFixed(0)} m²`;
+            }
+            return `${(sqMeters / 10000).toFixed(2)} ha`;
+        }
+
+        function showLoading(show) {
+            document.getElementById('loadingOverlay').style.display = show ? 'flex' : 'none';
+        }
+
+        function hideAllPanels() {
+            document.getElementById('deviceInfoPanel').style.display = 'none';
+            document.getElementById('movementPanel').style.display = 'none';
+            document.getElementById('statsPanel').style.display = 'none';
+            document.getElementById('ssidsPanel').style.display = 'none';
+            document.getElementById('clustersPanel').style.display = 'none';
+            document.getElementById('timelinePanel').style.display = 'none';
+        }
+
+        function showError(message) {
+            const devicePanel = document.getElementById('deviceInfoPanel');
+            const content = document.getElementById('deviceInfoContent');
+            
+            content.innerHTML = `
+                <div class="error-panel">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <div style="font-size: 14px; font-weight: bold; margin-bottom: 8px;">Analysis Failed</div>
+                    <div>${message}</div>
+                </div>
+            `;
+            
+            devicePanel.style.display = 'block';
+        }
+    </script>
+</body>
+</html>

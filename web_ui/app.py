@@ -695,6 +695,57 @@ async def download_db():
     return FileResponse(db_path, filename="results.db", media_type="application/octet-stream")
 
 
+# ============= Triangulation Analysis =============
+
+@app.get("/triangulate")
+async def get_triangulation_page():
+    """Serve the triangulation analysis page."""
+    html_path = os.path.join(os.path.dirname(__file__), "triangulation.html")
+    if os.path.exists(html_path):
+        return FileResponse(html_path)
+    return HTMLResponse("<h1>Triangulation Page Not Found</h1>")
+
+
+@app.get("/api/triangulate/{mac}")
+async def triangulate_device(mac: str):
+    """Run triangulation and movement analysis for a specific device.
+    
+    Analyzes all sightings (BT and WiFi) for the device and determines:
+    - Likely location(s)
+    - Whether the device is stationary or moving
+    - Movement path and speed statistics
+    
+    Args:
+        mac: MAC address of the device to analyze
+        
+    Returns:
+        TriangulationResult as JSON
+    """
+    try:
+        # Import triangulation module
+        from triangulation import DeviceTriangulator
+        
+        triangulator = DeviceTriangulator(mac)
+        result = triangulator.analyze()
+        
+        if result is None:
+            return JSONResponse(
+                {"error": f"Device not found: {mac}"},
+                status_code=404
+            )
+        
+        return result.to_dict()
+    
+    except Exception as e:
+        print(f"Error in triangulation analysis for {mac}: {e}")
+        import traceback
+        traceback.print_exc()
+        return JSONResponse(
+            {"error": f"Triangulation failed: {str(e)}"},
+            status_code=500
+        )
+
+
 @app.post("/api/purge-db")
 async def purge_db():
     """Purge all tables in the database and create a backup."""

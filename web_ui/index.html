@@ -246,6 +246,18 @@
             font-weight: 500;
         }
 
+        /* Interactive row for BT devices */
+        tbody#btDevicesTable tr {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        tbody#btDevicesTable tr.selected {
+            background: #e3f2fd !important;
+            border-left: 4px solid var(--accent-blue);
+            font-weight: 500;
+        }
+
         /* Device tooltip/popup */
         .device-tooltip {
             position: fixed;
@@ -386,7 +398,12 @@
             height: 100%;
             border-radius: 4px;
             border: 2px solid var(--rc-red);
-            background: var(--rc-white);
+            /* Grid pattern background for offline mode (visible when no tiles load) */
+            background: 
+                linear-gradient(rgba(200, 200, 200, 0.3) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(200, 200, 200, 0.3) 1px, transparent 1px),
+                var(--rc-light-gray);
+            background-size: 50px 50px;
         }
 
         .map-container {
@@ -394,6 +411,21 @@
             display: flex;
             flex-direction: column;
             position: relative;
+        }
+
+        /* Offline mode notice */
+        .offline-notice {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(198, 12, 48, 0.9);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 11px;
+            z-index: 1000;
+            pointer-events: none;
         }
 
         .map-controls {
@@ -1113,6 +1145,10 @@
         let selectedWiFiDevice = null;  // MAC address of selected device
         let selectedWiFiDeviceData = null;  // Full device data object
         
+        // BT device selection state
+        let selectedBTDevice = null;  // MAC address of selected BT device
+        let selectedBTDeviceData = null;  // Full device data object
+        
         // Time filter state
         let currentTimePreset = 0; // hours, 0 = all (DEFAULT)
         let customTimeStart = null; // Unix timestamp
@@ -1165,10 +1201,38 @@
             map = L.map("map").setView([51.505, -0.09], 13);
             console.log("Map object created");
 
-            L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            // Try to add OpenStreetMap tiles (will work if online, gracefully fail if offline)
+            const tileLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
                 attribution: "© OpenStreetMap contributors",
-                maxZoom: 19
-            }).addTo(map);
+                maxZoom: 19,
+                errorTileUrl: ''  // Don't show broken image icons
+            });
+            
+            // Handle tile loading errors (offline mode)
+            let tilesLoaded = false;
+            let tilesErrored = false;
+            
+            tileLayer.on('tileerror', function() {
+                if (!tilesErrored) {
+                    tilesErrored = true;
+                    console.log('Map tiles unavailable - running in offline mode');
+                    showOfflineMapNotice();
+                }
+            });
+            
+            tileLayer.on('tileload', function() {
+                tilesLoaded = true;
+            });
+            
+            tileLayer.addTo(map);
+            
+            // Check after a delay if any tiles loaded
+            setTimeout(() => {
+                if (!tilesLoaded && !tilesErrored) {
+                    showOfflineMapNotice();
+                }
+            }, 3000);
+            
             console.log("OSM tiles added to map");
             
             // Add event listener for map size changes
@@ -1179,6 +1243,18 @@
 
             updateHeatmap();
             console.log("Initial heatmap update called");
+        }
+
+        function showOfflineMapNotice() {
+            // Add a notice overlay on the map
+            const mapContainer = document.querySelector('.map-container');
+            if (mapContainer && !document.getElementById('offlineNotice')) {
+                const notice = document.createElement('div');
+                notice.id = 'offlineNotice';
+                notice.className = 'offline-notice';
+                notice.innerHTML = '<i class="fas fa-wifi-slash"></i> Offline Mode - Map tiles unavailable';
+                mapContainer.appendChild(notice);
+            }
         }
 
         function setupWebSocket() {
@@ -1422,9 +1498,10 @@
             }
 
             tbody.innerHTML = devices.map(device => {
+                const isSelected = selectedBTDevice === device.mac;
                 const confidenceColor = device.confidence > 70 ? "#2ecc71" : device.confidence > 40 ? "#e67e22" : "#e74c3c";
                 return `
-                    <tr>
+                    <tr data-mac="${device.mac}" data-name="${device.name || '—'}" data-manufacturer="${device.manufacturer || '—'}" data-last-seen="${device.last_seen}" data-confidence="${device.confidence}" class="bt-device-row ${isSelected ? 'selected' : ''}" style="cursor: pointer;">
                         <td class="mac-addr">${device.mac}</td>
                         <td>${device.name || "—"}</td>
                         <td>
@@ -1437,6 +1514,11 @@
                     </tr>
                 `;
             }).join("");
+            
+            // Attach click handlers to each BT device row
+            document.querySelectorAll(".bt-device-row").forEach(row => {
+                row.addEventListener("click", handleBTDeviceRowClick);
+            });
         }
 
         function updateBTSightingsTable(sightings) {
@@ -1697,6 +1779,200 @@
         }
 
         // ============= WiFi Device Selection Handlers =============
+        // ============= BT Device Selection Handlers =============
+        async function handleBTDeviceRowClick(e) {
+            const row = e.currentTarget;
+            const mac = row.getAttribute("data-mac");
+            const name = row.getAttribute("data-name");
+            const manufacturer = row.getAttribute("data-manufacturer");
+            const lastSeen = parseFloat(row.getAttribute("data-last-seen"));
+            const confidence = parseInt(row.getAttribute("data-confidence"));
+
+            // If clicking the same device again, deselect it
+            if (selectedBTDevice === mac) {
+                clearBTDeviceSelection();
+                return;
+            }
+
+            // Select the new device
+            selectedBTDevice = mac;
+            selectedBTDeviceData = {
+                mac: mac,
+                name: name,
+                manufacturer: manufacturer,
+                last_seen: lastSeen,
+                confidence: confidence
+            };
+
+            // Update table styling
+            document.querySelectorAll(".bt-device-row").forEach(r => r.classList.remove("selected"));
+            row.classList.add("selected");
+
+            // Show tooltip with device details
+            showBTDeviceTooltip(mac, name, manufacturer, lastSeen, confidence);
+
+            // Filter the map to show only points from this device
+            filterMapByBTDevice(mac);
+        }
+
+        function showBTDeviceTooltip(mac, name, manufacturer, lastSeen, confidence) {
+            const tooltip = document.getElementById("deviceTooltip");
+            const contentDiv = document.getElementById("deviceTooltipContent");
+            const titleDiv = tooltip.querySelector(".device-tooltip-title");
+            
+            // Update title to reflect BT device
+            titleDiv.innerHTML = `BT Device Details <button class="device-tooltip-close" onclick="closeDeviceTooltip()">&times;</button>`;
+
+            // Build tooltip HTML
+            let html = `
+                <div class="device-tooltip-row">
+                    <span class="device-tooltip-label">MAC:</span>
+                    <span class="device-tooltip-value" style="font-family: 'Courier New', monospace;">${mac}</span>
+                </div>
+            `;
+
+            if (name && name !== "—") {
+                html += `
+                    <div class="device-tooltip-row">
+                        <span class="device-tooltip-label">Name:</span>
+                        <span class="device-tooltip-value">${name}</span>
+                    </div>
+                `;
+            }
+
+            if (manufacturer && manufacturer !== "—") {
+                html += `
+                    <div class="device-tooltip-row">
+                        <span class="device-tooltip-label">Manufacturer:</span>
+                        <span class="device-tooltip-value">${manufacturer}</span>
+                    </div>
+                `;
+            }
+
+            html += `
+                <div class="device-tooltip-row">
+                    <span class="device-tooltip-label">Last Seen:</span>
+                    <span class="device-tooltip-value">${new Date(lastSeen * 1000).toLocaleString()}</span>
+                </div>
+            `;
+
+            if (confidence !== undefined && confidence !== null) {
+                html += `
+                    <div class="device-tooltip-row">
+                        <span class="device-tooltip-label">Confidence:</span>
+                        <span class="device-tooltip-value">${confidence}%</span>
+                    </div>
+                `;
+            }
+
+            // Add Triangulation Analysis button
+            html += `
+                <div style="margin-top: 12px; padding-top: 10px; border-top: 1px solid #ddd;">
+                    <button onclick="openTriangulation('${mac}')" 
+                            style="width: 100%; padding: 8px 12px; background: var(--rc-red); color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 11px; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                        <i class="fas fa-crosshairs"></i> Analyze Location
+                    </button>
+                </div>
+            `;
+
+            contentDiv.innerHTML = html;
+
+            // Position the tooltip
+            tooltip.classList.add("show");
+            tooltip.style.top = "50px";
+            tooltip.style.left = "50%";
+            tooltip.style.transform = "translateX(-50%)";
+        }
+
+        function clearBTDeviceSelection() {
+            selectedBTDevice = null;
+            selectedBTDeviceData = null;
+
+            // Remove selected styling from all BT rows
+            document.querySelectorAll(".bt-device-row").forEach(row => {
+                row.classList.remove("selected");
+            });
+
+            // Hide tooltip
+            const tooltip = document.getElementById("deviceTooltip");
+            tooltip.classList.remove("show");
+
+            // Clear map filter (re-render with all data)
+            updateHeatmap();
+        }
+
+        function filterMapByBTDevice(mac) {
+            // Build query with only the BT device MAC filter
+            const params = new URLSearchParams({
+                mac_filter: mac,
+                data_type: "bt"  // Only show BT sighting points for this device
+            });
+
+            const apiUrl = `${API_BASE}/api/map/heatmap?${params}`;
+            console.log("Filtering map for BT device:", mac);
+
+            fetch(apiUrl)
+                .then(response => response.json())
+                .then(data => {
+                    console.log("Filtered heatmap data received:", data.points.length, "points");
+
+                    if (!map) {
+                        console.error("Map not initialized");
+                        return;
+                    }
+
+                    // Remove old heatmap layer
+                    if (heatmapLayer) {
+                        map.removeLayer(heatmapLayer);
+                        heatmapLayer = null;
+                    }
+
+                    if (mapMarkers.length > 0) {
+                        mapMarkers.forEach(m => map.removeLayer(m));
+                        mapMarkers = [];
+                    }
+
+                    if (!data.points || data.points.length === 0) {
+                        console.log("No filtered heatmap data available");
+                        return;
+                    }
+
+                    const points = data.points.map(p => [p.lat, p.lon, p.intensity]);
+                    console.log("Creating filtered heat layer with", points.length, "points");
+
+                    if (!L.heatLayer) {
+                        console.error("L.heatLayer is not defined");
+                        renderHeatmapFallback(points, data.points);
+                        return;
+                    }
+
+                    heatmapLayer = L.heatLayer(points, {
+                        radius: 25,
+                        blur: 15,
+                        maxZoom: 17,
+                        gradient: {
+                            0.0: "blue",
+                            0.25: "cyan",
+                            0.5: "lime",
+                            0.75: "yellow",
+                            1.0: "red"
+                        }
+                    }).addTo(map);
+                    console.log("Filtered heat layer created and added to map");
+
+                    // Fit map to bounds
+                    if (points.length > 0) {
+                        const bounds = L.latLngBounds(points.map(p => [p[0], p[1]]));
+                        map.fitBounds(bounds.pad(0.1));
+                        console.log("Map fitted to filtered bounds");
+                    }
+                })
+                .catch(error => {
+                    console.error("Error filtering map:", error);
+                });
+        }
+
+        // ============= WiFi Device Selection Handlers =============
         async function handleWiFiDeviceRowClick(e) {
             const row = e.currentTarget;
             const mac = row.getAttribute("data-mac");
@@ -1786,6 +2062,16 @@
                     `;
                 }
 
+                // Add Triangulation Analysis button
+                html += `
+                    <div style="margin-top: 12px; padding-top: 10px; border-top: 1px solid #ddd;">
+                        <button onclick="openTriangulation('${mac}')" 
+                                style="width: 100%; padding: 8px 12px; background: var(--rc-red); color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 11px; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                            <i class="fas fa-crosshairs"></i> Analyze Location
+                        </button>
+                    </div>
+                `;
+
                 contentDiv.innerHTML = html;
 
                 // Position the tooltip near the cursor or in the center
@@ -1801,6 +2087,13 @@
 
         function closeDeviceTooltip() {
             clearWiFiDeviceSelection();
+            clearBTDeviceSelection();
+        }
+
+        function openTriangulation(mac) {
+            // Open triangulation page in a new tab
+            const url = `/triangulate?mac=${encodeURIComponent(mac)}`;
+            window.open(url, '_blank');
         }
 
         function clearWiFiDeviceSelection() {
