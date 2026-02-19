@@ -39,9 +39,11 @@ The prototype has been successfully tested on:
 ### Main Features
 - Real-time **Bluetooth beacon scanning** (BLE advertisements)
 - **WiFi association capture** — identify devices connecting to known networks
+- **WiFi vendor identification** (IEEE OUI database lookup) with device type heuristics
 - **GPS integration** — coordinates and time tagging for all detections
 - **SQLite storage** with optimized schema and WAL mode
-- **Automatic manufacturer resolution** (Bluetooth SIG company IDs)
+- **Automatic manufacturer resolution** — Bluetooth SIG company IDs + WiFi OUI vendors
+- **Analyst notes** — add custom annotations to Bluetooth and WiFi devices
 - **Dual-mode operation** — scan BT only, WiFi only, or both simultaneously
 - **Supervisor watchdog** — keeps scanner running, creates timestamped database backups
 - **Configurable paths and adapter names** via `settings.py`
@@ -58,6 +60,8 @@ SAR_BT_Scan/
 ├── settings.py                # Configuration (paths, adapters, scan mode)
 ├── bt_manufacturer_ids.py     # Bluetooth SIG company ID mappings
 ├── freeze_company_ids.py      # Utility to update company ID database
+├── wifi_oui_lookup.py         # IEEE OUI vendor database (38,904 entries)
+├── freeze_wifi_oui.py         # Utility to update OUI database from IEEE registry
 ├── configs/
 │   ├── btscanner-supervisor       # Environment file (symlink to /etc/default/)
 │   ├── btscanner-supervisor.service  # Systemd unit file
@@ -208,7 +212,7 @@ http://<raspberry-pi-ip>:8000
 
 ### Dashboard Features
 
-#### 📊 **Left Sidebar Panel**
+#### 📊 **Left Sidebar Panel** (550px width)
 - **GPS Status**: Shows fix status, satellites, HDOP, and last GPS coordinate
 - **Scanner Mode**: Current scan mode (Bluetooth, WiFi, or Both)
 - **WiFi Monitor**: Active WiFi scanner status
@@ -222,6 +226,7 @@ http://<raspberry-pi-ip>:8000
 - **Database Management**:
   - **Download DB**: Export complete database file for backup/analysis
   - **Purge DB**: Clear all data with automatic backup creation (with confirmation)
+  - **Update OUI Database**: Refresh WiFi vendor lookup data from IEEE registry
 
 #### 🗺️ **Interactive Map**
 - **GPS Heatmap**: Visual representation of signal detections on OpenStreetMap
@@ -235,11 +240,11 @@ http://<raspberry-pi-ip>:8000
   - Device type (WiFi/Bluetooth)
 - **Map Controls**: Zoom, pan, layer selection (BT/WiFi/Both)
 
-#### 📋 **Data Tables**
+#### 📋 **Data Tables** (600px height)
 Four tabs display filtered, sortable data:
-1. **BT Devices**: Unique Bluetooth devices with first/last seen times
+1. **BT Devices**: Unique Bluetooth devices with first/last seen times, manufacturer, and analyst notes
 2. **BT Sightings**: Individual Bluetooth observations with RSSI and timestamps
-3. **WiFi Devices**: Unique WiFi MAC addresses observed
+3. **WiFi Devices**: Unique WiFi MAC addresses with vendor name, device type heuristic, and analyst notes
 4. **WiFi Associations**: Networks devices attempted to join with GPS and timing
 
 #### ⚙️ **Filter & Time Controls**

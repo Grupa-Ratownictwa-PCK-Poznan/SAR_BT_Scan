@@ -73,9 +73,9 @@ A modern, dark-themed web interface featuring:
    - Auto-updates via WebSocket
 
 4. **Data Tables** (Tab-based)
-   - **BT Devices**: MAC, Name, Last Seen
+   - **BT Devices**: MAC, Name, Manufacturer, Last Seen, Notes
    - **BT Sightings**: MAC, RSSI (with visual bar), Timestamp
-   - **WiFi Devices**: MAC, Vendor, Last Seen
+   - **WiFi Devices**: MAC, Vendor, Device Type, Last Seen, Notes
    - **WiFi Associations**: MAC, SSID, RSSI (with visual bar)
 
 5. **Advanced Filters**
@@ -201,10 +201,38 @@ python main.py
    - RSSI filtering isolates strong/weak signals
    - MAC/SSID substring matching for quick searches
 
-5. **Spatial Visualization**
+5. **WiFi Device Enrichment**
+   - Automatic IEEE OUI (Organizationally Unique Identifier) vendor lookup
+   - Device type heuristics (phone, network, iot, other)
+   - Analyst notes field in both BT and WiFi device tables
+   - "Update OUI Database" button for on-demand database refresh
+   - `/api/oui/update` endpoint to trigger OUI data refresh
+
+6. **Spatial Visualization**
    - Heatmap shows device density at GPS locations
    - Helps identify hotspots in SAR search areas
    - Switchable BT/WiFi overlays for comparison
+
+## WiFi Enrichment Details
+
+The system automatically enriches WiFi device data using the IEEE OUI database:
+
+### OUI Database Integration
+- **File**: `wifi_oui_lookup.py` - Contains 38,904 vendor mappings
+- **Update Script**: `freeze_wifi_oui.py` - Fetches latest data from IEEE registry
+- **Storage**: Vendor names stored in `wifi_devices.vendor_name` field
+- **Device Type**: Heuristic guess stored in `wifi_devices.device_type` field
+
+### Analyst Notes
+- Both `devices.notes` (Bluetooth) and `wifi_devices.notes` (WiFi) columns
+- Free-text field for analyst observations
+- Persists across sessions and appears in exports
+
+### UI Integration
+- "Update OUI Database" button in sidebar triggers immediate refresh
+- `/api/oui/update` endpoint runs `freeze_wifi_oui.py` subprocess
+- Vendors displayed in WiFi Devices table
+- Device type heuristic helps categorize MACs
 
 ## Performance Characteristics
 
@@ -229,16 +257,25 @@ After deployment, verify:
 - [ ] Map layer switch works (BT/WiFi/Both)
 - [ ] WebSocket reconnects after network interruption
 - [ ] Statistics update in real-time
+- [ ] WiFi Devices table shows Vendor and Device Type columns
+- [ ] Notes column appears in both BT and WiFi tables
+- [ ] "Update OUI Database" button visible in sidebar
+- [ ] Wider sidebar (550px) and taller tables (600px) layout
 
 ## Future Enhancements (Planned)
 
+- ✅ WiFi vendor identification via IEEE OUI (COMPLETED)
+- ✅ Device type heuristics for WiFi (COMPLETED)
+- ✅ Analyst notes columns (COMPLETED)
+- ✅ UI layout improvements - wider sidebar and taller tables (COMPLETED)
+- ✅ Update OUI Database button (COMPLETED)
 - Basic authentication (username/password)
-- Device annotations/notes
 - Signal strength time-series graphs
 - Device trajectory visualization
 - CSV export
 - Custom map overlays
 - Threat level indicators
+- Inline notes editing in tables
 
 ## File Structure
 
@@ -289,3 +326,8 @@ All requirements have been met:
 - ✅ Interactive map with heatmap
 - ✅ BT/WiFi switchable overlay
 - ✅ No authentication (future-ready for basic auth)
+- ✅ WiFi vendor identification via IEEE OUI database
+- ✅ Device type heuristics for WiFi devices
+- ✅ Analyst notes columns for BT and WiFi devices
+- ✅ Update OUI Database button with /api/oui/update endpoint
+- ✅ Wider sidebar (550px) and taller tables (600px)

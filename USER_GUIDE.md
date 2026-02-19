@@ -54,10 +54,10 @@ The IP address is typically shown on the scanner's display or can be found via y
 ### Data Tabs
 
 | Tab | Content |
-|-----|---------|
-| **BT Devices** | Unique Bluetooth devices detected |
+|-----|--------|
+| **BT Devices** | Unique Bluetooth devices detected with manufacturer and notes |
 | **BT Sightings** | Individual detection events with RSSI |
-| **WiFi Devices** | Unique WiFi MAC addresses |
+| **WiFi Devices** | Unique WiFi MAC addresses with vendor name and device type |
 | **WiFi Assoc** | WiFi probe requests with SSIDs |
 
 ### Map View
@@ -67,6 +67,28 @@ The map shows a heatmap of detection locations:
 - **Blue/Green areas** = Fewer detections (potentially interesting)
 
 Use the layer toggle to switch between BT-only, WiFi-only, or combined view.
+
+---
+
+## WiFi Device Identification
+
+The dashboard automatically identifies WiFi devices using the IEEE OUI (Organizationally Unique Identifier) database:
+
+- **Vendor**: Manufacturer name looked up from MAC address prefix (e.g., "Apple, Inc", "Cisco Systems")
+- **Device Type**: Heuristic guess based on vendor and MAC pattern (e.g., "phone", "network", "iot")
+
+These fields help quickly identify device categories without additional setup. The OUI database contains 38,904 vendor entries and can be updated anytime via the **"Update OUI Database"** button in the sidebar.
+
+---
+
+## Analyst Notes
+
+Both Bluetooth and WiFi device tables include a **Notes** column where analysts can add custom annotations:
+
+- Use notes to flag interesting findings
+- Example: "Seen near search zone perimeter"
+- Example: "Matches missing person's known networks"
+- Notes persist across sessions and appear in exported reports
 
 ---
 
@@ -102,6 +124,16 @@ Each device gets a **confidence score from 0-100** indicating how likely it belo
 2. Review the preview showing proposed score changes
 3. Click **"Apply Changes"** to update scores
 4. Filter the device list by confidence to focus on high-priority targets
+
+### Enriching WiFi Device Data
+
+The confidence analyzer automatically enriches WiFi device data during analysis:
+
+- Looks up vendor names using IEEE OUI database
+- Guesses device type based on vendor patterns
+- Stores enrichment results for persistence
+
+Use the **"Update OUI Database"** button to sync the latest vendor data before running analysis.
 
 ---
 
@@ -144,8 +176,9 @@ Whitelisted devices automatically receive confidence score = 0.
 1. **Charge fully** - Scanner runs ~8 hours on 10,000mAh powerbank
 2. **Test GPS fix** - Ensure satellites lock before leaving staging area
 3. **Update whitelist** - Add all team device MACs
-4. **Set HQ coordinates** - Configure staging area location in settings (optional)
-5. **Verify web access** - Confirm dashboard loads on your phone/tablet
+4. **Update OUI database** - Click "Update OUI Database" button for latest vendor data (optional but recommended)
+5. **Set HQ coordinates** - Configure staging area location in settings (optional)
+6. **Verify web access** - Confirm dashboard loads on your phone/tablet
 
 ### During Search
 

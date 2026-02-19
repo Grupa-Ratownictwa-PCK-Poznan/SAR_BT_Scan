@@ -55,9 +55,9 @@ Adres IP jest zazwyczaj wyświetlany na ekranie skanera lub można go znaleźć 
 
 | Zakładka | Zawartość |
 |----------|-----------|
-| **BT Devices** | Unikalne wykryte urządzenia Bluetooth |
+| **BT Devices** | Unikalne urządzenia Bluetooth z producentem i notatkami |
 | **BT Sightings** | Pojedyncze zdarzenia wykrycia z RSSI |
-| **WiFi Devices** | Unikalne adresy MAC WiFi |
+| **WiFi Devices** | Unikalne adresy MAC WiFi z nazwą producenta i typem urządzenia |
 | **WiFi Assoc** | Żądania WiFi probe z nazwami SSID |
 
 ### Widok mapy
@@ -67,6 +67,28 @@ Mapa pokazuje mapę cieplną lokalizacji wykryć:
 - **Obszary niebieskie/zielone** = Mniej wykryć (potencjalnie interesujące)
 
 Użyj przełącznika warstw, aby przełączać między widokiem tylko BT, tylko WiFi lub łączonym.
+
+---
+
+## Identyfikacja urządzeń WiFi
+
+Panel automatycznie identyfikuje urządzenia WiFi przy użyciu bazy danych IEEE OUI (Organizationally Unique Identifier):
+
+- **Vendor (Producent)**: Nazwa producenta wyszukana z prefiksu adresu MAC (np. "Apple, Inc", "Cisco Systems")
+- **Device Type (Typ urządzenia)**: Heurystyczne przewidywanie na podstawie producenta i wzorca MAC (np. "phone", "network", "iot")
+
+Te pola pomagają szybko zidentyfikować kategorie urządzeń bez dodatkowej konfiguracji. Baza danych OUI zawiera 38 904 wpisy producenta i może być zaktualizowana w dowolnym momencie przyciskiem **"Update OUI Database"** na pasku bocznym.
+
+---
+
+## Notatki analityka
+
+Zarówno w tabelach urządzeń Bluetooth, jak i WiFi znajduje się kolumna **Notes (Notatki)**, w której analitycy mogą dodawać niestandardowe adnotacje:
+
+- Używaj notatek do flagowania interesujących wyników
+- Przykład: "Widziane blisko peryferii strefy poszukiwań"
+- Przykład: "Pasuje do znanych sieci osoby zaginionej"
+- Notatki utrzymują się w sesjach i pojawiają się w eksportowanych raportach
 
 ---
 
@@ -102,6 +124,16 @@ Każde urządzenie otrzymuje **wynik pewności od 0-100** wskazujący, jak prawd
 2. Przejrzyj podgląd pokazujący proponowane zmiany wyników
 3. Kliknij **"Apply Changes"** aby zaktualizować wyniki
 4. Filtruj listę urządzeń według pewności, aby skupić się na celach o wysokim priorytecie
+
+### Wzbogacanie danych urządzeń WiFi
+
+Analizator pewności automatycznie wzbogaca dane urządzeń WiFi podczas analizy:
+
+- Wyszukuje nazwy producentów w bazie danych IEEE OUI
+- Odgaduje typ urządzenia na podstawie wzorców producenta
+- Przechowuje wyniki wzbogacania dla trwałości
+
+Użyj przycisku **"Update OUI Database"** aby zsynchronizować najnowsze dane producenta przed uruchomieniem analizy.
 
 ---
 
@@ -144,8 +176,9 @@ Urządzenia na whiteliście automatycznie otrzymują wynik pewności = 0.
 1. **Naładuj w pełni** - Skaner działa ~8 godzin na powerbanku 10 000 mAh
 2. **Przetestuj fix GPS** - Upewnij się, że satelity się połączą przed opuszczeniem miejsca zbiórki
 3. **Zaktualizuj whitelistę** - Dodaj wszystkie adresy MAC urządzeń zespołu
-4. **Ustaw współrzędne HQ** - Skonfiguruj lokalizację miejsca zbiórki w ustawieniach (opcjonalnie)
-5. **Zweryfikuj dostęp do panelu** - Potwierdź, że panel ładuje się na telefonie/tablecie
+4. **Zaktualizuj bazę danych OUI** - Kliknij przycisk "Update OUI Database" aby uzyskać najnowsze dane producentów (opcjonalne ale zalecane)
+5. **Ustaw współrzędne HQ** - Skonfiguruj lokalizację miejsca zbiórki w ustawieniach (opcjonalnie)
+6. **Zweryfikuj dostęp do panelu** - Potwierdź, że panel ładuje się na telefonie/tablecie
 
 ### Podczas poszukiwań
 

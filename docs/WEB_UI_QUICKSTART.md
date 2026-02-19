@@ -23,20 +23,21 @@ Navigate to: **http://localhost:8000**
 ## Dashboard Overview
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    SAR SCANNER UI                        │
-├──────────────────┬──────────────────────────────────────┤
-│                  │                                       │
-│  SIDEBAR         │         MAIN CONTENT                 │
-│                  │                                       │
-│  • Time          │  ┌──────────────────────────────┐   │
-│  • Status        │  │                              │   │
-│  • Stats         │  │        HEATMAP MAP           │   │
-│  • Filters       │  │                              │   │
-│  • Tables        │  │  (GPS color-coded points)    │   │
-│  • Map Type      │  │                              │   │
-│                  │  └──────────────────────────────┘   │
-└──────────────────┴──────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                    SAR SCANNER UI                            │
+├────────────────────────┬──────────────────────────────────┤
+│                        │                                   │
+│  SIDEBAR (550px)       │         MAIN CONTENT             │
+│                        │                                   │
+│  • Time                │  ┌──────────────────────────┐    │
+│  • Status              │  │                          │    │
+│  • Stats               │  │       HEATMAP MAP        │    │
+│  • Filters             │  │                          │    │
+│  • Tables (600px tall) │  │  (GPS color-coded pts)   │    │
+│  • Update OUI Button   │  │                          │    │
+│  • Map Type            │  └──────────────────────────┘    │
+│                        │                                   │
+└────────────────────────┴──────────────────────────────────┘
 ```
 
 ## Key Features at a Glance
@@ -49,24 +50,33 @@ Navigate to: **http://localhost:8000**
 | **Scan Mode** | Status panel | What's running: "bt", "wifi", or "both" |
 | **WiFi Monitor** | Status panel | "ON" = monitor mode active, "OFF" = not running |
 | **Device Counts** | Stats panel | Total devices captured |
-| **BT Devices** | Table tab 1 | Bluetooth devices found |
+| **BT Devices** | Table tab 1 | Bluetooth devices with manufacturer and notes |
 | **BT Sightings** | Table tab 2 | Individual BT signals (with RSSI bars) |
-| **WiFi Devices** | Table tab 3 | WiFi devices found |
+| **WiFi Devices** | Table tab 3 | WiFi devices with vendor and device type |
 | **WiFi Assoc** | Table tab 4 | Association attempts to SSIDs |
 | **Mac Filter** | Filters | Search for specific device MAC |
 | **SSID Filter** | Filters | Search for WiFi networks (WiFi Assoc tab) |
 | **RSSI Sliders** | Filters | Show only strong/weak signals |
 | **Hours Filter** | Filters | Show only recent N hours of data |
+| **Update OUI** | Sidebar | Refresh IEEE vendor database |
 | **Heatmap Map** | Right side | GPS position heatmap |
 | **Map Type** | Bottom sidebar | Switch: BT / WiFi / Both |
 
 ## Common Tasks
+
+### Update WiFi Vendor Database
+
+1. Click **"Update OUI Database"** button in the sidebar
+2. Wait for confirmation message
+3. Vendor data will refresh from IEEE registry
+4. Run "Analyze Confidence" to apply new data
 
 ### Find a Specific Device
 
 1. Click the **BT Devices** or **WiFi Devices** tab
 2. Enter MAC address in the **Mac Filter** field
 3. Results update instantly
+4. For WiFi devices, check the **Vendor** and **Type** columns for manufacturer info
 
 ### View Strong Signals Only
 
@@ -176,6 +186,7 @@ http://<scanner-ip>:8000
 - **Live Time**: Every 1 second (always live)
 - **Statistics**: Every second via WebSocket
 - **Tables**: Refresh when you click filter or every 5 seconds automatically
+- **WiFi Vendor Data**: Updated on-demand via "Update OUI Database" button
 - **Map**: Every 5 seconds automatically
 - **Status Indicators**: Every WebSocket update (~1 second)
 

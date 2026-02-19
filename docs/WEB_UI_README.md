@@ -15,9 +15,9 @@ A modern, responsive web dashboard for the SAR BT+WiFi Scanner with real-time da
   - Auto-updating via WebSocket connection
 
 - **Data Tables with Advanced Filtering**
-  - BT Devices: MAC, Name, Last Seen
+  - BT Devices: MAC, Name, Manufacturer, Last Seen, Notes
   - BT Sightings: Signal strength (RSSI), GPS coordinates
-  - WiFi Devices: MAC, Vendor, Last Seen
+  - WiFi Devices: MAC, Vendor, Device Type, Last Seen, Notes
   - WiFi Association Requests: MAC, SSID, Signal Strength
   - Filters: MAC address, SSID, RSSI range, Time window (0-24 hours)
   - Time filtering with dual sliders to exclude noisy scan start/end periods
@@ -28,7 +28,11 @@ A modern, responsive web dashboard for the SAR BT+WiFi Scanner with real-time da
   - Switchable layers: BT, WiFi associations, or Both
   - Automatic zoom-to-bounds when data is available
   - Leaflet.js-based mapping with OpenStreetMap tiles
-
+- **WiFi Device Enrichment**
+  - Automatic vendor lookup using IEEE OUI database (38,904 entries)
+  - Device type heuristics (phone, network, iot, other)
+  - Update OUI Database button for refreshing vendor data
+  - OUI endpoint for on-demand database updates
 - **Real-time WebSocket Updates**
   - Live data streaming without page refresh
   - Configurable update interval (default: 1 second)
@@ -163,9 +167,12 @@ The web UI backend provides REST API endpoints for advanced integration:
 ### Data Queries
 - `GET /api/bt/devices` - List BT devices
 - `GET /api/bt/sightings` - BT sightings with filters
-- `GET /api/wifi/devices` - List WiFi devices
+- `GET /api/wifi/devices` - List WiFi devices (includes vendor, device_type, notes)
 - `GET /api/wifi/associations` - WiFi association requests with filters
 - `GET /api/map/heatmap` - Heatmap data for map visualization
+
+### Database Management
+- `POST /api/oui/update` - Trigger OUI database update from IEEE registry
 
 ### WebSocket
 - `WS /ws/live` - Live data stream with updates every `WEB_UI_REFRESH_INTERVAL` seconds
@@ -204,6 +211,33 @@ As designed, the web UI only connects to:
 3. **gps_client.py** - GPS status and location information
 4. **main.py** - Scanner mode state (passed to web app on startup)
 
+## WiFi Device Enrichment Details
+
+### Vendor Lookup (IEEE OUI)
+When analyzing WiFi devices, the system performs IEEE OUI (Organizationally Unique Identifier) lookups:
+
+- **Source**: IEEE Organizationally Unique Identifier database
+- **Method**: MAC address prefix (first 3 octets) lookup
+- **Coverage**: 38,904 vendor entries
+- **Update Frequency**: Pull latest data anytime via "Update OUI Database" button
+- **Field**: `device_type.vendor_name` stored in wifi_devices table
+
+### Device Type Heuristic
+Based on vendor and MAC patterns, the system estimates device category:
+
+- **phone**: Mobile devices and smartphones
+- **network**: Network equipment, routers, access points
+- **iot**: IoT devices, sensors, smart home
+- **other**: Unclassified devices
+
+### Analyst Notes
+Both BT and WiFi device tables include a `notes` column for analyst annotations:
+
+- Free text field for custom observations
+- Persists across sessions
+- Appears in exports and reports
+- Updated via web UI inline editing (future feature)
+
 ## Future Enhancements
 
 The following features are planned for future versions:
@@ -221,9 +255,10 @@ The following features are planned for future versions:
 - **Export Features**
   - CSV export of filtered data
   - Map snapshots
-  - Report generation
+  - Report generation with enriched data
 
 - **Device Management**
+  - Inline notes editing in tables
   - Mark devices as known/unknown
   - Custom device labels/annotations
   - Threat level tagging
