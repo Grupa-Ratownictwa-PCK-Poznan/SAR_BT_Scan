@@ -1022,12 +1022,13 @@
                             <tr>
                                 <th>MAC</th>
                                 <th>SSID</th>
+                                <th>Packet Type</th>
                                 <th>RSSI</th>
                                 <th>Timestamp</th>
                             </tr>
                         </thead>
                         <tbody id="wifiAssocTable">
-                            <tr><td colspan="3" class="loading">Loading...</td></tr>
+                            <tr><td colspan="5" class="loading">Loading...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -1613,7 +1614,7 @@
         function updateWiFiAssociationsTable(associations) {
             const tbody = document.getElementById("wifiAssocTable");
             if (associations.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" class="loading">No associations found</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" class="loading">No associations found</td></tr>';
                 return;
             }
 
@@ -1621,10 +1622,14 @@
                 const rssiPercent = Math.max(0, Math.min(100, (a.rssi + 100)));
                 const rssiColor = rssiPercent > 70 ? "#2ecc71" : rssiPercent > 40 ? "#e67e22" : "#e74c3c";
                 const timestamp = new Date(a.timestamp * 1000).toLocaleString();
+                const packetTypeBadge = a.packet_type === 'Beacon' 
+                    ? '<span style="background: #3498db; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; font-weight: bold;">📡 Beacon</span>'
+                    : '<span style="background: #e74c3c; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; font-weight: bold;">🔍 Probe</span>';
                 return `
                     <tr>
                         <td class="mac-addr">${a.mac}</td>
                         <td>${a.ssid}</td>
+                        <td>${packetTypeBadge}</td>
                         <td>
                             <div class="rssi-bar">
                                 <div class="rssi-fill" style="width: ${rssiPercent}%; background: ${rssiColor};"></div>
@@ -1675,6 +1680,12 @@
                     // SSID (for WiFi)
                     if (point.ssid) {
                         popupHTML += `<b>SSID:</b> ${point.ssid}<br>`;
+                    }
+                    
+                    // Packet Type (for WiFi associations)
+                    if (point.packet_type) {
+                        const typeLabel = point.packet_type === 'Beacon' ? '📡 Beacon (AP)' : '🔍 Probe (Client)';
+                        popupHTML += `<b>Packet:</b> ${typeLabel}<br>`;
                     }
                     
                     // Signal strength

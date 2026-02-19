@@ -289,7 +289,7 @@ def query_wifi_associations(mac_filter: Optional[str] = None,
             cursor = con.execute(query, params)
             
             for row in cursor.fetchall():
-                (id_, mac, ts_unix, ts_gps, lat, lon, alt, ssid, rssi, scanner_name) = row
+                (id_, mac, ts_unix, ts_gps, lat, lon, alt, ssid, packet_type, rssi, scanner_name) = row
                 
                 results.append({
                     "id": id_,
@@ -301,6 +301,7 @@ def query_wifi_associations(mac_filter: Optional[str] = None,
                     "lon": lon,
                     "alt": alt,
                     "ssid": ssid,
+                    "packet_type": packet_type,
                     "rssi": rssi,
                     "scanner": scanner_name
                 })
@@ -539,7 +540,7 @@ async def get_heatmap_data(
             
             # WiFi associations
             if data_type in ("wifi", "assoc", "all"):
-                query = "SELECT lat, lon, rssi, mac, ssid, ts_unix FROM wifi_associations WHERE lat IS NOT NULL AND lon IS NOT NULL"
+                query = "SELECT lat, lon, rssi, mac, ssid, packet_type, ts_unix FROM wifi_associations WHERE lat IS NOT NULL AND lon IS NOT NULL"
                 params = []
                 
                 if mac_filter:
@@ -567,7 +568,7 @@ async def get_heatmap_data(
                     params.append(time_end)
                 
                 cursor = con.execute(query, params)
-                for lat, lon, rssi, mac, ssid, ts_unix in cursor.fetchall():
+                for lat, lon, rssi, mac, ssid, packet_type, ts_unix in cursor.fetchall():
                     if lat and lon:
                         heatmap_points.append({
                             "lat": lat,
@@ -576,6 +577,7 @@ async def get_heatmap_data(
                             "type": "assoc",
                             "mac": mac,
                             "ssid": ssid,
+                            "packet_type": packet_type,
                             "timestamp": ts_unix,
                             "intensity": max(0, min(1, (rssi + 100) / 100))
                         })
