@@ -36,7 +36,9 @@ import time
 import urllib.request
 from datetime import datetime
 
-IEEE_OUI_URL = "https://standards-oui.ieee.org/oui/oui.csv"
+IEEE_OUI_URL = "https://standards-oui.ieee.org/oui/oui.csv"  # MA-L (24-bit)
+IEEE_MAM_URL = "https://standards-oui.ieee.org/oui28/mam.csv"  # MA-M (28-bit)
+IEEE_MAS_URL = "https://standards-oui.ieee.org/oui36/oui36.csv"  # MA-S (36-bit)
 WIRESHARK_OUI_URL = "https://www.wireshark.org/download/automated/data/manuf"
 ARPSCAN_OUI_URL = "https://raw.githubusercontent.com/royhills/arp-scan/master/ieee-oui.txt"
 
@@ -63,9 +65,21 @@ def _normalize_name(name: str) -> str:
     return name
 
 
-def _parse_ieee_csv(text: str) -> dict[str, str]:
-    """Parse IEEE OUI CSV format into OUI->vendor mapping."""
+def _parse_ieee_csv(text: str, registry_type: str) -> dict[str, str]:
+    """Parse IEEE OUI CSV format into OUI->vendor mapping for a specific registry type.
+    
+    Args:
+        text: CSV content
+        registry_type: 'MA-L' (6 chars), 'MA-M' (7 chars), or 'MA-S' (9 chars)
+    
+    Returns:
+        Dictionary mapping OUI prefix to vendor name
+    """
     mapping: dict[str, str] = {}
+    
+    # Expected prefix lengths for validation
+    prefix_lengths = {'MA-L': 6, 'MA-M': 7, 'MA-S': 9}
+    expected_len = prefix_lengths.get(registry_type, 6)
     
     reader = csv.reader(io.StringIO(text))
     header = next(reader, None)  # Skip header row
@@ -74,22 +88,21 @@ def _parse_ieee_csv(text: str) -> dict[str, str]:
         if len(row) < 3:
             continue
         
-        registry = row[0].strip()  # MA-L, MA-M, MA-S
-        oui = row[1].strip().upper()  # 6-char hex
+        registry = row[0].strip()  # MA-L, MA-M, or MA-S
+        oui = row[1].strip().upper()  # hex prefix
         vendor = row[2].strip()
         
-        # Only include MA-L (large block) entries - most common
-        # MA-M and MA-S have different prefix lengths
-        if registry != "MA-L":
+        # Only include entries matching expected registry type
+        if registry != registry_type:
             continue
         
-        # Validate OUI format (6 hex chars)
-        if not re.match(r'^[0-9A-F]{6}$', oui):
+        # Validate prefix length matches expected
+        if not re.match(f'^[0-9A-F]{{{expected_len}}}$', oui):
             continue
         
         # Normalize vendor name
         vendor = _normalize_name(vendor)
-        if not vendor:
+        if not vendor or vendor.lower() == 'private':
             vendor = "Unknown"
         
         mapping[oui] = vendor
@@ -156,59 +169,108 @@ def _parse_arpscan_oui(text: str) -> dict[str, str]:
     return mapping
 
 
-def merge_oui_sources(ieee_map: dict, wireshark_map: dict, arpscan_map: dict) -> tuple[dict, dict]:
-    """Merge OUI mappings with priority: IEEE > Wireshark > ARP-scan"""
-    merged = {}
-    sources = {'ieee': 0, 'wireshark': 0, 'arpscan': 0}
+def merge_oui_sources(ieee_maps: tuple, wireshark_map: dict, arpscan_map: dict) -> tuple[dict, dict, dict, dict]:
+    """Merge OUI mappings with priority: IEEE > Wireshark > ARP-scan
     
-    merged.update(ieee_map)
-    sources['ieee'] = len(ieee_map)
+    Args:
+        ieee_maps: Tuple of (ma_l, ma_m, ma_s) mappings from IEEE
+        wireshark_map: MA-L only mappings from Wireshark
+        arpscan_map: MA-L only mappings from ARP-scan
     
+    Returns:
+        Tuple of (ma_l_merged, ma_m, ma_s, sources_info)
+    """
+    ma_l_ieee, ma_m, ma_s = ieee_maps
+    
+    sources = {
+        'ieee_mal': len(ma_l_ieee),
+        'ieee_mam': len(ma_m),
+        'ieee_mas': len(ma_s),
+        'wireshark': 0,
+        'arpscan': 0
+    }
+    
+    # Start with IEEE MA-L as base for MA-L merged
+    ma_l_merged = dict(ma_l_ieee)
+    
+    # Fill gaps with Wireshark (MA-L only)
     for oui, vendor in wireshark_map.items():
-        if oui not in merged:
-            merged[oui] = vendor
+        if oui not in ma_l_merged:
+            ma_l_merged[oui] = vendor
             sources['wireshark'] += 1
     
+    # Fill remaining gaps with ARP-scan (MA-L only)
     for oui, vendor in arpscan_map.items():
-        if oui not in merged:
-            merged[oui] = vendor
+        if oui not in ma_l_merged:
+            ma_l_merged[oui] = vendor
             sources['arpscan'] += 1
     
-    return merged, sources
+    return ma_l_merged, ma_m, ma_s, sources
 
 
-def generate_lookup_file(mapping: dict[str, str], sources_info: dict, output_path: str) -> None:
-    """Generate Python lookup file from OUI mapping."""
+def generate_lookup_file(ma_l: dict, ma_m: dict, ma_s: dict, sources_info: dict, output_path: str) -> None:
+    """Generate Python lookup file from OUI mappings (MA-L, MA-M, MA-S)."""
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
+    total = len(ma_l) + len(ma_m) + len(ma_s)
+    
     sources_text = "\n".join([
-        f"#   - IEEE MA-L Registry: {sources_info['ieee']} entries",
-        f"#   - Wireshark database: +{sources_info['wireshark']} new entries",
-        f"#   - ARP-scan database: +{sources_info['arpscan']} new entries"
+        f"#   - IEEE MA-L Registry: {sources_info['ieee_mal']} entries (24-bit prefix)",
+        f"#   - IEEE MA-M Registry: {sources_info['ieee_mam']} entries (28-bit prefix)",
+        f"#   - IEEE MA-S Registry: {sources_info['ieee_mas']} entries (36-bit prefix)",
+        f"#   - Wireshark database: +{sources_info['wireshark']} new MA-L entries",
+        f"#   - ARP-scan database: +{sources_info['arpscan']} new MA-L entries"
     ])
     
     with open(output_path, "w", encoding="utf-8") as f:
-        f.write(f'''# Auto-generated on {timestamp} from multiple sources
-# Source: Merged from IEEE MA-L Registry + Wireshark + ARP-scan
+        f.write(f'''# Auto-generated on {timestamp} from multiple sources (HYBRID)
+# Source: IEEE MA-L + MA-M + MA-S Registries + Wireshark + ARP-scan
 # https://standards-oui.ieee.org/
 # https://www.wireshark.org/download/automated/data/manuf
 # https://github.com/royhills/arp-scan
 #
-# Total entries: {len(mapping)}
+# Total entries: {total}
 # {sources_text}
 # 
+# Hybrid lookup: Checks MA-S (36-bit) -> MA-M (28-bit) -> MA-L (24-bit)
+# This ensures maximum device identification coverage.
+#
 # Usage:
 #   from wifi_oui_lookup import lookup_vendor, guess_device_type
 #   vendor = lookup_vendor("AA:BB:CC:DD:EE:FF")  # Returns vendor name or ""
 #   device_type = guess_device_type("AA:BB:CC:DD:EE:FF", vendor)  # Returns guessed type
 
-OUI_VENDORS = {{
+# MA-L: 24-bit prefix (6 hex chars) - standard OUI
+OUI_VENDORS_MAL = {{
 ''')
         
-        # Sort by OUI for consistent output
-        for oui in sorted(mapping.keys()):
-            vendor = mapping[oui]
-            # Escape quotes in vendor names
+        # Write MA-L entries
+        for oui in sorted(ma_l.keys()):
+            vendor = ma_l[oui]
+            vendor_escaped = vendor.replace("\\", "\\\\").replace('"', '\\"')
+            f.write(f'    "{oui}": "{vendor_escaped}",\n')
+        
+        f.write('''}
+
+# MA-M: 28-bit prefix (7 hex chars) - medium block
+OUI_VENDORS_MAM = {
+''')
+        
+        # Write MA-M entries
+        for oui in sorted(ma_m.keys()):
+            vendor = ma_m[oui]
+            vendor_escaped = vendor.replace("\\", "\\\\").replace('"', '\\"')
+            f.write(f'    "{oui}": "{vendor_escaped}",\n')
+        
+        f.write('''}
+
+# MA-S: 36-bit prefix (9 hex chars) - small block
+OUI_VENDORS_MAS = {
+''')
+        
+        # Write MA-S entries
+        for oui in sorted(ma_s.keys()):
+            vendor = ma_s[oui]
             vendor_escaped = vendor.replace("\\", "\\\\").replace('"', '\\"')
             f.write(f'    "{oui}": "{vendor_escaped}",\n')
         
@@ -264,7 +326,10 @@ _DEVICE_TYPE_PATTERNS = {
 
 def lookup_vendor(mac: str) -> str:
     """
-    Look up vendor name from MAC address using OUI prefix.
+    Look up vendor name from MAC address using hybrid OUI prefix matching.
+    
+    Checks prefixes in order of specificity: MA-S (36-bit) -> MA-M (28-bit) -> MA-L (24-bit).
+    This ensures the most specific match is returned for devices in smaller blocks.
     
     Args:
         mac: MAC address in any common format (AA:BB:CC:DD:EE:FF, 
@@ -273,13 +338,27 @@ def lookup_vendor(mac: str) -> str:
     Returns:
         Vendor name string, or empty string if not found.
     """
-    # Normalize MAC: remove delimiters, uppercase, take first 6 chars
-    oui = mac.upper().replace(":", "").replace("-", "").replace(".", "")[:6]
+    # Normalize MAC: remove delimiters, uppercase
+    mac_clean = mac.upper().replace(":", "").replace("-", "").replace(".", "")
     
-    if len(oui) != 6:
+    if len(mac_clean) < 6:
         return ""
     
-    return OUI_VENDORS.get(oui, "")
+    # Check MA-S first (9 hex chars = 36-bit prefix) - most specific
+    if len(mac_clean) >= 9:
+        prefix_9 = mac_clean[:9]
+        if prefix_9 in OUI_VENDORS_MAS:
+            return OUI_VENDORS_MAS[prefix_9]
+    
+    # Check MA-M next (7 hex chars = 28-bit prefix)
+    if len(mac_clean) >= 7:
+        prefix_7 = mac_clean[:7]
+        if prefix_7 in OUI_VENDORS_MAM:
+            return OUI_VENDORS_MAM[prefix_7]
+    
+    # Finally check MA-L (6 hex chars = 24-bit prefix) - standard OUI
+    prefix_6 = mac_clean[:6]
+    return OUI_VENDORS_MAL.get(prefix_6, "")
 
 
 def guess_device_type(mac: str, vendor: str = None) -> str:
@@ -343,12 +422,15 @@ def lookup_and_guess(mac: str) -> tuple[str, str]:
     return vendor, device_type
 ''')
     
-    print(f"✓ Generated {output_path} with {len(mapping)} OUI entries")
-    print(f"  - IEEE:      {sources_info['ieee']} entries")
+    total = len(ma_l) + len(ma_m) + len(ma_s)
+    print(f"✓ Generated {output_path} with {total} OUI entries (hybrid)")
+    print(f"  - MA-L: {sources_info['ieee_mal']} entries (24-bit)")
+    print(f"  - MA-M: {sources_info['ieee_mam']} entries (28-bit)")
+    print(f"  - MA-S: {sources_info['ieee_mas']} entries (36-bit)")
     if sources_info['wireshark'] > 0:
-        print(f"  - Wireshark: +{sources_info['wireshark']} new (gap-fill)")
+        print(f"  - Wireshark: +{sources_info['wireshark']} new MA-L (gap-fill)")
     if sources_info['arpscan'] > 0:
-        print(f"  - ARP-scan:  +{sources_info['arpscan']} new (gap-fill)")
+        print(f"  - ARP-scan: +{sources_info['arpscan']} new MA-L (gap-fill)")
 
 
 def main():
@@ -385,19 +467,42 @@ Examples:
     
     args = parser.parse_args()
     
-    sources_info = {'ieee': 0, 'wireshark': 0, 'arpscan': 0}
+    # Fetch IEEE registries (primary source - separate files for MA-L, MA-M, MA-S)
+    print(f"1. Fetching IEEE OUI Registries...")
     
-    # Fetch IEEE (primary source)
-    print(f"1. Fetching IEEE MA-L Registry...")
-    ieee_data = _fetch(IEEE_OUI_URL)
-    if ieee_data:
-        ieee_mapping = _parse_ieee_csv(ieee_data)
-        print(f"   ✓ Found {len(ieee_mapping)} IEEE entries")
+    # MA-L (24-bit prefix) - main OUI registry
+    print(f"   1a. Fetching MA-L (24-bit prefix)...")
+    mal_data = _fetch(IEEE_OUI_URL)
+    if mal_data:
+        ma_l_ieee = _parse_ieee_csv(mal_data, 'MA-L')
+        print(f"       ✓ Found {len(ma_l_ieee)} MA-L entries")
     else:
-        print("   ✗ Failed to fetch IEEE data")
+        print("       ✗ Failed to fetch IEEE MA-L data")
         sys.exit(1)
     
-    # Fetch other sources unless IEEE-only mode
+    # MA-M (28-bit prefix) - medium block
+    print(f"   1b. Fetching MA-M (28-bit prefix)...")
+    mam_data = _fetch(IEEE_MAM_URL)
+    if mam_data:
+        ma_m = _parse_ieee_csv(mam_data, 'MA-M')
+        print(f"       ✓ Found {len(ma_m)} MA-M entries")
+    else:
+        print("       ⚠ Failed to fetch IEEE MA-M data (continuing without)")
+        ma_m = {}
+    
+    # MA-S (36-bit prefix) - small block
+    print(f"   1c. Fetching MA-S (36-bit prefix)...")
+    mas_data = _fetch(IEEE_MAS_URL)
+    if mas_data:
+        ma_s = _parse_ieee_csv(mas_data, 'MA-S')
+        print(f"       ✓ Found {len(ma_s)} MA-S entries")
+    else:
+        print("       ⚠ Failed to fetch IEEE MA-S data (continuing without)")
+        ma_s = {}
+    
+    ieee_maps = (ma_l_ieee, ma_m, ma_s)
+    
+    # Fetch other sources unless IEEE-only mode (these only provide MA-L equivalent)
     wireshark_mapping = {}
     arpscan_mapping = {}
     if not args.ieee_only:
@@ -405,7 +510,7 @@ Examples:
         wireshark_data = _fetch(WIRESHARK_OUI_URL)
         if wireshark_data:
             wireshark_mapping = _parse_wireshark_manuf(wireshark_data)
-            print(f"   ✓ Found {len(wireshark_mapping)} Wireshark entries")
+            print(f"   ✓ Found {len(wireshark_mapping)} Wireshark entries (MA-L equivalent)")
         else:
             print("   ⚠ Failed to fetch Wireshark data (proceeding with IEEE)")
         
@@ -413,7 +518,7 @@ Examples:
         arpscan_data = _fetch(ARPSCAN_OUI_URL)
         if arpscan_data:
             arpscan_mapping = _parse_arpscan_oui(arpscan_data)
-            print(f"   ✓ Found {len(arpscan_mapping)} ARP-scan entries")
+            print(f"   ✓ Found {len(arpscan_mapping)} ARP-scan entries (MA-L equivalent)")
         else:
             print("   ⚠ Failed to fetch ARP-scan data (proceeding with IEEE)")
     else:
@@ -421,27 +526,38 @@ Examples:
         print("3. Skipping ARP-scan (IEEE-only mode)")
     
     # Merge databases
-    print("\n4. Merging databases...")
-    merged_mapping, sources_info = merge_oui_sources(ieee_mapping, wireshark_mapping, arpscan_mapping)
-    print(f"   ✓ Total: {len(merged_mapping)} entries")
-    print(f"     - IEEE: {sources_info['ieee']} entries")
+    print("\n4. Merging databases (hybrid approach)...")
+    ma_l_merged, ma_m_final, ma_s_final, sources_info = merge_oui_sources(ieee_maps, wireshark_mapping, arpscan_mapping)
+    total = len(ma_l_merged) + len(ma_m_final) + len(ma_s_final)
+    print(f"   ✓ Total: {total} entries")
+    print(f"     - IEEE MA-L: {sources_info['ieee_mal']} entries")
+    print(f"     - IEEE MA-M: {sources_info['ieee_mam']} entries")
+    print(f"     - IEEE MA-S: {sources_info['ieee_mas']} entries")
     if sources_info['wireshark'] > 0:
-        print(f"     - Wireshark: +{sources_info['wireshark']} new (gap-fill)")
+        print(f"     - Wireshark: +{sources_info['wireshark']} new MA-L (gap-fill)")
     if sources_info['arpscan'] > 0:
-        print(f"     - ARP-scan: +{sources_info['arpscan']} new (gap-fill)")
+        print(f"     - ARP-scan: +{sources_info['arpscan']} new MA-L (gap-fill)")
     
     if args.dry_run:
         print(f"\n[DRY RUN] Would generate {args.output}")
-        print("\nSample entries:")
-        for oui, vendor in list(merged_mapping.items())[:10]:
+        print("\nSample MA-L entries:")
+        for oui, vendor in list(ma_l_merged.items())[:5]:
             print(f"  {oui} -> {vendor}")
+        if ma_m_final:
+            print("\nSample MA-M entries:")
+            for oui, vendor in list(ma_m_final.items())[:5]:
+                print(f"  {oui} -> {vendor}")
+        if ma_s_final:
+            print("\nSample MA-S entries:")
+            for oui, vendor in list(ma_s_final.items())[:5]:
+                print(f"  {oui} -> {vendor}")
     else:
         script_dir = os.path.dirname(os.path.abspath(__file__))
         output_path = os.path.join(script_dir, args.output) if not os.path.isabs(args.output) else args.output
         
         print(f"\n5. Writing {output_path}...")
-        generate_lookup_file(merged_mapping, sources_info, output_path)
-        print("✓ Successfully generated wifi_oui_lookup.py with hybrid sources")
+        generate_lookup_file(ma_l_merged, ma_m_final, ma_s_final, sources_info, output_path)
+        print("✓ Successfully generated wifi_oui_lookup.py with HYBRID sources (MA-L + MA-M + MA-S)")
 
 
 if __name__ == "__main__":

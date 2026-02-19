@@ -376,6 +376,9 @@ class ConfidenceAnalyzer:
             early_rssi = sum(early_rssi_vals) / len(early_rssi_vals) if early_rssi_vals else None
             late_rssi = sum(late_rssi_vals) / len(late_rssi_vals) if late_rssi_vals else None
             
+            # OUI-based vendor and device type enrichment (hybrid approach for BT too)
+            vendor_name, guessed_type = lookup_and_guess(addr)
+            
             # Calculate new confidence
             if is_whitelisted:
                 # Whitelisted devices automatically get confidence 0
@@ -414,7 +417,9 @@ class ConfidenceAnalyzer:
                 hq_ratio=hq_ratio,
                 avg_distance_from_hq=avg_distance,
                 session_count=session_count,
-                whitelisted=is_whitelisted
+                whitelisted=is_whitelisted,
+                vendor_name=vendor_name,
+                guessed_type=guessed_type
             )
         finally:
             con.close()
