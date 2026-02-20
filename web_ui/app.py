@@ -30,6 +30,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from settings import WEB_UI_HOST, WEB_UI_PORT, WEB_UI_REFRESH_INTERVAL, DB_FILE, SD_STORAGE, USB_STORAGE
 from storage import db
+from mac_utils import lookup_randomized_mac_vendor, is_locally_administered_mac
 import gps_client as gc
 
 app = FastAPI(title="SAR Scanner UI", description="Live web interface for SAR BT+WiFi Scanner")
