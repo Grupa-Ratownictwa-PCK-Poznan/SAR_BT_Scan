@@ -159,10 +159,17 @@ def query_devices(device_type: str, limit: int = 1000, offset: int = 0,
                     if "confidence_max" in filters and confidence > filters["confidence_max"]:
                         continue
                     
+                    # Try to recover vendor for randomized MACs
+                    display_vendor = vendor or ""
+                    if not display_vendor and is_locally_administered_mac(mac):
+                        recovered_vendor, was_randomized = lookup_randomized_mac_vendor(mac)
+                        if recovered_vendor:
+                            display_vendor = recovered_vendor
+                    
                     results.append({
                         "type": "device",
                         "mac": mac,
-                        "vendor": vendor or "",
+                        "vendor": display_vendor,
                         "device_type": device_type_val or "",
                         "first_seen": first_seen,
                         "last_seen": last_seen,
