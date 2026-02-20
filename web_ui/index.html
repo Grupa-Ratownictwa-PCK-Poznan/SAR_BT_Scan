@@ -268,8 +268,8 @@
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
             z-index: 1000;
             font-size: 11px;
-            max-width: 300px;
-            max-height: 400px;
+            max-width: 400px;
+            max-height: 600px;
             overflow-y: auto;
             pointer-events: auto;
             display: none;
@@ -305,12 +305,14 @@
         .device-tooltip-label {
             font-weight: bold;
             color: var(--rc-red);
-            min-width: 60px;
+            min-width: 80px;
+            flex-shrink: 0;
         }
 
         .device-tooltip-value {
             word-break: break-all;
             color: var(--rc-black);
+            flex-grow: 1;
         }
 
         .device-tooltip-ssids {
@@ -324,13 +326,14 @@
         }
 
         .device-tooltip-ssid-item {
-            background: #f5f5f5;
-            padding: 4px 6px;
-            margin: 2px 0;
-            border-radius: 2px;
-            border-left: 3px solid var(--accent-blue);
+            background: #f9f9f9;
+            padding: 6px 8px;
+            margin: 4px 0;
+            border-radius: 3px;
+            border-left: 4px solid var(--accent-blue);
             font-family: 'Courier New', monospace;
             font-size: 10px;
+            line-height: 1.3;
         }
 
         .device-tooltip-close {
@@ -2056,14 +2059,16 @@
                 const tooltip = document.getElementById("deviceTooltip");
                 const contentDiv = document.getElementById("deviceTooltipContent");
 
-                // Fetch SSIDs for this device
+                // Fetch detailed device information and SSIDs
+                let deviceInfo = {};
                 let ssids = [];
                 try {
                     const response = await fetch(`${API_BASE}/api/wifi/device/${encodeURIComponent(mac)}/ssids`);
                     const data = await response.json();
+                    deviceInfo = data.device_info || {};
                     ssids = data.ssids || [];
                 } catch (error) {
-                    console.error("Error fetching SSIDs:", error);
+                    console.error("Error fetching device details:", error);
                 }
 
                 // Build tooltip HTML
@@ -2074,30 +2079,93 @@
                     </div>
                 `;
 
-                if (vendor && vendor !== "—") {
+                // Display vendor
+                const displayVendor = deviceInfo.vendor || vendor || "—";
+                if (displayVendor !== "—") {
                     html += `
                         <div class="device-tooltip-row">
                             <span class="device-tooltip-label">Vendor:</span>
-                            <span class="device-tooltip-value">${vendor}</span>
+                            <span class="device-tooltip-value">${displayVendor}</span>
                         </div>
                     `;
                 }
 
+                // Display device type if available
+                if (deviceInfo.device_type && deviceInfo.device_type !== "Unknown") {
+                    html += `
+                        <div class="device-tooltip-row">
+                            <span class="device-tooltip-label">Type:</span>
+                            <span class="device-tooltip-value">${deviceInfo.device_type}</span>
+                        </div>
+                    `;
+                }
+
+                // Display confidence if available
+                if (deviceInfo.confidence > 0) {
+                    html += `
+                        <div class="device-tooltip-row">
+                            <span class="device-tooltip-label">Confidence:</span>
+                            <span class="device-tooltip-value">${deviceInfo.confidence}%</span>
+                        </div>
+                    `;
+                }
+
+                // Display first seen
+                if (deviceInfo.first_seen) {
+                    html += `
+                        <div class="device-tooltip-row">
+                            <span class="device-tooltip-label">First Seen:</span>
+                            <span class="device-tooltip-value">${new Date(deviceInfo.first_seen * 1000).toLocaleString()}</span>
+                        </div>
+                    `;
+                }
+
+                // Display last seen
+                const displayLastSeen = deviceInfo.last_seen || lastSeen;
                 html += `
                     <div class="device-tooltip-row">
                         <span class="device-tooltip-label">Last Seen:</span>
-                        <span class="device-tooltip-value">${new Date(lastSeen * 1000).toLocaleString()}</span>
+                        <span class="device-tooltip-value">${new Date(displayLastSeen * 1000).toLocaleString()}</span>
                     </div>
                 `;
 
-                // Add SSIDs section
+                // Display notes if available
+                if (deviceInfo.notes) {
+                    html += `
+                        <div class="device-tooltip-row">
+                            <span class="device-tooltip-label">Notes:</span>
+                            <span class="device-tooltip-value" style="font-style: italic;">${deviceInfo.notes}</span>
+                        </div>
+                    `;
+                }
+
+                // Add SSIDs section with detailed information
                 if (ssids.length > 0) {
                     html += `
                         <div class="device-tooltip-ssids">
                             <div class="device-tooltip-ssids-title">SSIDs (${ssids.length}):</div>
                     `;
-                    ssids.forEach(ssid => {
-                        html += `<div class="device-tooltip-ssid-item">${ssid || '<em>Hidden Network</em>'}</div>`;
+                    ssids.forEach(ssidInfo => {
+                        const ssidName = ssidInfo.ssid ? ssidInfo.ssid : '<em>Hidden Network</em>';
+                        
+                        // Group types for display
+                        const typeLabels = ssidInfo.types.map(t => {
+                            const typeLabel = t.type === 'Beacon' ? '📡 AP' : '🔍 Probe';
+                            const signalStr = t.avg_rssi ? ` (${t.avg_rssi} dBm)` : '';
+                            return `${typeLabel}${signalStr}`;
+                        }).join(' • ');
+                        
+                        html += `
+                            <div class="device-tooltip-ssid-item">
+                                <div style="font-weight: 500; margin-bottom: 2px;">${ssidName}</div>
+                                <div style="font-size: 9px; color: #666; margin: 2px 0;">
+                                    ${typeLabels}
+                                </div>
+                                <div style="font-size: 9px; color: #999;">
+                                    Seen ${ssidInfo.count}× • Last: ${new Date(ssidInfo.last_seen * 1000).toLocaleTimeString()}
+                                </div>
+                            </div>
+                        `;
                     });
                     html += `</div>`;
                 } else {

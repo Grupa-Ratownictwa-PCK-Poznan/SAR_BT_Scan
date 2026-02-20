@@ -496,26 +496,78 @@ async def get_wifi_associations(
 
 @app.get("/api/wifi/device/{mac}/ssids")
 async def get_wifi_device_ssids(mac: str):
-    """Get a list of unique SSIDs associated with a specific WiFi device MAC address.
+    """Get SSIDs associated with a specific WiFi device MAC address with packet type information.
     
-    Returns the unique SSIDs and count of SSID occurrences for analysis.
+    Returns detailed SSID information including whether the device is probing for them
+    (ProbeRequest) or advertising them (Beacon). Also includes device-level metadata.
     """
-    ssids = []
+    ssids_data = []
+    device_info = {}
     
     try:
         with db() as con:
-            query = "SELECT DISTINCT ssid FROM wifi_associations WHERE mac = ? ORDER BY ssid"
+            # Get device information
+            device_query = "SELECT vendor, device_type, confidence, notes, first_seen, last_seen FROM wifi_devices WHERE mac = ?"
+            device_cursor = con.execute(device_query, (mac,))
+            device_row = device_cursor.fetchone()
+            
+            if device_row:
+                vendor, device_type, confidence, notes, first_seen, last_seen = device_row
+                device_info = {
+                    "vendor": vendor or "Unknown",
+                    "device_type": device_type or "Unknown",
+                    "confidence": confidence or 0,
+                    "notes": notes or "",
+                    "first_seen": first_seen,
+                    "last_seen": last_seen,
+                    "first_seen_str": datetime.fromtimestamp(first_seen).isoformat(),
+                    "last_seen_str": datetime.fromtimestamp(last_seen).isoformat()
+                }
+            
+            # Get SSID details with packet type information
+            query = """
+                SELECT DISTINCT ssid, packet_type, COUNT(*) as count,
+                       MAX(ts_unix) as last_seen_ts, AVG(rssi) as avg_rssi
+                FROM wifi_associations 
+                WHERE mac = ?
+                GROUP BY ssid, packet_type
+                ORDER BY ssid, packet_type DESC
+            """
             cursor = con.execute(query, (mac,))
             
+            ssid_dict = {}  # Group by SSID to combine packet types
             for row in cursor.fetchall():
-                ssid = row[0]
+                ssid, packet_type, count, last_seen_ts, avg_rssi = row
                 if ssid:  # Skip null/empty SSIDs
-                    ssids.append(ssid)
+                    if ssid not in ssid_dict:
+                        ssid_dict[ssid] = {
+                            "ssid": ssid,
+                            "types": [],
+                            "count": 0,
+                            "last_seen": 0,
+                            "avg_rssi": 0
+                        }
+                    
+                    ssid_dict[ssid]["types"].append({
+                        "type": packet_type or "ProbeRequest",
+                        "count": count,
+                        "last_seen": last_seen_ts,
+                        "avg_rssi": round(avg_rssi, 1) if avg_rssi else 0
+                    })
+                    ssid_dict[ssid]["count"] += count
+                    ssid_dict[ssid]["last_seen"] = max(ssid_dict[ssid]["last_seen"], last_seen_ts or 0)
+            
+            ssids_data = sorted(ssid_dict.values(), key=lambda x: x["last_seen"], reverse=True)
     
     except Exception as e:
         print(f"Error querying SSIDs for device {mac}: {e}")
     
-    return {"mac": mac, "ssids": ssids, "count": len(ssids)}
+    return {
+        "mac": mac,
+        "device_info": device_info,
+        "ssids": ssids_data,
+        "count": len(ssids_data)
+    }
 
 
 @app.get("/api/map/heatmap")
