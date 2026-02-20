@@ -897,9 +897,9 @@
 
                 <!-- Tabs -->
                 <div class="tabs">
-                    <button class="tab-btn active" data-tab="bt-devices">BT Devices</button>
+                    <button class="tab-btn" data-tab="bt-devices">BT Devices</button>
                     <button class="tab-btn" data-tab="bt-sightings">BT Sightings</button>
-                    <button class="tab-btn" data-tab="wifi-devices">WiFi Devices</button>
+                    <button class="tab-btn active" data-tab="wifi-devices">WiFi Devices</button>
                     <button class="tab-btn" data-tab="wifi-assoc">WiFi Assoc</button>
                 </div>
 
@@ -933,23 +933,18 @@
                     </div>
                 </div>
 
-                <div class="filter-group">
-                    <label>Confidence Analysis</label>
-                    <button id="analyzeConfidenceBtn" style="width: 100%; font-size: 11px; padding: 8px; background: var(--accent-green); color: white; border: none; border-radius: 3px; cursor: pointer; font-weight: bold;">
-                        <i class="fas fa-brain"></i> Analyze Confidence
-                    </button>
-                    <div style="font-size: 10px; color: #666; margin-top: 4px;">
-                        Recalculate confidence scores based on device patterns
+                <div style="display: flex; gap: 4px; margin-bottom: 4px;">
+                    <div class="filter-group" style="flex: 1; margin-bottom: 0;">
+                        <label style="font-size: 8px;">Confidence</label>
+                        <button id="analyzeConfidenceBtn" style="width: 100%; font-size: 10px; padding: 5px; background: var(--accent-green); color: white; border: none; border-radius: 3px; cursor: pointer; font-weight: bold; white-space: nowrap;">
+                            <i class="fas fa-brain"></i> Analyze
+                        </button>
                     </div>
-                </div>
-
-                <div class="filter-group">
-                    <label>WiFi Vendor Database</label>
-                    <button id="updateOuiBtn" style="width: 100%; font-size: 11px; padding: 8px; background: #9b59b6; color: white; border: none; border-radius: 3px; cursor: pointer; font-weight: bold;">
-                        <i class="fas fa-download"></i> Update OUI Database
-                    </button>
-                    <div style="font-size: 10px; color: #666; margin-top: 4px;">
-                        Fetch latest MAC vendor mappings from IEEE (requires internet)
+                    <div class="filter-group" style="flex: 1; margin-bottom: 0;">
+                        <label style="font-size: 8px;">Vendor DB</label>
+                        <button id="updateOuiBtn" style="width: 100%; font-size: 10px; padding: 5px; background: #9b59b6; color: white; border: none; border-radius: 3px; cursor: pointer; font-weight: bold; white-space: nowrap;">
+                            <i class="fas fa-download"></i> Update
+                        </button>
                     </div>
                 </div>
 
@@ -1046,34 +1041,37 @@
                 </div>
                 <div style="display: flex; gap: 4px;">
                     <button class="tab-btn" id="mapBtBtn" data-map-type="bt" style="flex: 1;">BT</button>
-                    <button class="tab-btn active" id="mapWifiBtn" data-map-type="wifi" style="flex: 1;">WiFi</button>
-                    <button class="tab-btn" id="mapAllBtn" data-map-type="all" style="flex: 1;">Both</button>
+                    <button class="tab-btn" id="mapWifiBtn" data-map-type="wifi" style="flex: 1;">WiFi</button>
+                    <button class="tab-btn active" id="mapAllBtn" data-map-type="all" style="flex: 1;">Both</button>
                 </div>
             </div>
 
             <!-- Database Actions -->
             <div class="panel" style="margin-top: auto;">
-                <div style="display: flex; gap: 8px; flex-direction: column;">
-                    <button id="downloadDbBtn" style="flex: 1; padding: 10px; background: #27ae60; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 5px;">
-                        <i class="fas fa-download"></i> Download DB
-                    </button>
-                    <button id="purgeDbBtn" style="flex: 1; padding: 10px; background: #e74c3c; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 5px;">
-                        <i class="fas fa-trash"></i> Purge DB
-                    </button>
-                    <button id="clearUsbBtn" style="flex: 1; padding: 10px; background: #f39c12; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 5px;">
-                        <i class="fas fa-hdd"></i> Clear USB
-                    </button>
+                <div style="display: flex; gap: 4px; flex-direction: column;">
+                    <!-- Database Actions Row -->
+                    <div style="display: flex; gap: 4px;">
+                        <button id="downloadDbBtn" style="flex: 1; padding: 6px; background: #27ae60; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 3px; font-size: 10px;">
+                            <i class="fas fa-download"></i> <span>DL</span>
+                        </button>
+                        <button id="purgeDbBtn" style="flex: 1; padding: 6px; background: #e74c3c; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 3px; font-size: 10px;">
+                            <i class="fas fa-trash"></i> <span>Purge</span>
+                        </button>
+                        <button id="clearUsbBtn" style="flex: 1; padding: 6px; background: #f39c12; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 3px; font-size: 10px;">
+                            <i class="fas fa-hdd"></i> <span>USB</span>
+                        </button>
+                    </div>
                     
-                    <!-- System Control Buttons -->
-                    <div style="border-top: 2px solid #ddd; margin-top: 12px; padding-top: 8px;">
-                        <button id="updateBtn" style="width: 100%; padding: 10px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 5px; margin-bottom: 8px;">
-                            <i class="fas fa-sync-alt"></i> Update
+                    <!-- System Control Buttons Row -->
+                    <div style="display: flex; gap: 4px;">
+                        <button id="updateBtn" style="flex: 1; padding: 6px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 3px; font-size: 10px;">
+                            <i class="fas fa-sync-alt"></i> <span>Update</span>
                         </button>
-                        <button id="rebootBtn" style="width: 100%; padding: 10px; background: #f39c12; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 5px; margin-bottom: 8px;">
-                            <i class="fas fa-redo"></i> Reboot
+                        <button id="rebootBtn" style="flex: 1; padding: 6px; background: #f39c12; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 3px; font-size: 10px;">
+                            <i class="fas fa-redo"></i> <span>Reboot</span>
                         </button>
-                        <button id="shutdownBtn" style="width: 100%; padding: 10px; background: #c0392b; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 5px;">
-                            <i class="fas fa-power-off"></i> Shutdown
+                        <button id="shutdownBtn" style="flex: 1; padding: 6px; background: #c0392b; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 3px; font-size: 10px;">
+                            <i class="fas fa-power-off"></i> <span>Stop</span>
                         </button>
                     </div>
                 </div>
@@ -1169,8 +1167,8 @@
         let map = null;
         let heatmapLayer = null;
         let mapMarkers = [];
-        let mapDataType = "wifi";
-        let currentTab = "bt-devices";
+        let mapDataType = "all";
+        let currentTab = "wifi-devices";
         let wsConnection = null;
         let sidebarWidth = 380;
         let isDraggingDivider = false;
