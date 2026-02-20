@@ -2705,8 +2705,11 @@
             setupWebSocket();
             updateSystemStatus();
             
-            // Load initial data
-            loadBTDevices();
+            // Load initial data based on default tab
+            if (currentTab === "bt-devices") loadBTDevices();
+            else if (currentTab === "bt-sightings") loadBTSightings();
+            else if (currentTab === "wifi-devices") loadWiFiDevices();
+            else if (currentTab === "wifi-assoc") loadWiFiAssociations();
             
             // Update clock every second
             setInterval(updateLiveTime, 1000);
