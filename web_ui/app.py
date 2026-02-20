@@ -312,13 +312,48 @@ def query_wifi_associations(mac_filter: Optional[str] = None,
     return results
 
 
+def get_wifi_adapter_bands(interface: str) -> str:
+    """Detect WiFi adapter band support (2.4 GHz, 5 GHz, or both).
+    
+    Uses 'iw list' to query adapter capabilities.
+    Returns string like '2.4 GHz', '5 GHz', or '2.4 & 5 GHz'.
+    """
+    try:
+        result = subprocess.run(
+            ["iw", "list"],
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+        
+        output = result.stdout
+        has_2ghz = "2400-2500 MHz" in output or "Band 1:" in output or "Channel 1" in output
+        has_5ghz = "5000-6000 MHz" in output or "Band 2:" in output or "Channel 36" in output or "5180 MHz" in output
+        
+        if has_2ghz and has_5ghz:
+            return "2.4 & 5 GHz"
+        elif has_5ghz:
+            return "5 GHz"
+        elif has_2ghz:
+            return "2.4 GHz"
+        else:
+            return "unknown"
+    except Exception as e:
+        return f"error: {str(e)[:20]}"
+
+
 # ============= API Endpoints =============
 
 @app.get("/api/status")
 async def get_status():
     """Get current scanner status: GPS fix, mode, uptime."""
+    from settings import WIFI_INTERFACE
+    
     gps_status = gc.get_gps_status()
     gps_loc = gc.get_location()
+    
+    # Detect WiFi adapter bands
+    wifi_bands = get_wifi_adapter_bands(WIFI_INTERFACE)
     
     return {
         "timestamp": time.time(),
@@ -341,7 +376,8 @@ async def get_status():
         },
         "scanner": {
             "mode": state.scanner_mode,
-            "wifi_monitor_mode": state.wifi_monitor_mode
+            "wifi_monitor_mode": state.wifi_monitor_mode,
+            "wifi_bands": wifi_bands
         }
     }
 
