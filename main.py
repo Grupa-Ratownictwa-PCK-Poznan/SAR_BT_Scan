@@ -115,8 +115,9 @@ def main():
             
             print(f"✓ Web UI started at http://localhost:{WEB_UI_PORT}")
             time.sleep(1)  # Give the server time to start
-        except ImportError:
+        except ImportError as e:
             print("⚠ Web UI dependencies not installed (fastapi, uvicorn). Skipping.")
+            print(f"  Error: {e}")
             print("  Install with: pip install fastapi uvicorn")
         except Exception as e:
             print(f"⚠ Failed to start Web UI: {e}")
