@@ -103,6 +103,7 @@ class TriangulationResult:
     manufacturer: Optional[str] = None
     vendor: Optional[str] = None
     confidence: Optional[int] = None
+    notes: Optional[str] = None
     ssids: List[str] = field(default_factory=list)
     
     # Location analysis
@@ -137,6 +138,7 @@ class TriangulationResult:
             'manufacturer': self.manufacturer,
             'vendor': self.vendor,
             'confidence': self.confidence,
+            'notes': self.notes,
             'ssids': self.ssids,
             'is_stationary': self.is_stationary,
             'movement_confidence': round(self.movement_confidence, 1),
@@ -605,6 +607,7 @@ class DeviceTriangulator:
         result.manufacturer = self.device_info.get('manufacturer')
         result.vendor = self.device_info.get('vendor')
         result.confidence = self.device_info.get('confidence')
+        result.notes = self.device_info.get('notes')
         result.ssids = self.device_info.get('ssids', [])
         
         # Basic stats

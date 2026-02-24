@@ -573,6 +573,64 @@
             color: #666;
         }
 
+        /* Notes editing */
+        .notes-section {
+            margin-top: 16px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border-color);
+        }
+        
+        .notes-title {
+            font-weight: bold;
+            color: var(--rc-red);
+            margin-bottom: 8px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .notes-input {
+            width: 100%;
+            min-height: 60px;
+            padding: 8px;
+            border: 2px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: inherit;
+            resize: vertical;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            transition: border-color 0.2s;
+        }
+        
+        .notes-input:focus {
+            outline: none;
+            border-color: var(--rc-red);
+        }
+        
+        .notes-save-btn {
+            margin-top: 8px;
+            padding: 6px 12px;
+            background: var(--accent-green);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            width: 100%;
+            justify-content: center;
+            transition: opacity 0.2s;
+        }
+        
+        .notes-save-btn:hover {
+            opacity: 0.9;
+        }
+
         /* Scrollbar styling */
         ::-webkit-scrollbar {
             width: 6px;
@@ -800,6 +858,59 @@
         let markersLayer = null;
         let currentResult = null;
 
+        // ============= Note Saving Function =============
+        async function saveDeviceNote(mac, deviceType) {
+            const textarea = document.getElementById('deviceNoteInput');
+            if (!textarea) return;
+            
+            const note = textarea.value;
+            
+            // Determine API endpoint based on device type
+            let apiUrl;
+            if (deviceType === 'wifi') {
+                apiUrl = `${API_BASE}/api/wifi/device/${encodeURIComponent(mac)}/notes`;
+            } else {
+                apiUrl = `${API_BASE}/api/bt/device/${encodeURIComponent(mac)}/notes`;
+            }
+            
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ notes: note })
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to save note');
+                }
+                
+                // Update current result
+                if (currentResult) {
+                    currentResult.notes = note;
+                }
+                
+                // Show success feedback
+                const btn = document.querySelector('.notes-save-btn');
+                if (btn) {
+                    const originalText = btn.innerHTML;
+                    btn.innerHTML = '<i class="fas fa-check"></i> Saved!';
+                    btn.style.background = '#27ae60';
+                    setTimeout(() => {
+                        btn.innerHTML = originalText;
+                        btn.style.background = '';
+                    }, 2000);
+                }
+                
+                console.log("Note saved successfully for", mac);
+            } catch (error) {
+                console.error("Error saving note:", error);
+                alert("Error saving note: " + error.message);
+            }
+        }
+
         // ============= Initialize =============
         document.addEventListener('DOMContentLoaded', () => {
             initMap();
@@ -983,6 +1094,21 @@
                 <div class="info-row">
                     <span class="info-label">Duration</span>
                     <span class="info-value">${result.observation_duration_str}</span>
+                </div>
+            `;
+            
+            // Add editable notes section
+            const currentNotes = result.notes || '';
+            const deviceType = result.device_type;
+            html += `
+                <div class="notes-section">
+                    <div class="notes-title">
+                        <i class="fas fa-sticky-note"></i> Notes
+                    </div>
+                    <textarea id="deviceNoteInput" class="notes-input" placeholder="Add notes about this device...">${currentNotes}</textarea>
+                    <button class="notes-save-btn" onclick="saveDeviceNote('${result.mac}', '${deviceType}')">
+                        <i class="fas fa-save"></i> Save Note
+                    </button>
                 </div>
             `;
             

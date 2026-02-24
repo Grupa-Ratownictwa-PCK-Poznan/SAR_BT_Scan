@@ -11,7 +11,7 @@ The server connects to the scanner's database for data retrieval
 and status information from main.py.
 """
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Query
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Query, Body
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio
@@ -1195,6 +1195,46 @@ async def update_oui_database():
         return JSONResponse({"error": "OUI update timed out"}, status_code=504)
     except Exception as e:
         print(f"Error updating OUI database: {e}")
+        return JSONResponse({"error": f"Update failed: {str(e)}"}, status_code=500)
+
+
+@app.post("/api/bt/device/{mac}/notes")
+async def update_bt_device_notes(mac: str, notes: str = Body(default="", embed=True)):
+    """Update notes for a BT device."""
+    try:
+        with db() as con:
+            # Check if device exists
+            cursor = con.execute("SELECT addr FROM devices WHERE addr = ?", (mac,))
+            if not cursor.fetchone():
+                return JSONResponse({"error": "Device not found"}, status_code=404)
+            
+            # Update notes
+            con.execute("UPDATE devices SET notes = ? WHERE addr = ?", (notes, mac))
+            con.commit()
+            
+            return {"success": True, "mac": mac, "notes": notes}
+    except Exception as e:
+        print(f"Error updating BT device notes: {e}")
+        return JSONResponse({"error": f"Update failed: {str(e)}"}, status_code=500)
+
+
+@app.post("/api/wifi/device/{mac}/notes")
+async def update_wifi_device_notes(mac: str, notes: str = Body(default="", embed=True)):
+    """Update notes for a WiFi device."""
+    try:
+        with db() as con:
+            # Check if device exists
+            cursor = con.execute("SELECT mac FROM wifi_devices WHERE mac = ?", (mac,))
+            if not cursor.fetchone():
+                return JSONResponse({"error": "Device not found"}, status_code=404)
+            
+            # Update notes
+            con.execute("UPDATE wifi_devices SET notes = ? WHERE mac = ?", (notes, mac))
+            con.commit()
+            
+            return {"success": True, "mac": mac, "notes": notes}
+    except Exception as e:
+        print(f"Error updating WiFi device notes: {e}")
         return JSONResponse({"error": f"Update failed: {str(e)}"}, status_code=500)
 
 

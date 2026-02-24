@@ -305,6 +305,103 @@
             font-weight: 500;
         }
 
+        /* Row with custom notes - light blue background */
+        tbody#btDevicesTable tr.has-note,
+        tbody#wifiDevicesTable tr.has-note {
+            background: #e3f2fd;
+        }
+        
+        body.dark-mode tbody#btDevicesTable tr.has-note,
+        body.dark-mode tbody#wifiDevicesTable tr.has-note {
+            background: #1a3a4a;
+        }
+        
+        tbody#btDevicesTable tr.has-note:hover,
+        tbody#wifiDevicesTable tr.has-note:hover {
+            background: #bbdefb !important;
+        }
+        
+        body.dark-mode tbody#btDevicesTable tr.has-note:hover,
+        body.dark-mode tbody#wifiDevicesTable tr.has-note:hover {
+            background: #2a4a5a !important;
+        }
+        
+        tbody#btDevicesTable tr.has-note.selected,
+        tbody#wifiDevicesTable tr.has-note.selected {
+            background: #90caf9 !important;
+        }
+        
+        body.dark-mode tbody#btDevicesTable tr.has-note.selected,
+        body.dark-mode tbody#wifiDevicesTable tr.has-note.selected {
+            background: #3a5a6a !important;
+        }
+
+        /* Row with note in sightings/associations view */
+        tbody#btSightingsTable tr.has-note,
+        tbody#wifiAssocTable tr.has-note {
+            background: #e3f2fd;
+        }
+        
+        body.dark-mode tbody#btSightingsTable tr.has-note,
+        body.dark-mode tbody#wifiAssocTable tr.has-note {
+            background: #1a3a4a;
+        }
+        
+        tbody#btSightingsTable tr.has-note:hover,
+        tbody#wifiAssocTable tr.has-note:hover {
+            background: #bbdefb !important;
+        }
+        
+        body.dark-mode tbody#btSightingsTable tr.has-note:hover,
+        body.dark-mode tbody#wifiAssocTable tr.has-note:hover {
+            background: #2a4a5a !important;
+        }
+
+        /* Editable note styling */
+        .note-cell {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .note-text {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .note-edit-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 2px 4px;
+            font-size: 10px;
+            opacity: 0.6;
+            transition: opacity 0.2s, color 0.2s;
+        }
+        
+        .note-edit-btn:hover {
+            opacity: 1;
+            color: var(--rc-red);
+        }
+        
+        .note-input {
+            width: 100%;
+            padding: 4px 6px;
+            border: 1px solid var(--rc-red);
+            border-radius: 3px;
+            font-size: 11px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+        
+        .note-input:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(198, 12, 48, 0.2);
+        }
+
         /* Device tooltip/popup */
         .device-tooltip {
             position: fixed;
@@ -315,8 +412,9 @@
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
             z-index: 1000;
             font-size: 12px;
-            max-width: 400px;
-            max-height: 600px;
+            max-width: 550px;
+            min-width: 400px;
+            max-height: 700px;
             overflow-y: auto;
             pointer-events: auto;
             display: none;
@@ -404,6 +502,77 @@
 
         .device-tooltip-close:hover {
             background: rgba(0, 0, 0, 0.4);
+        }
+
+        /* Tooltip notes editing */
+        .device-tooltip-notes {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border-color);
+        }
+        
+        .device-tooltip-notes-title {
+            font-weight: bold;
+            color: var(--rc-red);
+            margin-bottom: 8px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .device-tooltip-notes-input {
+            width: 100%;
+            min-height: 60px;
+            padding: 8px;
+            border: 2px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: inherit;
+            resize: vertical;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            transition: border-color 0.2s;
+        }
+        
+        .device-tooltip-notes-input:focus {
+            outline: none;
+            border-color: var(--rc-red);
+        }
+        
+        .device-tooltip-notes-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        
+        .device-tooltip-notes-btn {
+            flex: 1;
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            transition: opacity 0.2s;
+        }
+        
+        .device-tooltip-notes-btn:hover {
+            opacity: 0.9;
+        }
+        
+        .device-tooltip-notes-btn.save {
+            background: var(--accent-green);
+            color: white;
+        }
+        
+        .device-tooltip-notes-btn.cancel {
+            background: var(--text-secondary);
+            color: white;
         }
 
         .mac-addr {
@@ -1367,6 +1536,10 @@
         let selectedBTDevice = null;  // MAC address of selected BT device
         let selectedBTDeviceData = null;  // Full device data object
         
+        // Track devices with notes (for highlighting sightings)
+        let btDevicesWithNotes = new Set();
+        let wifiDevicesWithNotes = new Set();
+        
         // Time filter state
         let currentTimePreset = 0; // hours, 0 = all (DEFAULT)
         let customTimeStart = null; // Unix timestamp
@@ -1718,9 +1891,11 @@
 
             tbody.innerHTML = devices.map(device => {
                 const isSelected = selectedBTDevice === device.mac;
+                const hasNote = device.notes && device.notes.trim() !== '';
                 const confidenceColor = device.confidence > 70 ? "#2ecc71" : device.confidence > 40 ? "#e67e22" : "#e74c3c";
+                const escapedNotes = (device.notes || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
                 return `
-                    <tr data-mac="${device.mac}" data-name="${device.name || '—'}" data-manufacturer="${device.manufacturer || '—'}" data-last-seen="${device.last_seen}" data-confidence="${device.confidence}" class="bt-device-row ${isSelected ? 'selected' : ''}" style="cursor: pointer;">
+                    <tr data-mac="${device.mac}" data-name="${device.name || '—'}" data-manufacturer="${device.manufacturer || '—'}" data-last-seen="${device.last_seen}" data-confidence="${device.confidence}" data-notes="${escapedNotes}" class="bt-device-row ${isSelected ? 'selected' : ''} ${hasNote ? 'has-note' : ''}" style="cursor: pointer;">
                         <td class="mac-addr">${device.mac}</td>
                         <td>${device.name || "—"}</td>
                         <td>${device.manufacturer || "—"}</td>
@@ -1731,7 +1906,14 @@
                             ${device.confidence}
                         </td>
                         <td>${new Date(device.last_seen * 1000).toLocaleTimeString()}</td>
-                        <td style="max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${device.notes || ''}">${device.notes || "—"}</td>
+                        <td style="max-width: 150px;">
+                            <div class="note-cell">
+                                <span class="note-text" title="${escapedNotes}">${device.notes || "—"}</span>
+                                <button class="note-edit-btn" onclick="event.stopPropagation(); editBTNote('${device.mac}', '${escapedNotes}')" title="Edit note">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                            </div>
+                        </td>
                     </tr>
                 `;
             }).join("");
@@ -1740,6 +1922,9 @@
             document.querySelectorAll(".bt-device-row").forEach(row => {
                 row.addEventListener("click", handleBTDeviceRowClick);
             });
+            
+            // Update tracker for devices with notes
+            btDevicesWithNotes = new Set(devices.filter(d => d.notes && d.notes.trim() !== '').map(d => d.mac));
         }
 
         function updateBTSightingsTable(sightings) {
@@ -1752,8 +1937,9 @@
             tbody.innerHTML = sightings.map(s => {
                 const rssiPercent = Math.max(0, Math.min(100, (s.rssi + 100)));
                 const rssiColor = rssiPercent > 70 ? "#2ecc71" : rssiPercent > 40 ? "#e67e22" : "#e74c3c";
+                const hasNote = btDevicesWithNotes.has(s.mac);
                 return `
-                    <tr>
+                    <tr class="${hasNote ? 'has-note' : ''}">
                         <td class="mac-addr">${s.mac}</td>
                         <td>
                             <div class="rssi-bar">
@@ -1776,9 +1962,11 @@
 
             tbody.innerHTML = devices.map(device => {
                 const isSelected = selectedWiFiDevice === device.mac;
+                const hasNote = device.notes && device.notes.trim() !== '';
                 const confidenceColor = device.confidence > 70 ? "#2ecc71" : device.confidence > 40 ? "#e67e22" : "#e74c3c";
+                const escapedNotes = (device.notes || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
                 return `
-                    <tr data-mac="${device.mac}" data-vendor="${device.vendor || '—'}" data-device-type="${device.device_type || '—'}" data-last-seen="${device.last_seen}" class="wifi-device-row ${isSelected ? 'selected' : ''}">
+                    <tr data-mac="${device.mac}" data-vendor="${device.vendor || '—'}" data-device-type="${device.device_type || '—'}" data-last-seen="${device.last_seen}" data-notes="${escapedNotes}" class="wifi-device-row ${isSelected ? 'selected' : ''} ${hasNote ? 'has-note' : ''}">
                         <td class="mac-addr">${device.mac}</td>
                         <td>${device.vendor || "—"}</td>
                         <td>${device.device_type || "—"}</td>
@@ -1789,7 +1977,14 @@
                             ${device.confidence}
                         </td>
                         <td>${new Date(device.last_seen * 1000).toLocaleTimeString()}</td>
-                        <td style="max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${device.notes || ''}">${device.notes || "—"}</td>
+                        <td style="max-width: 150px;">
+                            <div class="note-cell">
+                                <span class="note-text" title="${escapedNotes}">${device.notes || "—"}</span>
+                                <button class="note-edit-btn" onclick="event.stopPropagation(); editWiFiNote('${device.mac}', '${escapedNotes}')" title="Edit note">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                            </div>
+                        </td>
                     </tr>
                 `;
             }).join("");
@@ -1798,6 +1993,9 @@
             document.querySelectorAll(".wifi-device-row").forEach(row => {
                 row.addEventListener("click", handleWiFiDeviceRowClick);
             });
+            
+            // Update tracker for devices with notes
+            wifiDevicesWithNotes = new Set(devices.filter(d => d.notes && d.notes.trim() !== '').map(d => d.mac));
         }
 
         function updateWiFiAssociationsTable(associations) {
@@ -1809,13 +2007,14 @@
 
             tbody.innerHTML = associations.map(a => {
                 const rssiPercent = Math.max(0, Math.min(100, (a.rssi + 100)));
+                const hasNote = wifiDevicesWithNotes.has(a.mac);
                 const rssiColor = rssiPercent > 70 ? "#2ecc71" : rssiPercent > 40 ? "#e67e22" : "#e74c3c";
                 const timestamp = new Date(a.timestamp * 1000).toLocaleString();
                 const packetTypeBadge = a.packet_type === 'Beacon' 
                     ? '<span style="background: #3498db; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; font-weight: bold;">📡 Beacon</span>'
                     : '<span style="background: #e74c3c; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; font-weight: bold;">🔍 Probe</span>';
                 return `
-                    <tr>
+                    <tr class="${hasNote ? 'has-note' : ''}">
                         <td class="mac-addr clickable-mac" data-mac="${a.mac}" style="cursor: pointer; color: var(--accent-blue); text-decoration: underline;">${a.mac}</td>
                         <td>${a.ssid}</td>
                         <td>${packetTypeBadge}</td>
@@ -2042,6 +2241,7 @@
             const manufacturer = row.getAttribute("data-manufacturer");
             const lastSeen = parseFloat(row.getAttribute("data-last-seen"));
             const confidence = parseInt(row.getAttribute("data-confidence"));
+            const notes = row.getAttribute("data-notes") || '';
 
             // If clicking the same device again, deselect it
             if (selectedBTDevice === mac) {
@@ -2056,7 +2256,8 @@
                 name: name,
                 manufacturer: manufacturer,
                 last_seen: lastSeen,
-                confidence: confidence
+                confidence: confidence,
+                notes: notes
             };
 
             // Update table styling
@@ -2064,13 +2265,13 @@
             row.classList.add("selected");
 
             // Show tooltip with device details
-            showBTDeviceTooltip(mac, name, manufacturer, lastSeen, confidence);
+            showBTDeviceTooltip(mac, name, manufacturer, lastSeen, confidence, notes);
 
             // Filter the map to show only points from this device
             filterMapByBTDevice(mac);
         }
 
-        function showBTDeviceTooltip(mac, name, manufacturer, lastSeen, confidence) {
+        function showBTDeviceTooltip(mac, name, manufacturer, lastSeen, confidence, notes = '') {
             const tooltip = document.getElementById("deviceTooltip");
             const contentDiv = document.getElementById("deviceTooltipContent");
             const titleDiv = tooltip.querySelector(".device-tooltip-title");
@@ -2078,6 +2279,9 @@
             // Update title to reflect BT device
             titleDiv.innerHTML = `BT Device Details <button class="device-tooltip-close" onclick="closeDeviceTooltip()">&times;</button>`;
 
+            // Decode HTML entities in notes
+            const decodedNotes = notes.replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+            
             // Build tooltip HTML
             let html = `
                 <div class="device-tooltip-row">
@@ -2119,6 +2323,21 @@
                     </div>
                 `;
             }
+
+            // Add editable notes section
+            html += `
+                <div class="device-tooltip-notes">
+                    <div class="device-tooltip-notes-title">
+                        <i class="fas fa-sticky-note"></i> Notes
+                    </div>
+                    <textarea id="btNoteInput" class="device-tooltip-notes-input" placeholder="Add notes about this device...">${decodedNotes}</textarea>
+                    <div class="device-tooltip-notes-actions">
+                        <button class="device-tooltip-notes-btn save" onclick="saveBTNoteFromTooltip('${mac}')">
+                            <i class="fas fa-save"></i> Save
+                        </button>
+                    </div>
+                </div>
+            `;
 
             // Add Triangulation Analysis button
             html += `
@@ -2334,15 +2553,21 @@
                     </div>
                 `;
 
-                // Display notes if available
-                if (deviceInfo.notes) {
-                    html += `
-                        <div class="device-tooltip-row">
-                            <span class="device-tooltip-label">Notes:</span>
-                            <span class="device-tooltip-value" style="font-style: italic;">${deviceInfo.notes}</span>
+                // Add editable notes section
+                const currentNotes = deviceInfo.notes || '';
+                html += `
+                    <div class="device-tooltip-notes">
+                        <div class="device-tooltip-notes-title">
+                            <i class="fas fa-sticky-note"></i> Notes
                         </div>
-                    `;
-                }
+                        <textarea id="wifiNoteInput" class="device-tooltip-notes-input" placeholder="Add notes about this device...">${currentNotes}</textarea>
+                        <div class="device-tooltip-notes-actions">
+                            <button class="device-tooltip-notes-btn save" onclick="saveWiFiNoteFromTooltip('${mac}')">
+                                <i class="fas fa-save"></i> Save
+                            </button>
+                        </div>
+                    </div>
+                `;
 
                 // Add SSIDs section with detailed information
                 if (ssids.length > 0) {
@@ -2402,6 +2627,142 @@
 
             } catch (error) {
                 console.error("Error showing device tooltip:", error);
+            }
+        }
+
+        // ============= Note Editing Functions =============
+        
+        // Edit BT note from table cell
+        function editBTNote(mac, currentNote) {
+            const decodedNote = currentNote.replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+            const newNote = prompt("Edit note for device " + mac + ":", decodedNote);
+            if (newNote !== null) {
+                saveBTNote(mac, newNote);
+            }
+        }
+        
+        // Edit WiFi note from table cell
+        function editWiFiNote(mac, currentNote) {
+            const decodedNote = currentNote.replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+            const newNote = prompt("Edit note for device " + mac + ":", decodedNote);
+            if (newNote !== null) {
+                saveWiFiNote(mac, newNote);
+            }
+        }
+        
+        // Save BT note from tooltip
+        async function saveBTNoteFromTooltip(mac) {
+            const textarea = document.getElementById("btNoteInput");
+            if (textarea) {
+                await saveBTNote(mac, textarea.value);
+            }
+        }
+        
+        // Save WiFi note from tooltip
+        async function saveWiFiNoteFromTooltip(mac) {
+            const textarea = document.getElementById("wifiNoteInput");
+            if (textarea) {
+                await saveWiFiNote(mac, textarea.value);
+            }
+        }
+        
+        // Save BT device note to database
+        async function saveBTNote(mac, note) {
+            try {
+                const response = await fetch(`${API_BASE}/api/bt/device/${encodeURIComponent(mac)}/notes`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ notes: note })
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to save note');
+                }
+                
+                // Update the table row
+                const row = document.querySelector(`.bt-device-row[data-mac="${mac}"]`);
+                if (row) {
+                    const escapedNote = (note || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+                    row.setAttribute('data-notes', escapedNote);
+                    
+                    // Update has-note class
+                    if (note && note.trim() !== '') {
+                        row.classList.add('has-note');
+                    } else {
+                        row.classList.remove('has-note');
+                    }
+                    
+                    // Update note cell content
+                    const noteCell = row.querySelector('.note-cell');
+                    if (noteCell) {
+                        noteCell.querySelector('.note-text').textContent = note || '—';
+                        noteCell.querySelector('.note-text').title = note || '';
+                        noteCell.querySelector('.note-edit-btn').setAttribute('onclick', `event.stopPropagation(); editBTNote('${mac}', '${escapedNote}')`);
+                    }
+                }
+                
+                // Update selectedBTDeviceData if this device is selected
+                if (selectedBTDeviceData && selectedBTDeviceData.mac === mac) {
+                    selectedBTDeviceData.notes = note;
+                }
+                
+                console.log("BT note saved successfully for", mac);
+            } catch (error) {
+                console.error("Error saving BT note:", error);
+                alert("Error saving note: " + error.message);
+            }
+        }
+        
+        // Save WiFi device note to database
+        async function saveWiFiNote(mac, note) {
+            try {
+                const response = await fetch(`${API_BASE}/api/wifi/device/${encodeURIComponent(mac)}/notes`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ notes: note })
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to save note');
+                }
+                
+                // Update the table row
+                const row = document.querySelector(`.wifi-device-row[data-mac="${mac}"]`);
+                if (row) {
+                    const escapedNote = (note || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+                    row.setAttribute('data-notes', escapedNote);
+                    
+                    // Update has-note class
+                    if (note && note.trim() !== '') {
+                        row.classList.add('has-note');
+                    } else {
+                        row.classList.remove('has-note');
+                    }
+                    
+                    // Update note cell content
+                    const noteCell = row.querySelector('.note-cell');
+                    if (noteCell) {
+                        noteCell.querySelector('.note-text').textContent = note || '—';
+                        noteCell.querySelector('.note-text').title = note || '';
+                        noteCell.querySelector('.note-edit-btn').setAttribute('onclick', `event.stopPropagation(); editWiFiNote('${mac}', '${escapedNote}')`);
+                    }
+                }
+                
+                // Update selectedWiFiDeviceData if this device is selected
+                if (selectedWiFiDeviceData && selectedWiFiDeviceData.mac === mac) {
+                    selectedWiFiDeviceData.notes = note;
+                }
+                
+                console.log("WiFi note saved successfully for", mac);
+            } catch (error) {
+                console.error("Error saving WiFi note:", error);
+                alert("Error saving note: " + error.message);
             }
         }
 
