@@ -87,7 +87,7 @@
         }
 
         .sidebar {
-            width: 550px;
+            width: 50vw;
             display: flex;
             flex-direction: column;
             gap: 4px;
@@ -1523,7 +1523,7 @@
         let mapDataType = "all";
         let currentTab = "wifi-devices";
         let wsConnection = null;
-        let sidebarWidth = 380;
+        let sidebarWidth = Math.floor(window.innerWidth * 0.5);
         let isDraggingDivider = false;
         let mapMinimized = false;
         let isPaused = false;  // Pause/resume data updates
