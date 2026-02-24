@@ -11,7 +11,7 @@ The server connects to the scanner's database for data retrieval
 and status information from main.py.
 """
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Query, Body
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Query, Body, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio
@@ -1199,9 +1199,12 @@ async def update_oui_database():
 
 
 @app.post("/api/bt/device/{mac}/notes")
-async def update_bt_device_notes(mac: str, notes: str = Body(default="", embed=True)):
+async def update_bt_device_notes(mac: str, request: Request):
     """Update notes for a BT device."""
     try:
+        body = await request.json()
+        notes = body.get("notes", "")
+        
         with db() as con:
             # Check if device exists
             cursor = con.execute("SELECT addr FROM devices WHERE addr = ?", (mac,))
@@ -1219,9 +1222,12 @@ async def update_bt_device_notes(mac: str, notes: str = Body(default="", embed=T
 
 
 @app.post("/api/wifi/device/{mac}/notes")
-async def update_wifi_device_notes(mac: str, notes: str = Body(default="", embed=True)):
+async def update_wifi_device_notes(mac: str, request: Request):
     """Update notes for a WiFi device."""
     try:
+        body = await request.json()
+        notes = body.get("notes", "")
+        
         with db() as con:
             # Check if device exists
             cursor = con.execute("SELECT mac FROM wifi_devices WHERE mac = ?", (mac,))
