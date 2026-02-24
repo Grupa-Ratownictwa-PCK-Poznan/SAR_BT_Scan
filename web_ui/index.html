@@ -1820,7 +1820,7 @@
                     : '<span style="background: #e74c3c; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; font-weight: bold;">🔍 Probe</span>';
                 return `
                     <tr>
-                        <td class="mac-addr">${a.mac}</td>
+                        <td class="mac-addr clickable-mac" data-mac="${a.mac}" style="cursor: pointer; color: var(--accent-blue); text-decoration: underline;">${a.mac}</td>
                         <td>${a.ssid}</td>
                         <td>${packetTypeBadge}</td>
                         <td>
@@ -1833,6 +1833,28 @@
                     </tr>
                 `;
             }).join("");
+
+            // Attach click handlers to each MAC address
+            document.querySelectorAll(".clickable-mac").forEach(cell => {
+                cell.addEventListener("click", handleWiFiAssocMacClick);
+            });
+        }
+
+        function handleWiFiAssocMacClick(e) {
+            e.stopPropagation();
+            const mac = e.currentTarget.getAttribute("data-mac");
+            
+            // Find the WiFi device row with this MAC and trigger its click handler
+            const deviceRow = document.querySelector(`.wifi-device-row[data-mac="${mac}"]`);
+            
+            if (deviceRow) {
+                // If device row exists in WiFi table, click it
+                deviceRow.click();
+            } else {
+                // Otherwise, fetch and display device details directly
+                showWiFiDeviceTooltip(mac, "—", Date.now() / 1000);
+                selectedWiFiDevice = mac;
+            }
         }
 
         function renderHeatmapFallback(points, originalData) {
