@@ -15,7 +15,7 @@
     <link rel="stylesheet" href="/static/css/fontawesome.min.css" />
     
     <style>
-        /* Red Cross Color Scheme */
+        /* Red Cross Color Scheme - Light Mode */
         :root {
             --rc-red: #C60C30;
             --rc-dark-red: #A00826;
@@ -27,6 +27,26 @@
             --accent-green: #2ecc71;
             --accent-orange: #e67e22;
             --accent-red-light: #e74c3c;
+            
+            /* Theme variables for light mode */
+            --bg-primary: #FFFFFF;
+            --bg-secondary: #f5f5f5;
+            --text-primary: #1a1a1a;
+            --text-secondary: #666666;
+            --border-color: #ddd;
+            --table-hover: #fff3e0;
+            --panel-border: #2px solid var(--rc-red);
+        }
+
+        /* Dark Mode */
+        body.dark-mode {
+            --bg-primary: #1e1e1e;
+            --bg-secondary: #2d2d2d;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0b0b0;
+            --border-color: #444;
+            --table-hover: #3a3a3a;
+            --panel-border: #2px solid var(--rc-red);
         }
         * {
             margin: 0;
@@ -36,9 +56,10 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: var(--rc-light-gray);
-            color: var(--rc-black);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
             overflow: hidden;
+            transition: background 0.3s, color 0.3s;
         }
 
         .container {
@@ -46,7 +67,8 @@
             height: 100vh;
             gap: 0;
             padding: 0;
-            background: var(--rc-light-gray);
+            background: var(--bg-secondary);
+            transition: background 0.3s;
         }
 
         /* Resizable divider */
@@ -71,8 +93,9 @@
             gap: 4px;
             overflow-y: auto;
             padding: 8px;
-            background: var(--rc-white);
+            background: var(--bg-primary);
             border-right: 2px solid var(--rc-red);
+            transition: background 0.3s;
         }
 
         .main-content {
@@ -84,11 +107,12 @@
         }
 
         .panel {
-            background: var(--rc-white);
+            background: var(--bg-primary);
             border: 2px solid var(--rc-red);
             border-radius: 4px;
             padding: 8px;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            transition: background 0.3s, border 0.3s;
         }
 
         .panel-title {
@@ -113,7 +137,7 @@
         }
 
         .indicator {
-            background: var(--rc-light-gray);
+            background: var(--bg-secondary);
             border-left: 4px solid var(--rc-red);
             padding: 6px;
             border-radius: 2px;
@@ -127,9 +151,19 @@
             background: #e8f5e9;
             border-left-color: var(--accent-green);
         }
+        
+        body.dark-mode .indicator.active {
+            background: #1b3a1a;
+            border-left-color: var(--accent-green);
+        }
 
         .indicator.inactive {
             background: #ffebee;
+            border-left-color: var(--accent-red-light);
+        }
+        
+        body.dark-mode .indicator.inactive {
+            background: #3a1b1b;
             border-left-color: var(--accent-red-light);
         }
 
@@ -138,6 +172,11 @@
             color: #666;
             text-transform: uppercase;
             font-weight: 600;
+            transition: color 0.3s;
+        }
+        
+        body.dark-mode .indicator-label {
+            color: #999;
         }
 
         .indicator-value {
@@ -177,10 +216,13 @@
             border-bottom: 2px solid var(--rc-red);
             margin-bottom: 4px;
             flex-wrap: wrap;
-        }\n\n        .tab-btn {
-            background: var(--rc-light-gray);
+            transition: border 0.3s;
+        }
+
+        .tab-btn {
+            background: var(--bg-secondary);
             border: 1px solid var(--rc-red);
-            color: var(--rc-black);
+            color: var(--text-primary);
             padding: 5px 8px;
             cursor: pointer;
             font-size: 10px;
@@ -205,8 +247,9 @@
             overflow-y: auto;
             flex: 1;
             max-height: 600px;
-            border: 1px solid #ddd;
+            border: 1px solid var(--border-color);
             border-radius: 2px;
+            transition: border 0.3s;
         }
 
         table {
@@ -224,15 +267,18 @@
             text-align: left;
             font-weight: bold;
             border-bottom: 2px solid var(--rc-dark-red);
+            transition: background 0.3s;
         }
 
         td {
             padding: 7px;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-primary);
+            transition: background 0.3s, border 0.3s, color 0.3s;
         }
 
         tr:hover {
-            background: #fff3e0;
+            background: var(--table-hover);
         }
 
         /* Interactive row for WiFi devices */
@@ -262,7 +308,7 @@
         /* Device tooltip/popup */
         .device-tooltip {
             position: fixed;
-            background: var(--rc-white);
+            background: var(--bg-primary);
             border: 2px solid var(--rc-red);
             border-radius: 4px;
             padding: 12px;
@@ -274,6 +320,7 @@
             overflow-y: auto;
             pointer-events: auto;
             display: none;
+            transition: background 0.3s;
         }
 
         .device-tooltip.show {
@@ -287,6 +334,7 @@
             margin: -12px -12px 8px -12px;
             padding: 8px 12px;
             border-radius: 2px 2px 0 0;
+            transition: background 0.3s;
         }
 
         .device-tooltip-row {
@@ -294,7 +342,9 @@
             gap: 8px;
             margin-bottom: 6px;
             padding-bottom: 6px;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-primary);
+            transition: border 0.3s, color 0.3s;
         }
 
         .device-tooltip-row:last-child {
@@ -372,6 +422,12 @@
             overflow: hidden;
             position: relative;
             margin-right: 4px;
+            transition: background 0.3s, border 0.3s;
+        }
+        
+        body.dark-mode .rssi-bar {
+            background: #444;
+            border: 1px solid #666;
         }
 
         .rssi-fill {
@@ -391,6 +447,12 @@
             overflow: hidden;
             position: relative;
             margin-right: 4px;
+            transition: background 0.3s, border 0.3s;
+        }
+        
+        body.dark-mode .confidence-bar {
+            background: #444;
+            border: 1px solid #666;
         }
 
         .confidence-fill {
@@ -409,7 +471,16 @@
             background: 
                 linear-gradient(rgba(200, 200, 200, 0.3) 1px, transparent 1px),
                 linear-gradient(90deg, rgba(200, 200, 200, 0.3) 1px, transparent 1px),
-                var(--rc-light-gray);
+                var(--bg-secondary);
+            background-size: 50px 50px;
+            transition: background 0.3s;
+        }
+        
+        body.dark-mode #map {
+            background: 
+                linear-gradient(rgba(100, 100, 100, 0.3) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(100, 100, 100, 0.3) 1px, transparent 1px),
+                var(--bg-secondary);
             background-size: 50px 50px;
         }
 
@@ -471,6 +542,11 @@
             color: #666;
             text-transform: uppercase;
             font-weight: 600;
+            transition: color 0.3s;
+        }
+        
+        body.dark-mode .filter-group label {
+            color: #999;
         }
 
         input[type="text"],
@@ -481,6 +557,16 @@
             border: 1px solid var(--rc-red);
             color: var(--rc-black);
             padding: 6px;
+            transition: background 0.3s, color 0.3s, border 0.3s;
+        }
+        
+        body.dark-mode input[type="text"],
+        body.dark-mode input[type="range"],
+        body.dark-mode input[type="number"],
+        body.dark-mode select {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
             border-radius: 2px;
             font-size: 11px;
             font-weight: 500;
@@ -507,13 +593,14 @@
             display: flex;
             justify-content: space-between;
             font-size: 10px;
-            color: #666;
+            color: var(--text-secondary);
             margin-top: 3px;
+            transition: color 0.3s;
         }
 
         .time-preset-btn {
             padding: 5px 10px;
-            background: var(--rc-white);
+            background: var(--bg-primary);
             border: 1px solid var(--rc-red);
             color: var(--rc-red);
             border-radius: 3px;
@@ -527,6 +614,10 @@
         .time-preset-btn:hover {
             background: rgba(198, 12, 48, 0.05);
         }
+        
+        body.dark-mode .time-preset-btn:hover {
+            background: rgba(198, 12, 48, 0.15);
+        }
 
         .time-preset-btn.active {
             background: var(--rc-red);
@@ -534,12 +625,13 @@
         }
 
         input[type="datetime-local"] {
-            background: var(--rc-white);
+            background: var(--bg-primary);
             border: 1px solid var(--rc-red);
-            color: var(--rc-black);
+            color: var(--text-primary);
             padding: 6px;
             border-radius: 2px;
             font-size: 11px;
+            transition: background 0.3s, color 0.3s;
         }
 
         input[type="datetime-local"]:focus {
@@ -557,25 +649,28 @@
         }
 
         .stat-box {
-            background: var(--rc-light-gray);
+            background: var(--bg-secondary);
             padding: 5px;
             border-radius: 2px;
             text-align: center;
             border-left: 3px solid var(--rc-red);
+            transition: background 0.3s;
         }
 
         .stat-label {
             font-size: 8px;
-            color: #666;
+            color: var(--text-secondary);
             margin-bottom: 2px;
             text-transform: uppercase;
             font-weight: 600;
+            transition: color 0.3s;
         }
 
         .stat-value {
             font-size: 14px;
             font-weight: bold;
             color: var(--rc-red);
+            transition: color 0.3s;
         }
 
         .loading {
@@ -601,17 +696,20 @@
 
         /* Tooltip */
         .leaflet-popup-content-wrapper {
-            background: var(--rc-white);
+            background: var(--bg-primary);
             border: 2px solid var(--rc-red);
+            transition: background 0.3s;
         }
 
         .leaflet-popup-content {
             font-size: 11px;
-            color: var(--rc-black);
+            color: var(--text-primary);
+            transition: color 0.3s;
         }
 
         .leaflet-popup-content strong {
             color: var(--rc-red);
+            transition: color 0.3s;
         }
 
         /* Marker */
@@ -645,10 +743,11 @@
         .legend {
             font-size: 10px;
             padding: 6px;
-            background: var(--rc-white);
+            background: var(--bg-primary);
             border: 1px solid var(--rc-red);
             border-radius: 2px;
             margin: 5px;
+            transition: background 0.3s;
         }
 
         .legend-item {
@@ -656,6 +755,8 @@
             align-items: center;
             gap: 4px;
             margin: 3px 0;
+            color: var(--text-primary);
+            transition: color 0.3s;
         }
 
         .legend-color {
@@ -820,6 +921,74 @@
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
         }
+
+        /* Dark Mode Toggle Switch */
+        .theme-toggle-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 8px;
+            background: var(--bg-secondary);
+            border-radius: 4px;
+            margin-bottom: 2px;
+            transition: background 0.3s;
+        }
+
+        .theme-toggle-container i {
+            font-size: 14px;
+            color: var(--rc-red);
+            transition: color 0.3s;
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: 0.4s;
+            border-radius: 24px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: 0.4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .toggle-slider {
+            background-color: var(--rc-red);
+        }
+
+        input:checked + .toggle-slider:before {
+            transform: translateX(26px);
+        }
+
+        .toggle-switch:hover .toggle-slider {
+            opacity: 0.8;
+        }
     </style>
 </head>
 <body>
@@ -828,6 +997,16 @@
         <div class="sidebar" id="sidebar">
             <!-- Live Time -->
             <div id="liveTime">--:--:--</div>
+
+            <!-- Dark Mode Toggle -->
+            <div class="theme-toggle-container">
+                <i class="fas fa-sun"></i>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="darkModeToggle">
+                    <span class="toggle-slider"></span>
+                </label>
+                <i class="fas fa-moon"></i>
+            </div>
 
             <!-- Status Indicators Panel -->
             <div class="panel">
@@ -2558,6 +2737,30 @@
             }
         }
 
+        // ============= Dark Mode Toggle =============
+        function initDarkMode() {
+            // Check if user has a saved preference
+            const savedTheme = localStorage.getItem('theme-preference');
+            const isDarkMode = savedTheme === 'dark' || 
+                              (savedTheme === null && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            
+            // Set initial state
+            if (isDarkMode) {
+                document.body.classList.add('dark-mode');
+                document.getElementById('darkModeToggle').checked = true;
+            }
+        }
+
+        document.getElementById("darkModeToggle").addEventListener("change", (e) => {
+            if (e.target.checked) {
+                document.body.classList.add('dark-mode');
+                localStorage.setItem('theme-preference', 'dark');
+            } else {
+                document.body.classList.remove('dark-mode');
+                localStorage.setItem('theme-preference', 'light');
+            }
+        });
+
         // ============= Event Listeners =============
         document.getElementById("pauseResumeBtn").addEventListener("click", () => {
             isPaused = !isPaused;
@@ -2702,6 +2905,9 @@
 
         // ============= Initialization on Page Load =============
         window.addEventListener("load", () => {
+            // Initialize dark mode first
+            initDarkMode();
+            
             initMap();
             updateStatus();
             updateLiveTime();
