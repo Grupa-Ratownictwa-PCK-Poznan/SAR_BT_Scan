@@ -9,6 +9,8 @@ SAR BT Scanner is a portable device detection system designed for **Search and R
 - Captures WiFi probe requests from phones searching for known networks
 - Tags all detections with GPS coordinates and timestamps
 - Helps differentiate between SAR team equipment and potential target devices
+- Triangulates device location and movement patterns
+- Provides confidence scoring to prioritize investigation targets
 
 ---
 
@@ -42,6 +44,43 @@ The IP address is typically shown on the scanner's display or can be found via y
 
 ## Web Dashboard Overview
 
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  🕐 15:42:38                              [☀️ Theme] [ℹ️ About] [⚙️ Settings] │
+├──────────────────────────────║──────────────────────────────────────────────┤
+│       SIDEBAR                ║              MAP AREA                        │
+│ ┌──────────────────────────┐ ║  ┌──────────────────────────────────────────┐ │
+│ │ GPS: 3D Fix ✓  12 sats   │ ║  │                                          │ │
+│ │ Mode: Both   WiFi: ON    │ ║  │      🔴🟡🟢  GPS Heatmap                 │ │
+│ └──────────────────────────┘ ║  │                                          │ │
+│ ┌──────────────────────────┐ ║  │   Red = Strong signal / Many detections  │ │
+│ │ BT Devices:     125      │ ║  │   Green = Weak / Few detections          │ │
+│ │ WiFi Devices:    89      │ ║  │                                          │ │
+│ │ BT Sightings:  2,341     │ ║  │   Click any point for details            │ │
+│ │ WiFi Assoc:    1,567     │ ║  │                                          │ │
+│ └──────────────────────────┘ ║  └──────────────────────────────────────────┘ │
+│ ┌──────────────────────────┐ ║                                               │
+│ │ Filters:                 │ ║  Map Controls:                                │
+│ │ [MAC    ] [SSID   ]      │ ║  [BT Only] [WiFi Only] [Both]                │
+│ │ RSSI: ─●────── -60 dBm   │ ║                                               │
+│ │ Confidence: ──●── 50%    │ ║                                               │
+│ └──────────────────────────┘ ║                                               │
+│ ┌──────────────────────────┐ ║                                               │
+│ │[BT Dev][BT Sight][WiFi D]│ ║                                               │
+│ │ MAC      │ Name │ Conf   │ ║                                               │
+│ │ AA:BB:.. │ iPho │  72    │ ║                                               │
+│ │ 11:22:.. │ Fitb │  35    │ ║                                               │
+│ │ (click row for details)  │ ║                                               │
+│ └──────────────────────────┘ ║                                               │
+│ ┌──────────────────────────┐ ║                                               │
+│ │ 📥 Download DB           │ ║                                               │
+│ │ 🗑️  Purge DB              │ ║                                               │
+│ │ 📊 Analyze Confidence    │ ║                                               │
+│ │ 📍 (Device Triangulation)│ ║                                               │
+│ └──────────────────────────┘ ║                                               │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
 ### Status Panel (Top)
 
 | Indicator | Meaning |
@@ -68,6 +107,45 @@ The map shows a heatmap of detection locations:
 
 Use the layer toggle to switch between BT-only, WiFi-only, or combined view.
 
+### Theme Toggle
+
+The dashboard supports both light and dark themes:
+- **Light Mode** (☀️): Default, Red Cross branded colors
+- **Dark Mode** (🌙): Reduced eye strain for low-light field conditions
+
+Toggle via the theme button in the header.
+
+### Interactive Device Details
+
+Click any row in the device tables to open a detailed popup:
+
+```
+┌────────────────────────────────────────────────────────┐
+│ DEVICE DETAILS                               [✕ Close] │
+├────────────────────────────────────────────────────────┤
+│ MAC Address:    AA:BB:CC:DD:EE:FF                      │
+│ Device Type:    Bluetooth                              │
+│ Name:           iPhone                                 │
+│ Manufacturer:   Apple Inc.                             │
+│ Confidence:     72%                                    │
+│ First Seen:     2026-02-25 08:15:32                    │
+│ Last Seen:      2026-02-25 14:22:45                    │
+├────────────────────────────────────────────────────────┤
+│ ASSOCIATED SSIDs (WiFi devices):                       │
+│  • Home_Network (15 attempts)                          │
+│  • Office_WiFi (3 attempts)                            │
+├────────────────────────────────────────────────────────┤
+│ ANALYST NOTES:                                         │
+│ ┌────────────────────────────────────────────────────┐ │
+│ │ Seen near northwest perimeter at 14:20            │ │
+│ │ Possible match to missing person's device         │ │
+│ └────────────────────────────────────────────────────┘ │
+│ [Save Notes] [Cancel]                                  │
+├────────────────────────────────────────────────────────┤
+│ [📍 Analyze Location - Triangulate this device]        │
+└────────────────────────────────────────────────────────┘
+```
+
 ---
 
 ## WiFi Device Identification
@@ -89,6 +167,65 @@ Both Bluetooth and WiFi device tables include a **Notes** column where analysts 
 - Example: "Seen near search zone perimeter"
 - Example: "Matches missing person's known networks"
 - Notes persist across sessions and appear in exported reports
+
+Edit notes by:
+1. Clicking a device row to open the details popup
+2. Typing in the Notes textarea
+3. Clicking "Save Notes"
+
+---
+
+## Device Triangulation
+
+The triangulation feature analyzes all sightings for a device to determine its location and movement patterns.
+
+### Accessing Triangulation
+
+1. Click any device row to open the details popup
+2. Click **"Analyze Location"** button
+3. Or navigate directly: `http://<scanner-ip>:8000/triangulate?mac=AA:BB:CC:DD:EE:FF`
+
+### Triangulation Page Layout
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 📍 DEVICE TRIANGULATION - AA:BB:CC:DD:EE:FF              [← Back] [🔄 Refresh]│
+├─────────────────────────────────────────────────────────────────────────────┤
+│  ┌─────────────────────────┐   ┌───────────────────────────────────────────┐│
+│  │ DEVICE INFO             │   │                                           ││
+│  │ MAC: AA:BB:CC:DD:EE:FF  │   │          MOVEMENT MAP                     ││
+│  │ Type: Bluetooth         │   │                                           ││
+│  │ Confidence: 75%         │   │   🔵 First seen    🟢 Last seen           ││
+│  ├─────────────────────────┤   │   - - - Movement path                     ││
+│  │ MOVEMENT ANALYSIS       │   │   ● Location clusters                     ││
+│  │ Status: MOVING          │   │                                           ││
+│  │ Total Distance: 1.5 km  │   │                                           ││
+│  │ Avg Speed: 0.25 km/h    │   └───────────────────────────────────────────┘│
+│  ├─────────────────────────┤                                                │
+│  │ PRIMARY LOCATION        │   ┌───────────────────────────────────────────┐│
+│  │ Lat: 52.408100          │   │ SIGHTINGS TIMELINE                        ││
+│  │ Lon: 16.928500          │   │ 08:15 ●━━━●━━━━━●━━━━━━━━━━━━●━━━━● 14:22 ││
+│  │ [Open in Google Maps]   │   │       C1    C2              C3      C4    ││
+│  └─────────────────────────┘   └───────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Understanding Triangulation Results
+
+| Metric | Description |
+|--------|-------------|
+| **Status** | MOVING or STATIONARY based on location variance |
+| **Movement Confidence** | How certain the analysis is (higher = more data) |
+| **Total Distance** | Sum of all movement segments |
+| **Location Clusters** | Groups of nearby sightings (device stayed in area) |
+| **Primary Location** | Most likely current/last position |
+
+### When to Use Triangulation
+
+- **High-confidence devices** (70+): Triangulate to find location
+- **Moving devices**: Track path to predict direction
+- **Brief appearances**: Find where device was seen
+- **Cluster analysis**: See if device stayed in one area
 
 ---
 
@@ -332,6 +469,12 @@ For complete ethical guidelines, see [ETHICS.md](ETHICS.md).
 | Find strong signals | Filter RSSI > -60 dBm |
 | Find new devices | Sort by "First Seen" descending |
 | Focus on targets | Filter confidence ≥ 70 |
+| View device details | Click any row in device table |
+| Add notes | Click device → Edit notes in popup → Save |
+| Triangulate device | Click device → "Analyze Location" button |
+| Toggle theme | Click ☀️/🌙 button in header |
+| Download database | Click "Download DB" in sidebar |
+| Clear data | Click "Purge DB" (creates backup first) |
 
 ### Confidence Score Summary
 
@@ -357,6 +500,7 @@ For complete ethical guidelines, see [ETHICS.md](ETHICS.md).
 
 - **Technical issues**: Check [README.md](README.md) and [WEB_UI_QUICKSTART.md](docs/WEB_UI_QUICKSTART.md)
 - **Confidence scoring**: See [CONFIDENCE_ANALYZER.md](docs/CONFIDENCE_ANALYZER.md)
+- **Device triangulation**: See [TRIANGULATION.md](docs/TRIANGULATION.md)
 - **WiFi setup**: See [WIFI_SETUP.md](docs/WIFI_SETUP.md)
 - **Project repository**: https://github.com/Grupa-Ratownictwa-PCK-Poznan/SAR_BT_Scan
 

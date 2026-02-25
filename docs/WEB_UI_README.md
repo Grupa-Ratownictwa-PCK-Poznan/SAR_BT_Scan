@@ -9,18 +9,31 @@ A modern, responsive web dashboard for the SAR BT+WiFi Scanner with real-time da
   - GPS fix status and satellite count indicators
   - Scanner mode display (BT, WiFi, or Both)
   - WiFi monitor mode status indicator
+  - **Dark/Light theme toggle** for comfortable viewing in any lighting
 
 - **Live Statistics**
   - Global device and sighting counts
   - Auto-updating via WebSocket connection
 
 - **Data Tables with Advanced Filtering**
-  - BT Devices: MAC, Name, Manufacturer, Last Seen, Notes
+  - BT Devices: MAC, Name, Manufacturer, Last Seen, Confidence, Notes
   - BT Sightings: Signal strength (RSSI), GPS coordinates
-  - WiFi Devices: MAC, Vendor, Device Type, Last Seen, Notes
+  - WiFi Devices: MAC, Vendor, Device Type, Last Seen, Confidence, Notes
   - WiFi Association Requests: MAC, SSID, Signal Strength
-  - Filters: MAC address, SSID, RSSI range, Time window (0-24 hours)
+  - Filters: MAC address, SSID, RSSI range, Time window (0-24 hours), **Confidence score range**
   - Time filtering with dual sliders to exclude noisy scan start/end periods
+
+- **Interactive Device Details**
+  - Click any device row to open detailed popup
+  - View all device information, associated SSIDs
+  - **Edit analyst notes** directly in the popup
+  - **"Analyze Location"** button for triangulation
+
+- **Device Triangulation Page**
+  - Movement analysis (MOVING/STATIONARY)
+  - Location clusters visualization
+  - Path tracking on interactive map
+  - Estimated primary location with Google Maps link
 
 - **Interactive Heatmap**
   - GPS-based spatial visualization
@@ -28,11 +41,14 @@ A modern, responsive web dashboard for the SAR BT+WiFi Scanner with real-time da
   - Switchable layers: BT, WiFi associations, or Both
   - Automatic zoom-to-bounds when data is available
   - Leaflet.js-based mapping with OpenStreetMap tiles
+  - **Offline fallback** with grid pattern background
+  
 - **WiFi Device Enrichment**
   - Automatic vendor lookup using IEEE OUI database (38,904 entries)
   - Device type heuristics (phone, network, iot, other)
   - Update OUI Database button for refreshing vendor data
   - OUI endpoint for on-demand database updates
+  
 - **Real-time WebSocket Updates**
   - Live data streaming without page refresh
   - Configurable update interval (default: 1 second)
@@ -105,6 +121,45 @@ Replace `<scanner-ip>` with the IP address of the device running the scanner.
 
 ## Dashboard Layout
 
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  🕐 15:42:38                              [☀️ Theme] [ℹ️ About] [⚙️ Settings] │
+├──────────────────────────────║──────────────────────────────────────────────┤
+│  SIDEBAR (resizable)        ║                MAP AREA                       │
+│ ┌─────────────────────────┐ ║  ┌──────────────────────────────────────────┐ │
+│ │ GPS: 3D Fix ✓  12 sats  │ ║  │                                          │ │
+│ │ Mode: Both   WiFi: ON   │ ║  │      🔴🟡🟢  GPS Heatmap                 │ │
+│ └─────────────────────────┘ ║  │         (OpenStreetMap tiles)            │ │
+│ ┌─────────────────────────┐ ║  │                                          │ │
+│ │ BT Devices:     125     │ ║  │   Click any point for details            │ │
+│ │ WiFi Devices:    89     │ ║  │                                          │ │
+│ │ BT Sightings:  2,341    │ ║  │                                          │ │
+│ │ WiFi Assoc:    1,567    │ ║  │                                          │ │
+│ └─────────────────────────┘ ║  └──────────────────────────────────────────┘ │
+│ ┌─────────────────────────┐ ║                                               │
+│ │ [🔍 MAC Filter    ]     │ ║  Map Controls:                                │
+│ │ [🔍 SSID Filter   ]     │ ║  [BT Only] [WiFi Only] [Both]                │
+│ │ RSSI: ─●────── -60 dBm  │ ║                                               │
+│ │ Confidence: ──●── 50%   │ ║                                               │
+│ └─────────────────────────┘ ║                                               │
+│ ┌─────────────────────────┐ ║                                               │
+│ │ [BT Devices] [BT Sight] │ ║                                               │
+│ │ [WiFi Dev] [WiFi Assoc] │ ║                                               │
+│ │ ────────────────────────│ ║                                               │
+│ │ MAC      │ Name │ Conf  │ ║                                               │
+│ │ AA:BB:.. │ iPho │  72   │ ║                                               │
+│ │ 11:22:.. │ Fitb │  35   │ ║                                               │
+│ │ (click row for details) │ ║                                               │
+│ └─────────────────────────┘ ║                                               │
+│ ┌─────────────────────────┐ ║                                               │
+│ │ 📥 Download DB          │ ║                                               │
+│ │ 🗑️  Purge DB             │ ║                                               │
+│ │ 📊 Analyze Confidence   │ ║                                               │
+│ │ 🔄 Update OUI Database  │ ║                                               │
+│ └─────────────────────────┘ ║                                               │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
 ### Left Sidebar
 
 1. **Live Time**: Current time in HH:MM:SS format (UTC)
@@ -119,11 +174,25 @@ Replace `<scanner-ip>` with the IP address of the device running the scanner.
    - Real-time counts of devices and sightings
    - Updated via WebSocket
 
-4. **Data Tables**:
-   - Tab-based view with 4 table types
-   - Advanced filtering options
+4. **Filters**:
+   - MAC filter (substring match)
+   - SSID filter (for WiFi associations)
+   - RSSI range slider (-100 to 0 dBm)
+   - **Confidence range slider** (0-100%)
+   - Time presets (All/1h/24h/Custom)
 
-5. **Map Display**: Button group to select heatmap type
+5. **Data Tables**:
+   - Tab-based view with 4 table types
+   - **Click any row** to open detailed device popup
+   - Highlighted rows for devices with notes
+
+6. **Action Buttons**:
+   - Download DB - Export database file
+   - Purge DB - Clear data (with backup)
+   - Analyze Confidence - Run scoring algorithm
+   - Update OUI Database - Refresh vendor data
+
+7. **Theme Toggle**: Switch between light (☀️) and dark (🌙) modes
 
 ### Main Content Area
 
@@ -171,8 +240,22 @@ The web UI backend provides REST API endpoints for advanced integration:
 - `GET /api/wifi/associations` - WiFi association requests with filters
 - `GET /api/map/heatmap` - Heatmap data for map visualization
 
+### Triangulation
+- `GET /api/triangulate/{mac}` - Full triangulation analysis for a device
+- `GET /triangulate` - Triangulation page (HTML)
+
+### Confidence Analysis
+- `POST /api/confidence/analyze` - Run confidence scoring algorithm
+- `POST /api/confidence/apply` - Apply confidence scores to database
+
+### Notes Management
+- `POST /api/bt/devices/{mac}/notes` - Update BT device notes
+- `POST /api/wifi/devices/{mac}/notes` - Update WiFi device notes
+
 ### Database Management
 - `POST /api/oui/update` - Trigger OUI database update from IEEE registry
+- `GET /api/db/download` - Download database file
+- `POST /api/db/purge` - Clear database (creates backup first)
 
 ### WebSocket
 - `WS /ws/live` - Live data stream with updates every `WEB_UI_REFRESH_INTERVAL` seconds
@@ -238,6 +321,38 @@ Both BT and WiFi device tables include a `notes` column for analyst annotations:
 - Appears in exports and reports
 - Updated via web UI inline editing (future feature)
 
+## Implemented Features
+
+The following features are now available:
+
+- **✅ Dark/Light Theme Toggle**
+  - Switch between light and dark modes
+  - Comfortable viewing in any lighting condition
+  - Persists across sessions
+
+- **✅ Interactive Device Details**
+  - Click device rows to open popup
+  - View complete device information
+  - Edit and save analyst notes
+  - One-click triangulation
+
+- **✅ Device Triangulation**  
+  - Movement analysis (MOVING/STATIONARY)
+  - Location clustering
+  - Path visualization
+  - Estimated primary location
+  - Google Maps integration
+
+- **✅ Confidence Filtering**
+  - Filter by confidence score range
+  - Quickly focus on high-priority targets
+  - Hide known SAR team equipment
+
+- **✅ Notes Editing**
+  - Edit notes directly in device popup
+  - Notes persist in database
+  - Highlighted rows for devices with notes
+
 ## Future Enhancements
 
 The following features are planned for future versions:
@@ -249,19 +364,16 @@ The following features are planned for future versions:
 
 - **Advanced Visualization**
   - Time-series graphs of signal strength
-  - Device trajectory visualization
   - Signal strength gradient maps
 
 - **Export Features**
   - CSV export of filtered data
   - Map snapshots
-  - Report generation with enriched data
+  - GeoJSON export
 
-- **Device Management**
-  - Inline notes editing in tables
-  - Mark devices as known/unknown
-  - Custom device labels/annotations
-  - Threat level tagging
+- **Multi-Scanner Support**
+  - Coordinate multiple scanners
+  - Merge data from different devices
 
 ## Troubleshooting
 

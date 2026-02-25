@@ -9,6 +9,8 @@ SAR BT Scanner to przenośny system wykrywania urządzeń zaprojektowany dla **o
 - Przechwytuje żądania WiFi probe z telefonów szukających znanych sieci
 - Oznacza wszystkie wykrycia współrzędnymi GPS i znacznikami czasu
 - Pomaga odróżnić sprzęt zespołu SAR od potencjalnych urządzeń celu
+- Trianguluje lokalizację urządzenia i wzorce ruchu
+- Zapewnia punktację pewności do priorytetyzacji celów dochodzenia
 
 ---
 
@@ -42,6 +44,43 @@ Adres IP jest zazwyczaj wyświetlany na ekranie skanera lub można go znaleźć 
 
 ## Przegląd panelu webowego
 
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  🕐 15:42:38                              [☀️ Motyw] [ℹ️ Info] [⚙️ Ustawienia]│
+├──────────────────────────────║──────────────────────────────────────────────┤
+│       SIDEBAR                ║              MAPA                            │
+│ ┌──────────────────────────┐ ║  ┌──────────────────────────────────────────┐ │
+│ │ GPS: 3D Fix ✓  12 sats   │ ║  │                                          │ │
+│ │ Mode: Both   WiFi: ON    │ ║  │      🔴🟡🟢  Mapa cieplna GPS           │ │
+│ └──────────────────────────┘ ║  │                                          │ │
+│ ┌──────────────────────────┐ ║  │   Czerwony = Silny sygnał / Dużo wykryć  │ │
+│ │ BT Devices:     125      │ ║  │   Zielony = Słaby / Mało wykryć          │ │
+│ │ WiFi Devices:    89      │ ║  │                                          │ │
+│ │ BT Sightings:  2,341     │ ║  │   Kliknij punkt po szczegóły             │ │
+│ │ WiFi Assoc:    1,567     │ ║  │                                          │ │
+│ └──────────────────────────┘ ║  └──────────────────────────────────────────┘ │
+│ ┌──────────────────────────┐ ║                                               │
+│ │ Filtry:                  │ ║  Kontrolki mapy:                              │
+│ │ [MAC    ] [SSID   ]      │ ║  [Tylko BT] [Tylko WiFi] [Oba]               │
+│ │ RSSI: ─●────── -60 dBm   │ ║                                               │
+│ │ Pewność: ──●── 50%       │ ║                                               │
+│ └──────────────────────────┘ ║                                               │
+│ ┌──────────────────────────┐ ║                                               │
+│ │[BT Dev][BT Sight][WiFi D]│ ║                                               │
+│ │ MAC      │ Nazwa │ Pewn  │ ║                                               │
+│ │ AA:BB:.. │ iPho  │  72   │ ║                                               │
+│ │ 11:22:.. │ Fitb  │  35   │ ║                                               │
+│ │(kliknij wiersz po szczeg)│ ║                                               │
+│ └──────────────────────────┘ ║                                               │
+│ ┌──────────────────────────┐ ║                                               │
+│ │ 📥 Pobierz bazę          │ ║                                               │
+│ │ 🗑️  Wyczyść bazę          │ ║                                               │
+│ │ 📊 Analizuj pewność      │ ║                                               │
+│ │ 📍 (Triangulacja urzadz) │ ║                                               │
+│ └──────────────────────────┘ ║                                               │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
 ### Panel statusu (góra)
 
 | Wskaźnik | Znaczenie |
@@ -68,6 +107,45 @@ Mapa pokazuje mapę cieplną lokalizacji wykryć:
 
 Użyj przełącznika warstw, aby przełączać między widokiem tylko BT, tylko WiFi lub łączonym.
 
+### Przełącznik motywu
+
+Panel obsługuje motywy jasny i ciemny:
+- **Tryb jasny** (☀️): Domyślny, kolory Czerwonego Krzyża
+- **Tryb ciemny** (🌙): Zmniejszone zmęczenie oczu w warunkach słabego oświetlenia
+
+Przełącz za pomocą przycisku motywu w nagłówku.
+
+### Interaktywne szczegóły urządzenia
+
+Kliknij dowolny wiersz w tabelach urządzeń, aby otworzyć szczegółowy popup:
+
+```
+┌────────────────────────────────────────────────────────┐
+│ SZCZEGÓŁY URZĄDZENIA                        [✕ Zamknij]│
+├────────────────────────────────────────────────────────┤
+│ Adres MAC:      AA:BB:CC:DD:EE:FF                      │
+│ Typ urządzenia: Bluetooth                              │
+│ Nazwa:          iPhone                                 │
+│ Producent:      Apple Inc.                             │
+│ Pewność:        72%                                    │
+│ Pierwszy raz:   2026-02-25 08:15:32                    │
+│ Ostatni raz:    2026-02-25 14:22:45                    │
+├────────────────────────────────────────────────────────┤
+│ POWIĄZANE SSID (urządzenia WiFi):                      │
+│  • Home_Network (15 prób)                              │
+│  • Office_WiFi (3 próby)                               │
+├────────────────────────────────────────────────────────┤
+│ NOTATKI ANALITYKA:                                     │
+│ ┌────────────────────────────────────────────────────┐ │
+│ │ Widziane blisko północno-zachodniego peryferia    │ │
+│ │ Możliwe dopasowanie do urządzenia zaginionego     │ │
+│ └────────────────────────────────────────────────────┘ │
+│ [Zapisz notatki] [Anuluj]                              │
+├────────────────────────────────────────────────────────┤
+│ [📍 Analizuj lokalizację - Triangulacja urządzenia]    │
+└────────────────────────────────────────────────────────┘
+```
+
 ---
 
 ## Identyfikacja urządzeń WiFi
@@ -89,6 +167,65 @@ Zarówno w tabelach urządzeń Bluetooth, jak i WiFi znajduje się kolumna **Not
 - Przykład: "Widziane blisko peryferii strefy poszukiwań"
 - Przykład: "Pasuje do znanych sieci osoby zaginionej"
 - Notatki utrzymują się w sesjach i pojawiają się w eksportowanych raportach
+
+Edytuj notatki przez:
+1. Kliknięcie wiersza urządzenia, aby otworzyć popup szczegółów
+2. Wpisanie tekstu w polu notatek
+3. Kliknięcie "Zapisz notatki"
+
+---
+
+## Triangulacja urządzenia
+
+Funkcja triangulacji analizuje wszystkie wykrycia urządzenia, aby określić jego lokalizację i wzorce ruchu.
+
+### Dostęp do triangulacji
+
+1. Kliknij dowolny wiersz urządzenia, aby otworzyć popup szczegółów
+2. Kliknij przycisk **"Analizuj lokalizację"**
+3. Lub przejdź bezpośrednio: `http://<adres-ip-skanera>:8000/triangulate?mac=AA:BB:CC:DD:EE:FF`
+
+### Układ strony triangulacji
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 📍 TRIANGULACJA URZĄDZENIA - AA:BB:CC:DD:EE:FF       [← Wstecz] [🔄 Odśwież]│
+├─────────────────────────────────────────────────────────────────────────────┤
+│  ┌─────────────────────────┐   ┌───────────────────────────────────────────┐│
+│  │ INFO O URZĄDZENIU       │   │                                           ││
+│  │ MAC: AA:BB:CC:DD:EE:FF  │   │          MAPA RUCHU                       ││
+│  │ Typ: Bluetooth          │   │                                           ││
+│  │ Pewność: 75%            │   │   🔵 Pierwszy raz  🟢 Ostatni raz         ││
+│  ├─────────────────────────┤   │   - - - Ścieżka ruchu                     ││
+│  │ ANALIZA RUCHU           │   │   ● Klastry lokalizacji                   ││
+│  │ Status: W RUCHU         │   │                                           ││
+│  │ Dystans: 1.5 km         │   │                                           ││
+│  │ Śr. prędkość: 0.25 km/h │   └───────────────────────────────────────────┘│
+│  ├─────────────────────────┤                                                │
+│  │ GŁÓWNA LOKALIZACJA      │   ┌───────────────────────────────────────────┐│
+│  │ Lat: 52.408100          │   │ OŚ CZASU WYKRYĆ                           ││
+│  │ Lon: 16.928500          │   │ 08:15 ●━━━●━━━━━●━━━━━━━━━━━━●━━━━● 14:22 ││
+│  │ [Otwórz w Google Maps]  │   │       K1    K2              K3      K4    ││
+│  └─────────────────────────┘   └───────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Zrozumienie wyników triangulacji
+
+| Metryka | Opis |
+|---------|------|
+| **Status** | W RUCHU lub NIERUCHOMY na podstawie wariancji lokalizacji |
+| **Pewność ruchu** | Jak pewna jest analiza (wyższa = więcej danych) |
+| **Całkowity dystans** | Suma wszystkich segmentów ruchu |
+| **Klastry lokalizacji** | Grupy pobliskich wykryć (urządzenie zostało w obszarze) |
+| **Główna lokalizacja** | Najbardziej prawdopodobna bieżąca/ostatnia pozycja |
+
+### Kiedy używać triangulacji
+
+- **Urządzenia o wysokiej pewności** (70+): Trianguluj aby znaleźć lokalizację
+- **Urządzenia w ruchu**: Śledź ścieżkę aby przewidzieć kierunek
+- **Krótkie pojawienia się**: Znajdź gdzie urządzenie było widziane
+- **Analiza klastrów**: Sprawdź czy urządzenie zostało w jednym obszarze
 
 ---
 
@@ -332,6 +469,12 @@ Pełne wytyczne etyczne znajdziesz w [ETHICS.md](ETHICS.md).
 | Znajdź silne sygnały | Filtruj RSSI > -60 dBm |
 | Znajdź nowe urządzenia | Sortuj według "First Seen" malejąco |
 | Skup się na celach | Filtruj pewność ≥ 70 |
+| Zobacz szczegóły urządzenia | Kliknij dowolny wiersz w tabeli urządzeń |
+| Dodaj notatki | Kliknij urządzenie → Edytuj notatki w popup → Zapisz |
+| Trianguluj urządzenie | Kliknij urządzenie → przycisk "Analizuj lokalizację" |
+| Przełącz motyw | Kliknij przycisk ☀️/🌙 w nagłówku |
+| Pobierz bazę danych | Kliknij "Download DB" na pasku bocznym |
+| Wyczyść dane | Kliknij "Purge DB" (najpierw tworzy kopię) |
 
 ### Podsumowanie wyników pewności
 
@@ -357,6 +500,7 @@ Pełne wytyczne etyczne znajdziesz w [ETHICS.md](ETHICS.md).
 
 - **Problemy techniczne**: Sprawdź [README.md](README.md) i [WEB_UI_QUICKSTART.md](docs/WEB_UI_QUICKSTART.md)
 - **Ocenianie pewności**: Zobacz [CONFIDENCE_ANALYZER.md](docs/CONFIDENCE_ANALYZER.md)
+- **Triangulacja urządzeń**: Zobacz [TRIANGULATION.md](docs/TRIANGULATION.md)
 - **Konfiguracja WiFi**: Zobacz [WIFI_SETUP.md](docs/WIFI_SETUP.md)
 - **Repozytorium projektu**: https://github.com/Grupa-Ratownictwa-PCK-Poznan/SAR_BT_Scan
 

@@ -23,21 +23,25 @@ Navigate to: **http://localhost:8000**
 ## Dashboard Overview
 
 ```
-┌──────────────────────────────────────────────────────────────┐
-│                    SAR SCANNER UI                            │
-├────────────────────────┬──────────────────────────────────┤
-│                        │                                   │
-│  SIDEBAR (550px)       │         MAIN CONTENT             │
-│                        │                                   │
-│  • Time                │  ┌──────────────────────────┐    │
-│  • Status              │  │                          │    │
-│  • Stats               │  │       HEATMAP MAP        │    │
-│  • Filters             │  │                          │    │
-│  • Tables (600px tall) │  │  (GPS color-coded pts)   │    │
-│  • Update OUI Button   │  │                          │    │
-│  • Map Type            │  └──────────────────────────┘    │
-│                        │                                   │
-└────────────────────────┴──────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  🕐 15:42:38                              [☀️ Theme] [ℹ️ About] [⚙️ Settings] │
+├──────────────────────────────║──────────────────────────────────────────────┤
+│                              ║                                               │
+│  SIDEBAR (resizable)         ║              MAIN CONTENT                    │
+│                              ║                                               │
+│  • Time                      ║  ┌──────────────────────────────────────┐    │
+│  • Status (GPS/Mode/WiFi)    ║  │                                      │    │
+│  • Stats (device counts)     ║  │         HEATMAP MAP                  │    │
+│  • Filters                   ║  │                                      │    │
+│  • Tables (600px tall)       ║  │   (GPS color-coded points)           │    │
+│  • Action Buttons            ║  │   🔴 Strong  🟡 Medium  🟢 Weak      │    │
+│    - Download DB             ║  │                                      │    │
+│    - Purge DB                ║  └──────────────────────────────────────┘    │
+│    - Analyze Confidence      ║                                               │
+│    - Update OUI              ║  Map Type: [BT] [WiFi] [Both]                 │
+│  • Map Type Toggle           ║                                               │
+│                              ║                                               │
+└──────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Key Features at a Glance
@@ -50,17 +54,23 @@ Navigate to: **http://localhost:8000**
 | **Scan Mode** | Status panel | What's running: "bt", "wifi", or "both" |
 | **WiFi Monitor** | Status panel | "ON" = monitor mode active, "OFF" = not running |
 | **Device Counts** | Stats panel | Total devices captured |
-| **BT Devices** | Table tab 1 | Bluetooth devices with manufacturer and notes |
+| **BT Devices** | Table tab 1 | Bluetooth devices with manufacturer, confidence, notes |
 | **BT Sightings** | Table tab 2 | Individual BT signals (with RSSI bars) |
-| **WiFi Devices** | Table tab 3 | WiFi devices with vendor and device type |
+| **WiFi Devices** | Table tab 3 | WiFi devices with vendor, type, confidence, notes |
 | **WiFi Assoc** | Table tab 4 | Association attempts to SSIDs |
 | **Mac Filter** | Filters | Search for specific device MAC |
 | **SSID Filter** | Filters | Search for WiFi networks (WiFi Assoc tab) |
 | **RSSI Sliders** | Filters | Show only strong/weak signals |
+| **Confidence Filter** | Filters | Filter by confidence score (0-100) |
 | **Hours Filter** | Filters | Show only recent N hours of data |
+| **Download DB** | Sidebar | Export complete database file |
+| **Purge DB** | Sidebar | Clear all data (creates backup) |
+| **Analyze Confidence** | Sidebar | Run confidence scoring on all devices |
 | **Update OUI** | Sidebar | Refresh IEEE vendor database |
 | **Heatmap Map** | Right side | GPS position heatmap |
 | **Map Type** | Bottom sidebar | Switch: BT / WiFi / Both |
+| **Theme Toggle** | Header | Switch between light (☀️) and dark (🌙) modes |
+| **Device Popup** | Click table row | View details, edit notes, triangulate |
 
 ## Common Tasks
 
@@ -78,11 +88,38 @@ Navigate to: **http://localhost:8000**
 3. Results update instantly
 4. For WiFi devices, check the **Vendor** and **Type** columns for manufacturer info
 
+### View Device Details & Add Notes
+
+1. Click any device row in the table
+2. Detailed popup opens with all device information
+3. Type notes in the **Notes** textarea
+4. Click **"Save Notes"** to persist
+5. Rows with notes are highlighted in the table
+
+### Triangulate a Device
+
+1. Click any device row to open popup
+2. Click **"Analyze Location"** button
+3. View movement analysis, clusters, and estimated location
+4. Use Google Maps link for navigation
+
+### Switch Theme (Light/Dark)
+
+1. Click the theme toggle button (☀️/🌙) in the header
+2. Theme switches immediately
+3. Preference is saved for future sessions
+
 ### View Strong Signals Only
 
 1. Go to **BT Sightings** or **WiFi Assoc** tab
 2. Set **RSSI Min** slider to -70 (or adjust as needed)
 3. Table shows only near devices
+
+### Focus on High-Confidence Targets
+
+1. Set **Confidence Min** slider to 70
+2. Only potential target devices are shown
+3. SAR team equipment (low confidence) is hidden
 
 ### Remove Startup Noise
 
@@ -102,6 +139,12 @@ Navigate to: **http://localhost:8000**
 1. Go to **WiFi Assoc** tab
 2. Enter SSID name in **SSID Filter** (e.g., "rescue")
 3. See all devices trying to connect to that network
+
+### Download or Clear Database
+
+1. **Download DB**: Click to save complete database file
+2. **Purge DB**: Click to clear all data (creates backup first)
+3. Confirm when prompted
 
 ## Troubleshooting
 
@@ -189,13 +232,16 @@ http://<scanner-ip>:8000
 - **WiFi Vendor Data**: Updated on-demand via "Update OUI Database" button
 - **Map**: Every 5 seconds automatically
 - **Status Indicators**: Every WebSocket update (~1 second)
+- **Theme**: Instant switch, persists across sessions
+- **Notes**: Save immediately when clicking "Save Notes"
 
 ## What Happens When Scanner Stops?
 
 1. Scanners stop capturing data
 2. Database remains intact
 3. Web UI still shows historical data
-4. Restart scanner with `python main.py` to resume capture
+4. Triangulation and analysis features continue to work
+5. Restart scanner with `python main.py` to resume capture
 
 ## Example Workflow
 

@@ -47,6 +47,10 @@ The prototype has been successfully tested on:
 - **Dual-mode operation** — scan BT only, WiFi only, or both simultaneously
 - **Supervisor watchdog** — keeps scanner running, creates timestamped database backups
 - **Configurable paths and adapter names** via `settings.py`
+- **Device triangulation** — analyze device location and movement patterns
+- **Confidence scoring** — automatic scoring to differentiate SAR team vs. potential targets
+- **Web UI with dark/light themes** — modern responsive dashboard with theme toggle
+- **BLE GATT publisher** — broadcast sightings to companion apps (optional)
 
 ### Repository Layout
 ```
@@ -62,13 +66,25 @@ SAR_BT_Scan/
 ├── freeze_company_ids.py      # Utility to update company ID database
 ├── wifi_oui_lookup.py         # IEEE OUI vendor database (38,904 entries)
 ├── freeze_wifi_oui.py         # Utility to update OUI database from IEEE registry
+├── confidence_analyzer.py     # Device confidence scoring algorithm
+├── triangulation.py           # Device location and movement analysis
+├── ble_protocol.py            # BLE GATT protocol definitions
+├── ble_publisher.py           # BLE GATT sighting broadcaster
+├── device_whitelist.txt       # SAR team equipment MACs (excluded from analysis)
 ├── configs/
 │   ├── btscanner-supervisor       # Environment file (symlink to /etc/default/)
 │   ├── btscanner-supervisor.service  # Systemd unit file
 │   └── logtorate.d-btscanner-supervisor # Log rotation config
+├── web_ui/
+│   ├── app.py                 # FastAPI web server
+│   ├── index.html             # Main dashboard (live view, heatmap)
+│   ├── triangulation.html     # Device triangulation analysis page
+│   └── mac_utils.py           # MAC address utilities
 ├── docs/                      # Documentation folder
 │   ├── CONFIDENCE_ANALYZER.md # Confidence scoring algorithm
+│   ├── TRIANGULATION.md       # Device triangulation documentation
 │   ├── WEB_UI_QUICKSTART.md   # Web dashboard quick start
+│   ├── WEB_UI_README.md       # Full web UI documentation
 │   ├── WIFI_SETUP.md          # WiFi adapter setup guide
 │   └── ...                    # Additional technical docs
 ├── USER_GUIDE.md              # User guide (English)
@@ -135,12 +151,27 @@ KNOWN_WIFIS = []               # List of SSIDs to identify (empty = capture all)
 # Database configuration
 CLEAN_DB_ON_STARTUP = False    # Set True to delete DB on each supervisor start
                                # When False, data persists and can be managed via web UI
+USB_BACKUP_ENABLED = False     # Set True to enable automatic database backups to USB
 
 # Web UI configuration
 WEB_UI_ENABLED = True          # Set to False to disable web interface
 WEB_UI_HOST = "0.0.0.0"        # Listen on all interfaces
 WEB_UI_PORT = 8000             # Local port for web UI
 WEB_UI_REFRESH_INTERVAL = 1.0  # Seconds between live updates (WebSocket)
+
+# Confidence Analyzer configuration
+HQ_LATITUDE = None             # Staging area latitude (auto-detect if None)
+HQ_LONGITUDE = None            # Staging area longitude (auto-detect if None)
+HQ_RADIUS_METERS = 100         # Devices seen only near HQ get lower confidence
+DEVICE_WHITELIST_FILE = "device_whitelist.txt"  # Team equipment MACs
+SESSION_GAP_SECONDS = 7200     # Gap (seconds) to start new session (2 hours)
+
+# BLE GATT Publisher (optional companion app broadcast)
+BLE_PUBLISH_ENABLED = False              # Enable to broadcast sightings via BLE
+BLE_PUBLISH_INTERFACE = "hci0"           # Built-in BT interface (scanner uses hci1)
+BLE_PUBLISH_DEVICE_NAME = "SAR-Scanner"  # Advertised BLE device name
+BLE_PUBLISH_POLL_INTERVAL = 0.5          # Database poll interval in seconds
+BLE_PUBLISH_MIN_RSSI = -100              # Default RSSI filter in dBm
 ```
 
 ### GPS Configuration
@@ -196,7 +227,7 @@ Initializing database...
 
 ## 🌐 Web UI Dashboard
 
-A modern web-based dashboard provides **live monitoring** of scanning activity and data visualization.
+A modern web-based dashboard provides **live monitoring** of scanning activity and data visualization with both **light and dark themes**.
 
 ### Accessing the Dashboard
 
@@ -210,9 +241,51 @@ If running on a Raspberry Pi in your network:
 http://<raspberry-pi-ip>:8000
 ```
 
+### Dashboard Layout
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  🕐 15:42:38                              [☀️ Theme] [ℹ️ About] [⚙️ Settings] │
+├──────────────────────────────║──────────────────────────────────────────────┤
+│  SIDEBAR (resizable)        ║           MAIN MAP AREA                       │
+│ ┌─────────────────────────┐ ║  ┌──────────────────────────────────────────┐ │
+│ │ GPS: 3D Fix ✓  12 sats  │ ║  │                                          │ │
+│ │ Mode: Both   WiFi: ON   │ ║  │      🔴🟡🟢  GPS Heatmap                 │ │
+│ └─────────────────────────┘ ║  │         (OpenStreetMap tiles)            │ │
+│ ┌─────────────────────────┐ ║  │                                          │ │
+│ │ BT Devices:     125     │ ║  │   Click any point for device details:    │ │
+│ │ WiFi Devices:    89     │ ║  │   • MAC address                          │ │
+│ │ BT Sightings:  2,341    │ ║  │   • Signal strength                      │ │
+│ │ WiFi Assoc:    1,567    │ ║  │   • Timestamp                            │ │
+│ └─────────────────────────┘ ║  │   • Confidence score                     │ │
+│ ┌─────────────────────────┐ ║  │                                          │ │
+│ │ [🔍 MAC Filter    ]     │ ║  │                                          │ │
+│ │ [🔍 SSID Filter   ]     │ ║  └──────────────────────────────────────────┘ │
+│ │ RSSI: ─●────── -60 dBm  │ ║                                               │
+│ │ Confidence: ──●── 50%   │ ║  Map Controls:                                │
+│ │ [All] [1h] [24h] [Custom]│ ║  [BT Only] [WiFi Only] [Both]               │
+│ └─────────────────────────┘ ║                                               │
+│ ┌─────────────────────────┐ ║                                               │
+│ │ [BT Dev][BT Sight][WiFi]│ ║                                               │
+│ │ ───────────────────────  │ ║                                               │
+│ │ MAC       │ Name │ Conf │ ║                                               │
+│ │ AA:BB:... │ iPho │  72  │ ║                                               │
+│ │ 11:22:... │ Fitb │  35  │ ║                                               │
+│ │ CC:DD:... │      │  88  │ ║                                               │
+│ │ (click row for details) │ ║                                               │
+│ └─────────────────────────┘ ║                                               │
+│ ┌─────────────────────────┐ ║                                               │
+│ │ 📥 Download DB          │ ║                                               │
+│ │ 🗑️  Purge DB             │ ║                                               │
+│ │ 📊 Analyze Confidence   │ ║                                               │
+│ │ 🔄 Update OUI Database  │ ║                                               │
+│ └─────────────────────────┘ ║                                               │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
 ### Dashboard Features
 
-#### 📊 **Left Sidebar Panel** (550px width)
+#### 📊 **Left Sidebar Panel** (resizable with drag divider)
 - **GPS Status**: Shows fix status, satellites, HDOP, and last GPS coordinate
 - **Scanner Mode**: Current scan mode (Bluetooth, WiFi, or Both)
 - **WiFi Monitor**: Active WiFi scanner status
@@ -222,11 +295,13 @@ http://<raspberry-pi-ip>:8000
   - Total BT sightings
   - Total WiFi associations
 - **Live Clock**: Real-time date and time with auto-updating display
-- **Filtering Controls**: Filter by MAC address, RSSI, SSID, time range
+- **Filtering Controls**: Filter by MAC address, RSSI, SSID, time range, confidence score
 - **Database Management**:
   - **Download DB**: Export complete database file for backup/analysis
   - **Purge DB**: Clear all data with automatic backup creation (with confirmation)
+  - **Analyze Confidence**: Run confidence scoring algorithm on all devices
   - **Update OUI Database**: Refresh WiFi vendor lookup data from IEEE registry
+- **Theme Toggle**: Switch between light and dark mode (☀️/🌙)
 
 #### 🗺️ **Interactive Map**
 - **GPS Heatmap**: Visual representation of signal detections on OpenStreetMap
@@ -239,23 +314,90 @@ http://<raspberry-pi-ip>:8000
   - Signal intensity percentage
   - Device type (WiFi/Bluetooth)
 - **Map Controls**: Zoom, pan, layer selection (BT/WiFi/Both)
+- **Offline Support**: Grid pattern fallback when tiles unavailable
 
-#### 📋 **Data Tables** (600px height)
+#### 📋 **Data Tables** (scrollable, 600px height)
 Four tabs display filtered, sortable data:
-1. **BT Devices**: Unique Bluetooth devices with first/last seen times, manufacturer, and analyst notes
+1. **BT Devices**: Unique Bluetooth devices with first/last seen times, manufacturer, confidence, and analyst notes
 2. **BT Sightings**: Individual Bluetooth observations with RSSI and timestamps
-3. **WiFi Devices**: Unique WiFi MAC addresses with vendor name, device type heuristic, and analyst notes
+3. **WiFi Devices**: Unique WiFi MAC addresses with vendor name, device type heuristic, confidence, and analyst notes
 4. **WiFi Associations**: Networks devices attempted to join with GPS and timing
+
+**Interactive Rows**: Click any device row to open a detailed popup with:
+- Complete device information
+- All associated SSIDs (for WiFi devices)
+- Edit notes directly in the popup
+- **"Analyze Location"** button for triangulation analysis
 
 #### ⚙️ **Filter & Time Controls**
 - **MAC Filter**: Search specific device by address
 - **SSID Filter**: Find WiFi networks
 - **RSSI Range**: Filter by signal strength (dBm)
+- **Confidence Range**: Filter by confidence score (0-100)
 - **Time Presets**:
   - All time
   - Last 1 hour
   - Last 24 hours
   - Custom date range
+
+#### 🎨 **Theme Support**
+The dashboard supports both light and dark themes:
+- **Light Mode**: Red Cross branded colors with white background
+- **Dark Mode**: Reduced eye strain for low-light conditions
+- Toggle via the theme button in the header (☀️/🌙)
+
+### Device Triangulation Page
+
+Access the triangulation analysis for any device:
+```
+http://<scanner-ip>:8000/triangulate?mac=AA:BB:CC:DD:EE:FF
+```
+
+Or click **"Analyze Location"** in any device popup.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  📍 DEVICE TRIANGULATION - AA:BB:CC:DD:EE:FF            [← Back] [🔄 Refresh]│
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌─────────────────────────────────┐  ┌──────────────────────────────────┐  │
+│  │ DEVICE INFO                     │  │                                  │  │
+│  │ MAC: AA:BB:CC:DD:EE:FF          │  │                                  │  │
+│  │ Type: Bluetooth                 │  │       MOVEMENT MAP               │  │
+│  │ Name: iPhone                    │  │                                  │  │
+│  │ Manufacturer: Apple Inc.        │  │   🔵 First seen                  │  │
+│  │ Confidence: 75%                 │  │   🟢 Last seen                   │  │
+│  ├─────────────────────────────────┤  │   - - - Movement path            │  │
+│  │ OBSERVATION SUMMARY             │  │   ● Location clusters            │  │
+│  │ Total Sightings: 42             │  │                                  │  │
+│  │ With GPS: 38                    │  │                                  │  │
+│  │ First Seen: 08:15:32            │  │                                  │  │
+│  │ Last Seen: 14:22:45             │  │                                  │  │
+│  │ Duration: 6h 7m                 │  │                                  │  │
+│  ├─────────────────────────────────┤  │                                  │  │
+│  │ MOVEMENT ANALYSIS               │  └──────────────────────────────────┘  │
+│  │ Status: MOVING                  │                                        │
+│  │ Confidence: 78.5%               │  ┌──────────────────────────────────┐  │
+│  │ Total Distance: 1523.4 m        │  │ SIGHTINGS TIMELINE              │  │
+│  │ Avg Speed: 0.25 km/h            │  │                                  │  │
+│  │ Max Speed: 4.43 km/h            │  │ 08:15 ●━━━━━━━━━━━━━●━━━━━━━●    │  │
+│  ├─────────────────────────────────┤  │       Cluster 1    C2     C3     │  │
+│  │ ESTIMATED PRIMARY LOCATION      │  │                                  │  │
+│  │ Lat: 52.408100                  │  └──────────────────────────────────┘  │
+│  │ Lon: 16.928500                  │                                        │
+│  │ [🗺️ Open in Google Maps]        │                                        │
+│  └─────────────────────────────────┘                                        │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+The triangulation page shows:
+- **Device Information**: MAC, type, name, manufacturer, confidence
+- **Observation Summary**: Sighting counts, time range, duration
+- **Movement Analysis**: Moving/stationary status, distance traveled, speed
+- **Location Clusters**: Groups of nearby sightings
+- **Interactive Map**: Visualizes movement path and cluster locations
+- **Estimated Primary Location**: Most likely device position with Google Maps link
 
 #### ℹ️ **About Button**
 Link to this GitHub repository for documentation, issues, and contributions.
@@ -525,7 +667,10 @@ Example post-processing map:
 - [USER_GUIDE_PL.md](USER_GUIDE_PL.md) — Podręcznik użytkownika (Polish)
 - [docs/WIFI_SETUP.md](docs/WIFI_SETUP.md) — Detailed WiFi adapter configuration and monitor mode setup
 - [docs/CONFIDENCE_ANALYZER.md](docs/CONFIDENCE_ANALYZER.md) — Device confidence scoring algorithm
+- [docs/TRIANGULATION.md](docs/TRIANGULATION.md) — Device triangulation and movement analysis
+- [docs/WEB_UI_README.md](docs/WEB_UI_README.md) — Full web dashboard documentation
 - [docs/WEB_UI_QUICKSTART.md](docs/WEB_UI_QUICKSTART.md) — Web dashboard quick start guide
+- [docs/BLE_PROTOCOL.md](docs/BLE_PROTOCOL.md) — BLE GATT publisher protocol documentation
 - [docs/MAP_DEBUGGING_GUIDE.md](docs/MAP_DEBUGGING_GUIDE.md) — Troubleshooting map visualization issues
 
 ---
@@ -558,10 +703,16 @@ Example post-processing map:
 - ✅ Systemd service management
 - ✅ On-device web dashboard with live map visualization
 - ✅ Database download and purge functionality
+- ✅ Device confidence scoring algorithm
+- ✅ Device triangulation and movement analysis
+- ✅ Dark/light theme support
+- ✅ Interactive device tooltips with notes editing
+- ✅ BLE GATT publisher for companion apps
 - 🕓 Configurable SSID filtering  
 - 🕓 Meshtastic telemetry for live updates  
 - 🕓 Export to GeoJSON and QGIS project
 - 🕓 Custom map tiles and offline mode
+- 🕓 Multi-scanner coordination
 
 ---
 
