@@ -38,6 +38,8 @@
 
         /* Dark Mode */
         body.dark-mode {
+            --rc-red: #8b0a22;
+            --rc-dark-red: #6a0819;
             --bg-primary: #1e1e1e;
             --bg-secondary: #2d2d2d;
             --text-primary: #e0e0e0;
@@ -214,6 +216,10 @@
             font-size: 12px;
             text-transform: uppercase;
         }
+        
+        body.dark-mode .info-label {
+            color: var(--rc-white);
+        }
 
         .info-value {
             word-break: break-all;
@@ -305,6 +311,10 @@
             font-weight: bold;
             color: var(--rc-red);
         }
+        
+        body.dark-mode .stat-value {
+            color: var(--rc-white);
+        }
 
         .stat-unit {
             font-size: 10px;
@@ -356,6 +366,10 @@
         .cluster-title {
             font-weight: bold;
             color: var(--rc-red);
+        }
+        
+        body.dark-mode .cluster-title {
+            color: var(--rc-white);
         }
 
         .cluster-sightings {
@@ -431,6 +445,10 @@
             color: var(--rc-red);
             min-width: 80px;
             font-family: 'Courier New', monospace;
+        }
+        
+        body.dark-mode .timeline-time {
+            color: var(--rc-white);
         }
 
         .timeline-info {
@@ -567,6 +585,10 @@
             color: var(--rc-red);
             font-size: 14px;
         }
+        
+        body.dark-mode .popup-time {
+            color: var(--rc-white);
+        }
 
         .popup-info {
             margin-top: 6px;
@@ -588,6 +610,10 @@
             display: flex;
             align-items: center;
             gap: 6px;
+        }
+        
+        body.dark-mode .notes-title {
+            color: var(--rc-white);
         }
         
         .notes-input {

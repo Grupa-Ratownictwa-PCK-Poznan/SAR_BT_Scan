@@ -40,6 +40,8 @@
 
         /* Dark Mode */
         body.dark-mode {
+            --rc-red: #8b0a22;
+            --rc-dark-red: #6a0819;
             --bg-primary: #1e1e1e;
             --bg-secondary: #2d2d2d;
             --text-primary: #e0e0e0;
@@ -390,6 +392,10 @@
             color: var(--rc-red);
         }
         
+        body.dark-mode .note-edit-btn:hover {
+            color: var(--rc-white);
+        }
+        
         .note-input {
             width: 100%;
             padding: 4px 6px;
@@ -461,6 +467,10 @@
             flex-shrink: 0;
             font-size: 12px;
         }
+        
+        body.dark-mode .device-tooltip-label {
+            color: var(--rc-white);
+        }
 
         .device-tooltip-value {
             word-break: break-all;
@@ -478,6 +488,10 @@
             color: var(--rc-red);
             margin-bottom: 4px;
             font-size: 12px;
+        }
+        
+        body.dark-mode .device-tooltip-ssids-title {
+            color: var(--rc-white);
         }
 
         .device-tooltip-ssid-item {
@@ -522,6 +536,10 @@
             display: flex;
             align-items: center;
             gap: 6px;
+        }
+        
+        body.dark-mode .device-tooltip-notes-title {
+            color: var(--rc-white);
         }
         
         .device-tooltip-notes-input {
@@ -582,6 +600,10 @@
             font-family: 'Courier New', monospace;
             color: var(--rc-red);
             font-weight: 500;
+        }
+        
+        body.dark-mode .mac-addr {
+            color: var(--rc-white);
         }
 
         .rssi-bar {
@@ -778,6 +800,10 @@
             transition: all 0.2s;
             flex: 1;
         }
+        
+        body.dark-mode .time-preset-btn {
+            color: var(--rc-white);
+        }
 
         .time-preset-btn:hover {
             background: rgba(198, 12, 48, 0.05);
@@ -840,6 +866,10 @@
             color: var(--rc-red);
             transition: color 0.3s;
         }
+        
+        body.dark-mode .stat-value {
+            color: var(--rc-white);
+        }
 
         .loading {
             text-align: center;
@@ -878,6 +908,10 @@
         .leaflet-popup-content strong {
             color: var(--rc-red);
             transition: color 0.3s;
+        }
+        
+        body.dark-mode .leaflet-popup-content strong {
+            color: var(--rc-white);
         }
 
         /* Marker */
@@ -978,6 +1012,10 @@
             font-size: 18px;
             color: var(--rc-red);
         }
+        
+        body.dark-mode .modal-header h2 {
+            color: var(--rc-white);
+        }
 
         .modal-close {
             background: none;
@@ -991,6 +1029,10 @@
 
         .modal-close:hover {
             color: var(--rc-red);
+        }
+        
+        body.dark-mode .modal-close:hover {
+            color: var(--text-primary);
         }
 
         .modal-body {
@@ -1084,6 +1126,10 @@
             color: var(--rc-red);
             animation: spin 1s linear infinite;
         }
+        
+        body.dark-mode .analysis-loading i {
+            color: var(--rc-white);
+        }
 
         @keyframes spin {
             from { transform: rotate(0deg); }
@@ -1107,6 +1153,10 @@
             font-size: 14px;
             color: var(--rc-red);
             transition: color 0.3s;
+        }
+        
+        body.dark-mode .theme-toggle-container i {
+            color: var(--rc-white);
         }
 
         .toggle-switch {
