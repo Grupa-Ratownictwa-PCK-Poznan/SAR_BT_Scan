@@ -1141,17 +1141,16 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
-            padding: 8px;
-            background: var(--bg-secondary);
+            gap: 6px;
+            padding: 4px 8px;
+            background: transparent;
             border-radius: 4px;
-            margin-bottom: 2px;
             transition: background 0.3s;
         }
 
         .theme-toggle-container i {
-            font-size: 14px;
-            color: var(--rc-red);
+            font-size: 12px;
+            color: var(--rc-white);
             transition: color 0.3s;
         }
         
@@ -1213,42 +1212,39 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 4px;
-            padding: 6px 8px;
-            background: var(--bg-secondary);
+            gap: 3px;
+            padding: 0 8px;
+            background: transparent;
             border-radius: 4px;
-            margin-bottom: 2px;
             transition: background 0.3s;
         }
 
         .language-selector label {
-            font-size: 10px;
-            color: var(--text-secondary);
-            margin-right: 4px;
+            display: none;
         }
 
         .lang-btn {
-            padding: 4px 8px;
+            padding: 4px 6px;
             font-size: 10px;
             font-weight: 600;
-            border: 1px solid var(--border-color);
-            background: var(--bg-primary);
-            color: var(--text-primary);
+            border: 1px solid rgba(255,255,255,0.3);
+            background: transparent;
+            color: var(--rc-white);
             border-radius: 3px;
             cursor: pointer;
             transition: all 0.2s;
         }
 
         .lang-btn:hover {
-            background: var(--rc-red);
+            background: var(--rc-dark-red);
             color: var(--rc-white);
-            border-color: var(--rc-red);
+            border-color: var(--rc-dark-red);
         }
 
         .lang-btn.active {
-            background: var(--rc-red);
-            color: var(--rc-white);
-            border-color: var(--rc-dark-red);
+            background: var(--rc-white);
+            color: var(--rc-red);
+            border-color: var(--rc-white);
         }
     </style>
 </head>
@@ -1258,24 +1254,6 @@
         <div class="sidebar" id="sidebar">
             <!-- Live Time -->
             <div id="liveTime">--:--:--</div>
-
-            <!-- Dark Mode Toggle -->
-            <div class="theme-toggle-container">
-                <i class="fas fa-sun"></i>
-                <label class="toggle-switch">
-                    <input type="checkbox" id="darkModeToggle">
-                    <span class="toggle-slider"></span>
-                </label>
-                <i class="fas fa-moon"></i>
-            </div>
-
-            <!-- Language Selector -->
-            <div class="language-selector">
-                <label data-i18n="language.select">Language</label>
-                <button class="lang-btn" data-lang="en">EN</button>
-                <button class="lang-btn" data-lang="pl">PL</button>
-                <button class="lang-btn" data-lang="de">DE</button>
-            </div>
 
             <!-- Status Indicators Panel -->
             <div class="panel">
@@ -1582,6 +1560,21 @@
                 <div class="map-controls">
                     <div class="panel-title" style="flex: 1; margin: 0;">
                         <i class="fas fa-map-location-dot"></i> <span data-i18n="dashboard.map.heatmapOverlay">Heatmap Overlay</span>
+                    </div>
+                    <!-- Language Selector -->
+                    <div class="language-selector">
+                        <button class="lang-btn" data-lang="en">EN</button>
+                        <button class="lang-btn" data-lang="pl">PL</button>
+                        <button class="lang-btn" data-lang="de">DE</button>
+                    </div>
+                    <!-- Dark Mode Toggle -->
+                    <div class="theme-toggle-container">
+                        <i class="fas fa-sun"></i>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="darkModeToggle">
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <i class="fas fa-moon"></i>
                     </div>
                     <a href="https://github.com/Grupa-Ratownictwa-PCK-Poznan/SAR_BT_Scan" target="_blank" class="collapse-btn" title="About this project">
                         <i class="fas fa-info-circle"></i> <span data-i18n="common.about">About</span>
