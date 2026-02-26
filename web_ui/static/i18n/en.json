@@ -1,0 +1,235 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "noData": "No data found",
+    "save": "Save",
+    "cancel": "Cancel",
+    "close": "Close",
+    "apply": "Apply",
+    "done": "Done",
+    "yes": "Yes",
+    "no": "No",
+    "ok": "OK",
+    "back": "Back",
+    "analyze": "Analyze",
+    "update": "Update",
+    "search": "Search",
+    "filter": "Filter",
+    "clear": "Clear",
+    "download": "Download",
+    "settings": "Settings",
+    "about": "About",
+    "mac": "MAC",
+    "name": "Name",
+    "vendor": "Vendor",
+    "manufacturer": "Manufacturer",
+    "type": "Type",
+    "confidence": "Confidence",
+    "lastSeen": "Last Seen",
+    "firstSeen": "First Seen",
+    "notes": "Notes",
+    "rssi": "RSSI",
+    "time": "Time",
+    "timestamp": "Timestamp",
+    "ssid": "SSID",
+    "offlineMode": "Offline Mode - Map tiles unavailable",
+    "editNote": "Edit note",
+    "saveNote": "Save Note",
+    "addNotes": "Add notes about this device...",
+    "analyzeLocation": "Analyze Location",
+    "bt": "BT",
+    "wifi": "WiFi",
+    "hidden": "Hidden Network"
+  },
+  "dashboard": {
+    "title": "SAR Scanner - Live Dashboard",
+    "status": {
+      "title": "Status",
+      "gpsFix": "GPS Fix",
+      "satellites": "Satellites",
+      "scanMode": "Scan Mode",
+      "wifiMonitor": "WiFi Monitor",
+      "fixed": "FIXED",
+      "noFix": "NO FIX",
+      "on": "ON",
+      "off": "OFF"
+    },
+    "updates": {
+      "title": "Updates",
+      "allRunning": "All Systems Running",
+      "paused": "PAUSED - Data Frozen",
+      "liveActive": "Live updates active",
+      "pausedStatus": "Updates paused - data frozen for analysis"
+    },
+    "statistics": {
+      "title": "Statistics",
+      "btDevices": "BT Devices",
+      "wifiDevices": "WiFi Devices",
+      "btSightings": "BT Sightings",
+      "wifiAssoc": "WiFi Assoc"
+    },
+    "analytics": {
+      "title": "Analytics",
+      "confidence": "Confidence",
+      "vendorDb": "Vendor DB"
+    },
+    "data": {
+      "title": "Data",
+      "btDevicesTab": "BT Devices",
+      "btSightingsTab": "BT Sightings",
+      "wifiDevicesTab": "WiFi Devices",
+      "wifiAssocTab": "WiFi Assoc",
+      "macAddress": "MAC Address",
+      "packetType": "Packet Type",
+      "noDevices": "No devices found",
+      "noSightings": "No sightings found",
+      "noAssociations": "No associations found"
+    },
+    "filters": {
+      "filterByMac": "Filter by MAC...",
+      "filterBySsid": "Filter by SSID...",
+      "rssiRange": "RSSI Range (dBm)",
+      "confidenceRange": "Confidence Range",
+      "timeRange": "Time Range",
+      "customRange": "Or set custom range:",
+      "applyRange": "Apply Range",
+      "all": "All"
+    },
+    "map": {
+      "title": "Map Display",
+      "heatmapOverlay": "Heatmap Overlay",
+      "both": "BT+WiFi"
+    },
+    "actions": {
+      "dbDownload": "DB download",
+      "dbPurge": "DB Purge",
+      "usbPurge": "USB Purge",
+      "reboot": "Reboot",
+      "shutdown": "Shutdown"
+    },
+    "system": {
+      "title": "System Status",
+      "rootDisk": "Root Disk:",
+      "usb": "USB:",
+      "database": "Database:",
+      "memory": "Memory:",
+      "cpu": "CPU:",
+      "temp": "Temp:",
+      "power": "Power:",
+      "notMounted": "Not mounted"
+    },
+    "tooltip": {
+      "btDetails": "BT Device Details",
+      "wifiDetails": "WiFi Device Details",
+      "ssids": "SSIDs",
+      "noSsids": "No SSIDs found",
+      "seen": "Seen",
+      "last": "Last"
+    },
+    "confirmations": {
+      "purgeDb": "⚠️ WARNING: This will delete ALL data in the database!\n\nA backup will be created as 'results_bak.db'.\n\nAre you sure?",
+      "purgeUsb": "⚠️ WARNING: This will delete ALL files in the USB storage!\n\nAre you sure?",
+      "updateSystem": "⚠️ Update will fetch latest changes from git repository.\n\nContinue?",
+      "rebootSystem": "⚠️ WARNING: System will reboot immediately!\n\nThis will disconnect all active sessions.\n\nContinue?",
+      "shutdownSystem": "⚠️ WARNING: System will shutdown immediately!\n\nYou will need to manually power it back on.\n\nContinue?"
+    },
+    "messages": {
+      "dbPurged": "✅ Database purged successfully!\nBackup saved as:",
+      "usbCleared": "✅ USB storage cleared successfully!",
+      "updateComplete": "✅ Update completed successfully!\n\nOutput:",
+      "updateStatus": "⚠️ Update completed with status:",
+      "rebootInitiated": "🔄 Reboot initiated! System will restart in a few seconds.",
+      "shutdownInitiated": "⏹️ Shutdown initiated! System will power off in a few seconds.",
+      "errorDownloadDb": "Error downloading database:",
+      "errorPurgeDb": "Error purging database:",
+      "errorClearUsb": "Error clearing USB storage:",
+      "errorUpdate": "❌ Error updating system:",
+      "errorReboot": "❌ Error initiating reboot:",
+      "errorShutdown": "❌ Error initiating shutdown:",
+      "noteSaved": "Note saved successfully",
+      "errorSaveNote": "Error saving note:",
+      "editNotePrompt": "Edit note for device"
+    },
+    "modal": {
+      "confidenceAnalysis": "Confidence Analysis",
+      "analyzing": "Analyzing device patterns...",
+      "sessionDuration": "Session Duration",
+      "totalDevices": "Total Devices",
+      "highConfidence": "High Confidence (≥70)",
+      "lowConfidence": "Low Confidence (≤30)",
+      "topChanges": "Top Changes:",
+      "analysisComplete": "Analysis Complete!",
+      "scoresUpdated": "Confidence scores have been updated.",
+      "btUpdated": "BT Devices Updated",
+      "wifiUpdated": "WiFi Devices Updated",
+      "analysisFailed": "Analysis Failed",
+      "applyChanges": "Apply Changes",
+      "reviewResults": "Analysis complete. Review the results below:"
+    },
+    "oui": {
+      "updateSuccess": "OUI database updated successfully!\n\nEntries:",
+      "runAnalyze": "\n\nRun 'Analyze Confidence' to apply vendor lookups to WiFi devices.",
+      "updateFailed": "Failed to update OUI database:"
+    }
+  },
+  "triangulation": {
+    "title": "SAR Scanner - Device Triangulation",
+    "header": "Device Triangulation Analysis",
+    "backToDashboard": "Back to Dashboard",
+    "analyzeDevice": "Analyze Device",
+    "enterMac": "Enter MAC address...",
+    "macPlaceholder": "Enter a valid MAC address (e.g., AA:BB:CC:DD:EE:FF)",
+    "deviceInfo": {
+      "title": "Device Information",
+      "macAddress": "MAC Address",
+      "deviceType": "Device Type",
+      "duration": "Duration"
+    },
+    "movement": {
+      "title": "Movement Analysis",
+      "stationary": "Stationary",
+      "moving": "Moving",
+      "confidence": "Confidence",
+      "estLocation": "Est. Location"
+    },
+    "statistics": {
+      "title": "Statistics",
+      "totalSightings": "Total Sightings",
+      "withLocation": "With Location",
+      "totalDistance": "Total Distance",
+      "areaCovered": "Area Covered",
+      "avgSpeed": "Avg Speed",
+      "maxSpeed": "Max Speed"
+    },
+    "ssids": {
+      "title": "Known SSIDs"
+    },
+    "map": {
+      "title": "Location Map",
+      "firstSighting": "First sighting",
+      "lastSighting": "Last sighting",
+      "movementPath": "Movement path"
+    },
+    "clusters": {
+      "title": "Location Clusters",
+      "cluster": "Cluster",
+      "sightings": "sightings"
+    },
+    "timeline": {
+      "title": "Sighting Timeline",
+      "showing": "Showing last",
+      "of": "of"
+    },
+    "loading": "Analyzing device sightings...",
+    "analysisFailed": "Analysis Failed",
+    "noSightings": "No sightings found for this device",
+    "pleaseEnterMac": "Please enter a MAC address"
+  },
+  "language": {
+    "select": "Language",
+    "en": "English",
+    "pl": "Polski",
+    "de": "Deutsch"
+  }
+}

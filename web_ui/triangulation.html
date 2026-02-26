@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SAR Scanner - Device Triangulation</title>
+    <title data-i18n="triangulation.title">SAR Scanner - Device Triangulation</title>
     
     <!-- Favicon -->
     <link rel="icon" href="/static/favicon.png" type="image/png" />
@@ -738,17 +738,51 @@
         .toggle-switch:hover .toggle-slider {
             opacity: 0.8;
         }
+
+        /* Language Selector */
+        .lang-selector {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .lang-btn {
+            padding: 4px 8px;
+            font-size: 10px;
+            font-weight: 600;
+            border: 1px solid rgba(255,255,255,0.3);
+            background: transparent;
+            color: var(--rc-white);
+            border-radius: 3px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .lang-btn:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .lang-btn.active {
+            background: var(--rc-white);
+            color: var(--rc-red);
+        }
     </style>
 </head>
 <body>
     <header class="header">
-        <h1><i class="fas fa-crosshairs"></i> Device Triangulation Analysis</h1>
+        <h1><i class="fas fa-crosshairs"></i> <span data-i18n="triangulation.header">Device Triangulation Analysis</span></h1>
         <div class="header-actions">
-            <label class="toggle-switch" title="Toggle Dark Mode" style="margin-right: 15px;">
+            <!-- Language Selector -->
+            <div class="lang-selector">
+                <button class="lang-btn" data-lang="en">EN</button>
+                <button class="lang-btn" data-lang="pl">PL</button>
+                <button class="lang-btn" data-lang="de">DE</button>
+            </div>
+            <label class="toggle-switch" title="Toggle Dark Mode" style="margin-right: 15px; margin-left: 15px;">
                 <input type="checkbox" id="darkModeToggle">
                 <span class="toggle-slider"></span>
             </label>
-            <a href="/" class="btn"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+            <a href="/" class="btn"><i class="fas fa-arrow-left"></i> <span data-i18n="triangulation.backToDashboard">Back to Dashboard</span></a>
         </div>
     </header>
 
@@ -758,14 +792,14 @@
             <!-- Search panel -->
             <div class="panel">
                 <div class="panel-title">
-                    <i class="fas fa-search"></i> Analyze Device
+                    <i class="fas fa-search"></i> <span data-i18n="triangulation.analyzeDevice">Analyze Device</span>
                 </div>
                 <form class="search-form" onsubmit="return analyzeDevice(event)">
-                    <input type="text" id="macInput" placeholder="Enter MAC address..." 
+                    <input type="text" id="macInput" data-i18n-placeholder="triangulation.enterMac" placeholder="Enter MAC address..." 
                            pattern="^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$"
                            title="Enter a valid MAC address (e.g., AA:BB:CC:DD:EE:FF)">
                     <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-search"></i> Analyze
+                        <i class="fas fa-search"></i> <span data-i18n="common.analyze">Analyze</span>
                     </button>
                 </form>
             </div>
@@ -773,7 +807,7 @@
             <!-- Device info panel -->
             <div class="panel" id="deviceInfoPanel" style="display: none;">
                 <div class="panel-title">
-                    <i class="fas fa-microchip"></i> Device Information
+                    <i class="fas fa-microchip"></i> <span data-i18n="triangulation.deviceInfo.title">Device Information</span>
                 </div>
                 <div class="panel-content" id="deviceInfoContent">
                     <!-- Filled by JavaScript -->
@@ -783,7 +817,7 @@
             <!-- Movement status panel -->
             <div class="panel" id="movementPanel" style="display: none;">
                 <div class="panel-title">
-                    <i class="fas fa-route"></i> Movement Analysis
+                    <i class="fas fa-route"></i> <span data-i18n="triangulation.movement.title">Movement Analysis</span>
                 </div>
                 <div class="panel-content" id="movementContent">
                     <!-- Filled by JavaScript -->
@@ -793,7 +827,7 @@
             <!-- Statistics panel -->
             <div class="panel" id="statsPanel" style="display: none;">
                 <div class="panel-title">
-                    <i class="fas fa-chart-bar"></i> Statistics
+                    <i class="fas fa-chart-bar"></i> <span data-i18n="triangulation.statistics.title">Statistics</span>
                 </div>
                 <div class="panel-content" id="statsContent">
                     <!-- Filled by JavaScript -->
@@ -803,7 +837,7 @@
             <!-- SSIDs panel (for WiFi devices) -->
             <div class="panel" id="ssidsPanel" style="display: none;">
                 <div class="panel-title">
-                    <i class="fas fa-wifi"></i> Known SSIDs
+                    <i class="fas fa-wifi"></i> <span data-i18n="triangulation.ssids.title">Known SSIDs</span>
                 </div>
                 <div class="panel-content" id="ssidsContent">
                     <!-- Filled by JavaScript -->
@@ -816,22 +850,22 @@
             <!-- Map panel -->
             <div class="panel map-container">
                 <div class="panel-title">
-                    <i class="fas fa-map-marked-alt"></i> Location Map
+                    <i class="fas fa-map-marked-alt"></i> <span data-i18n="triangulation.map.title">Location Map</span>
                 </div>
                 <div style="flex: 1; position: relative; padding: 10px;">
                     <div id="map"></div>
                     <div class="map-legend" id="mapLegend" style="display: none;">
                         <div class="legend-item">
                             <div class="legend-marker legend-start"></div>
-                            <span>First sighting</span>
+                            <span data-i18n="triangulation.map.firstSighting">First sighting</span>
                         </div>
                         <div class="legend-item">
                             <div class="legend-marker legend-end"></div>
-                            <span>Last sighting</span>
+                            <span data-i18n="triangulation.map.lastSighting">Last sighting</span>
                         </div>
                         <div class="legend-item">
                             <div class="legend-path"></div>
-                            <span>Movement path</span>
+                            <span data-i18n="triangulation.map.movementPath">Movement path</span>
                         </div>
                     </div>
                 </div>
@@ -840,7 +874,7 @@
             <!-- Location clusters panel -->
             <div class="panel" id="clustersPanel" style="display: none;">
                 <div class="panel-title">
-                    <i class="fas fa-location-dot"></i> Location Clusters
+                    <i class="fas fa-location-dot"></i> <span data-i18n="triangulation.clusters.title">Location Clusters</span>
                 </div>
                 <div class="panel-content">
                     <div class="clusters-list" id="clustersList">
@@ -852,7 +886,7 @@
             <!-- Path timeline panel -->
             <div class="panel" id="timelinePanel" style="display: none;">
                 <div class="panel-title">
-                    <i class="fas fa-clock"></i> Sighting Timeline
+                    <i class="fas fa-clock"></i> <span data-i18n="triangulation.timeline.title">Sighting Timeline</span>
                 </div>
                 <div class="panel-content">
                     <div class="timeline" id="timelineContent">
@@ -867,12 +901,14 @@
     <div id="loadingOverlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.9); z-index: 2000;">
         <div class="loading" style="height: 100%;">
             <div class="spinner"></div>
-            <div>Analyzing device sightings...</div>
+            <div data-i18n="triangulation.loading">Analyzing device sightings...</div>
         </div>
     </div>
 
     <!-- Leaflet JS -->
     <script src="/static/js/leaflet.min.js"></script>
+    <!-- i18n localization -->
+    <script src="/static/js/i18n.js"></script>
 
     <script>
         // ============= Configuration =============
@@ -883,6 +919,14 @@
         let pathLayer = null;
         let markersLayer = null;
         let currentResult = null;
+        
+        // ============= i18n Helper =============
+        function t(key, fallback = '') {
+            if (typeof I18n !== 'undefined' && I18n.isReady()) {
+                return I18n.t(key);
+            }
+            return fallback;
+        }
 
         // ============= Note Saving Function =============
         async function saveDeviceNote(mac, deviceType) {
@@ -922,7 +966,7 @@
                 const btn = document.querySelector('.notes-save-btn');
                 if (btn) {
                     const originalText = btn.innerHTML;
-                    btn.innerHTML = '<i class="fas fa-check"></i> Saved!';
+                    btn.innerHTML = '<i class="fas fa-check"></i> ' + t('common.done', 'Saved!');
                     btn.style.background = '#27ae60';
                     setTimeout(() => {
                         btn.innerHTML = originalText;
@@ -933,7 +977,7 @@
                 console.log("Note saved successfully for", mac);
             } catch (error) {
                 console.error("Error saving note:", error);
-                alert("Error saving note: " + error.message);
+                alert(t('common.error', 'Error') + ": " + error.message);
             }
         }
 
@@ -997,7 +1041,7 @@
             if (!document.getElementById('offlineNotice')) {
                 const notice = document.createElement('div');
                 notice.id = 'offlineNotice';
-                notice.innerHTML = '<i class="fas fa-wifi-slash"></i> Offline Mode - Map tiles unavailable';
+                notice.innerHTML = '<i class="fas fa-wifi-slash"></i> ' + t('common.offlineMode', 'Offline Mode - Map tiles unavailable');
                 notice.style.cssText = 'position: absolute; top: 10px; left: 50%; transform: translateX(-50%); background: rgba(198, 12, 48, 0.9); color: white; padding: 6px 12px; border-radius: 4px; font-size: 11px; z-index: 1000; pointer-events: none;';
                 mapDiv.parentElement.appendChild(notice);
             }
@@ -1008,7 +1052,7 @@
             event.preventDefault();
             const mac = document.getElementById('macInput').value.trim();
             if (!mac) {
-                alert('Please enter a MAC address');
+                alert(t('triangulation.pleaseEnterMac', 'Please enter a MAC address'));
                 return false;
             }
             
@@ -1063,11 +1107,11 @@
             
             let html = `
                 <div class="info-row">
-                    <span class="info-label">MAC Address</span>
+                    <span class="info-label">${t('triangulation.deviceInfo.macAddress', 'MAC Address')}</span>
                     <span class="info-value mono">${result.mac}</span>
                 </div>
                 <div class="info-row">
-                    <span class="info-label">Device Type</span>
+                    <span class="info-label">${t('triangulation.deviceInfo.deviceType', 'Device Type')}</span>
                     <span class="info-value">${result.device_type.toUpperCase()}</span>
                 </div>
             `;
@@ -1075,7 +1119,7 @@
             if (result.name) {
                 html += `
                     <div class="info-row">
-                        <span class="info-label">Name</span>
+                        <span class="info-label">${t('common.name', 'Name')}</span>
                         <span class="info-value">${result.name}</span>
                     </div>
                 `;
@@ -1084,7 +1128,7 @@
             if (result.manufacturer) {
                 html += `
                     <div class="info-row">
-                        <span class="info-label">Manufacturer</span>
+                        <span class="info-label">${t('common.manufacturer', 'Manufacturer')}</span>
                         <span class="info-value">${result.manufacturer}</span>
                     </div>
                 `;
@@ -1093,7 +1137,7 @@
             if (result.vendor) {
                 html += `
                     <div class="info-row">
-                        <span class="info-label">Vendor</span>
+                        <span class="info-label">${t('common.vendor', 'Vendor')}</span>
                         <span class="info-value">${result.vendor}</span>
                     </div>
                 `;
@@ -1102,7 +1146,7 @@
             if (result.confidence !== null) {
                 html += `
                     <div class="info-row">
-                        <span class="info-label">Confidence</span>
+                        <span class="info-label">${t('common.confidence', 'Confidence')}</span>
                         <span class="info-value">${result.confidence}%</span>
                     </div>
                 `;
@@ -1110,15 +1154,15 @@
             
             html += `
                 <div class="info-row">
-                    <span class="info-label">First Seen</span>
+                    <span class="info-label">${t('common.firstSeen', 'First Seen')}</span>
                     <span class="info-value">${formatDateTime(result.first_seen)}</span>
                 </div>
                 <div class="info-row">
-                    <span class="info-label">Last Seen</span>
+                    <span class="info-label">${t('common.lastSeen', 'Last Seen')}</span>
                     <span class="info-value">${formatDateTime(result.last_seen)}</span>
                 </div>
                 <div class="info-row">
-                    <span class="info-label">Duration</span>
+                    <span class="info-label">${t('triangulation.deviceInfo.duration', 'Duration')}</span>
                     <span class="info-value">${result.observation_duration_str}</span>
                 </div>
             `;
@@ -1129,11 +1173,11 @@
             html += `
                 <div class="notes-section">
                     <div class="notes-title">
-                        <i class="fas fa-sticky-note"></i> Notes
+                        <i class="fas fa-sticky-note"></i> ${t('common.notes', 'Notes')}
                     </div>
-                    <textarea id="deviceNoteInput" class="notes-input" placeholder="Add notes about this device...">${currentNotes}</textarea>
+                    <textarea id="deviceNoteInput" class="notes-input" placeholder="${t('common.addNotes', 'Add notes about this device...')}">${currentNotes}</textarea>
                     <button class="notes-save-btn" onclick="saveDeviceNote('${result.mac}', '${deviceType}')">
-                        <i class="fas fa-save"></i> Save Note
+                        <i class="fas fa-save"></i> ${t('common.saveNote', 'Save Note')}
                     </button>
                 </div>
             `;
@@ -1147,7 +1191,7 @@
             const content = document.getElementById('movementContent');
             
             const statusClass = result.is_stationary ? 'status-stationary' : 'status-moving';
-            const statusText = result.is_stationary ? 'Stationary' : 'Moving';
+            const statusText = result.is_stationary ? t('triangulation.movement.stationary', 'Stationary') : t('triangulation.movement.moving', 'Moving');
             const statusIcon = result.is_stationary ? 'fa-location-dot' : 'fa-person-walking';
             
             let html = `
@@ -1157,7 +1201,7 @@
                     </span>
                 </div>
                 <div class="info-row">
-                    <span class="info-label">Confidence</span>
+                    <span class="info-label">${t('triangulation.movement.confidence', 'Confidence')}</span>
                     <div class="confidence-meter">
                         <div class="confidence-bar">
                             <div class="confidence-fill" style="width: ${result.movement_confidence}%"></div>
@@ -1170,7 +1214,7 @@
             if (result.estimated_location) {
                 html += `
                     <div class="info-row">
-                        <span class="info-label">Est. Location</span>
+                        <span class="info-label">${t('triangulation.movement.estLocation', 'Est. Location')}</span>
                         <span class="info-value">
                             <a href="https://www.google.com/maps?q=${result.estimated_location.lat},${result.estimated_location.lon}" 
                                target="_blank" style="color: var(--accent-blue);">
@@ -1193,27 +1237,27 @@
             content.innerHTML = `
                 <div class="stats-grid">
                     <div class="stat-box">
-                        <div class="stat-label">Total Sightings</div>
+                        <div class="stat-label">${t('triangulation.statistics.totalSightings', 'Total Sightings')}</div>
                         <div class="stat-value">${result.total_sightings}</div>
                     </div>
                     <div class="stat-box">
-                        <div class="stat-label">With Location</div>
+                        <div class="stat-label">${t('triangulation.statistics.withLocation', 'With Location')}</div>
                         <div class="stat-value">${result.sightings_with_location}</div>
                     </div>
                     <div class="stat-box">
-                        <div class="stat-label">Total Distance</div>
+                        <div class="stat-label">${t('triangulation.statistics.totalDistance', 'Total Distance')}</div>
                         <div class="stat-value">${formatDistance(result.total_distance_meters)}</div>
                     </div>
                     <div class="stat-box">
-                        <div class="stat-label">Area Covered</div>
+                        <div class="stat-label">${t('triangulation.statistics.areaCovered', 'Area Covered')}</div>
                         <div class="stat-value">${formatArea(result.area_covered_sq_meters)}</div>
                     </div>
                     <div class="stat-box">
-                        <div class="stat-label">Avg Speed</div>
+                        <div class="stat-label">${t('triangulation.statistics.avgSpeed', 'Avg Speed')}</div>
                         <div class="stat-value">${result.avg_speed_kmh.toFixed(1)} <span class="stat-unit">km/h</span></div>
                     </div>
                     <div class="stat-box">
-                        <div class="stat-label">Max Speed</div>
+                        <div class="stat-label">${t('triangulation.statistics.maxSpeed', 'Max Speed')}</div>
                         <div class="stat-value">${result.max_speed_kmh.toFixed(1)} <span class="stat-unit">km/h</span></div>
                     </div>
                 </div>
@@ -1233,7 +1277,7 @@
             
             let html = '<div class="ssids-list">';
             result.ssids.forEach(ssid => {
-                html += `<div class="ssid-item">${ssid || '<em>Hidden Network</em>'}</div>`;
+                html += `<div class="ssid-item">${ssid || '<em>' + t('common.hidden', 'Hidden Network') + '</em>'}</div>`;
             });
             html += '</div>';
             
@@ -1255,8 +1299,8 @@
                 html += `
                     <div class="cluster-item">
                         <div class="cluster-header">
-                            <span class="cluster-title">Cluster #${index + 1}</span>
-                            <span class="cluster-sightings">${cluster.sighting_count} sightings</span>
+                            <span class="cluster-title">${t('triangulation.clusters.cluster', 'Cluster')} #${index + 1}</span>
+                            <span class="cluster-sightings">${cluster.sighting_count} ${t('triangulation.clusters.sightings', 'sightings')}</span>
                         </div>
                         <div class="cluster-details">
                             <div class="cluster-coords" onclick="focusCluster(${cluster.center_lat}, ${cluster.center_lon})">
@@ -1307,7 +1351,7 @@
             
             if (result.path_points.length > 50) {
                 html = `<div style="text-align: center; color: #999; font-size: 11px; margin-bottom: 10px;">
-                    Showing last 50 of ${result.path_points.length} sightings
+                    ${t('triangulation.timeline.showing', 'Showing last')} 50 ${t('triangulation.timeline.of', 'of')} ${result.path_points.length} ${t('triangulation.clusters.sightings', 'sightings')}
                 </div>` + html;
             }
             
@@ -1470,7 +1514,7 @@
             content.innerHTML = `
                 <div class="error-panel">
                     <i class="fas fa-exclamation-triangle"></i>
-                    <div style="font-size: 14px; font-weight: bold; margin-bottom: 8px;">Analysis Failed</div>
+                    <div style="font-size: 14px; font-weight: bold; margin-bottom: 8px;">${t('triangulation.analysisFailed', 'Analysis Failed')}</div>
                     <div>${message}</div>
                 </div>
             `;
@@ -1502,6 +1546,40 @@
             }
         });
 
+        // ============= Language Selector =============
+        function initLanguageSelector() {
+            const langButtons = document.querySelectorAll('.lang-btn');
+            
+            // Set initial active state
+            const currentLang = typeof I18n !== 'undefined' ? I18n.getLanguage() : 'en';
+            langButtons.forEach(btn => {
+                if (btn.dataset.lang === currentLang) {
+                    btn.classList.add('active');
+                }
+                
+                btn.addEventListener('click', () => {
+                    if (typeof I18n !== 'undefined') {
+                        I18n.setLanguage(btn.dataset.lang);
+                    }
+                    langButtons.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                });
+            });
+        }
+        
+        // Listen for language changes
+        document.addEventListener('languageChanged', () => {
+            // Re-render dynamic content if a device is currently displayed
+            if (currentResult) {
+                displayDeviceInfo(currentResult);
+                displayMovementAnalysis(currentResult);
+                displayStatistics(currentResult);
+                displaySSIDs(currentResult);
+                displayClusters(currentResult);
+                displayTimeline(currentResult);
+            }
+        });
+
         // Initialize dark mode on page load
         window.addEventListener("load", () => {
             initDarkMode();
@@ -1510,6 +1588,13 @@
         // Or initialize immediately if script runs after DOM is ready
         if (document.readyState !== 'loading') {
             initDarkMode();
+        }
+        
+        // Initialize i18n and language selector
+        if (typeof I18n !== 'undefined') {
+            I18n.init().then(() => {
+                initLanguageSelector();
+            });
         }
     </script>
 </body>

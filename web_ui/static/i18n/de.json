@@ -1,0 +1,235 @@
+{
+  "common": {
+    "loading": "Laden...",
+    "error": "Fehler",
+    "noData": "Keine Daten gefunden",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "close": "Schließen",
+    "apply": "Anwenden",
+    "done": "Fertig",
+    "yes": "Ja",
+    "no": "Nein",
+    "ok": "OK",
+    "back": "Zurück",
+    "analyze": "Analysieren",
+    "update": "Aktualisieren",
+    "search": "Suchen",
+    "filter": "Filtern",
+    "clear": "Löschen",
+    "download": "Herunterladen",
+    "settings": "Einstellungen",
+    "about": "Über",
+    "mac": "MAC",
+    "name": "Name",
+    "vendor": "Hersteller",
+    "manufacturer": "Hersteller",
+    "type": "Typ",
+    "confidence": "Konfidenz",
+    "lastSeen": "Zuletzt gesehen",
+    "firstSeen": "Erstmals gesehen",
+    "notes": "Notizen",
+    "rssi": "RSSI",
+    "time": "Zeit",
+    "timestamp": "Zeitstempel",
+    "ssid": "SSID",
+    "offlineMode": "Offline-Modus - Kartenkacheln nicht verfügbar",
+    "editNote": "Notiz bearbeiten",
+    "saveNote": "Notiz speichern",
+    "addNotes": "Notizen zu diesem Gerät hinzufügen...",
+    "analyzeLocation": "Standort analysieren",
+    "bt": "BT",
+    "wifi": "WLAN",
+    "hidden": "Verstecktes Netzwerk"
+  },
+  "dashboard": {
+    "title": "SAR Scanner - Live-Dashboard",
+    "status": {
+      "title": "Status",
+      "gpsFix": "GPS-Fix",
+      "satellites": "Satelliten",
+      "scanMode": "Scan-Modus",
+      "wifiMonitor": "WLAN-Monitor",
+      "fixed": "FIXIERT",
+      "noFix": "KEIN FIX",
+      "on": "AN",
+      "off": "AUS"
+    },
+    "updates": {
+      "title": "Updates",
+      "allRunning": "Alle Systeme laufen",
+      "paused": "PAUSIERT - Daten eingefroren",
+      "liveActive": "Live-Updates aktiv",
+      "pausedStatus": "Updates pausiert - Daten für Analyse eingefroren"
+    },
+    "statistics": {
+      "title": "Statistiken",
+      "btDevices": "BT-Geräte",
+      "wifiDevices": "WLAN-Geräte",
+      "btSightings": "BT-Sichtungen",
+      "wifiAssoc": "WLAN-Assoz."
+    },
+    "analytics": {
+      "title": "Analytik",
+      "confidence": "Konfidenz",
+      "vendorDb": "Hersteller-DB"
+    },
+    "data": {
+      "title": "Daten",
+      "btDevicesTab": "BT-Geräte",
+      "btSightingsTab": "BT-Sichtungen",
+      "wifiDevicesTab": "WLAN-Geräte",
+      "wifiAssocTab": "WLAN-Assoz.",
+      "macAddress": "MAC-Adresse",
+      "packetType": "Pakettyp",
+      "noDevices": "Keine Geräte gefunden",
+      "noSightings": "Keine Sichtungen gefunden",
+      "noAssociations": "Keine Assoziationen gefunden"
+    },
+    "filters": {
+      "filterByMac": "Nach MAC filtern...",
+      "filterBySsid": "Nach SSID filtern...",
+      "rssiRange": "RSSI-Bereich (dBm)",
+      "confidenceRange": "Konfidenz-Bereich",
+      "timeRange": "Zeitbereich",
+      "customRange": "Oder benutzerdefinierten Bereich festlegen:",
+      "applyRange": "Bereich anwenden",
+      "all": "Alle"
+    },
+    "map": {
+      "title": "Kartenanzeige",
+      "heatmapOverlay": "Heatmap-Overlay",
+      "both": "BT+WiFi"
+    },
+    "actions": {
+      "dbDownload": "DB herunterladen",
+      "dbPurge": "DB löschen",
+      "usbPurge": "USB löschen",
+      "reboot": "Neustart",
+      "shutdown": "Herunterfahren"
+    },
+    "system": {
+      "title": "Systemstatus",
+      "rootDisk": "Root-Disk:",
+      "usb": "USB:",
+      "database": "Datenbank:",
+      "memory": "Speicher:",
+      "cpu": "CPU:",
+      "temp": "Temp.:",
+      "power": "Leistung:",
+      "notMounted": "Nicht eingebunden"
+    },
+    "tooltip": {
+      "btDetails": "BT-Gerätedetails",
+      "wifiDetails": "WLAN-Gerätedetails",
+      "ssids": "SSIDs",
+      "noSsids": "Keine SSIDs gefunden",
+      "seen": "Gesehen",
+      "last": "Zuletzt"
+    },
+    "confirmations": {
+      "purgeDb": "⚠️ WARNUNG: Dies löscht ALLE Daten in der Datenbank!\n\nEine Sicherung wird als 'results_bak.db' erstellt.\n\nSind Sie sicher?",
+      "purgeUsb": "⚠️ WARNUNG: Dies löscht ALLE Dateien im USB-Speicher!\n\nSind Sie sicher?",
+      "updateSystem": "⚠️ Das Update holt die neuesten Änderungen aus dem Git-Repository.\n\nFortfahren?",
+      "rebootSystem": "⚠️ WARNUNG: Das System wird sofort neu gestartet!\n\nAlle aktiven Sitzungen werden getrennt.\n\nFortfahren?",
+      "shutdownSystem": "⚠️ WARNUNG: Das System wird sofort heruntergefahren!\n\nSie müssen es manuell wieder einschalten.\n\nFortfahren?"
+    },
+    "messages": {
+      "dbPurged": "✅ Datenbank erfolgreich gelöscht!\nSicherung gespeichert als:",
+      "usbCleared": "✅ USB-Speicher erfolgreich gelöscht!",
+      "updateComplete": "✅ Update erfolgreich abgeschlossen!\n\nAusgabe:",
+      "updateStatus": "⚠️ Update mit Status abgeschlossen:",
+      "rebootInitiated": "🔄 Neustart eingeleitet! System startet in wenigen Sekunden neu.",
+      "shutdownInitiated": "⏹️ Herunterfahren eingeleitet! System wird in wenigen Sekunden ausgeschaltet.",
+      "errorDownloadDb": "Fehler beim Herunterladen der Datenbank:",
+      "errorPurgeDb": "Fehler beim Löschen der Datenbank:",
+      "errorClearUsb": "Fehler beim Löschen des USB-Speichers:",
+      "errorUpdate": "❌ Fehler beim Aktualisieren des Systems:",
+      "errorReboot": "❌ Fehler beim Neustart:",
+      "errorShutdown": "❌ Fehler beim Herunterfahren:",
+      "noteSaved": "Notiz erfolgreich gespeichert",
+      "errorSaveNote": "Fehler beim Speichern der Notiz:",
+      "editNotePrompt": "Notiz für Gerät bearbeiten"
+    },
+    "modal": {
+      "confidenceAnalysis": "Konfidenz-Analyse",
+      "analyzing": "Gerätemuster werden analysiert...",
+      "sessionDuration": "Sitzungsdauer",
+      "totalDevices": "Geräte gesamt",
+      "highConfidence": "Hohe Konfidenz (≥70)",
+      "lowConfidence": "Niedrige Konfidenz (≤30)",
+      "topChanges": "Wichtigste Änderungen:",
+      "analysisComplete": "Analyse abgeschlossen!",
+      "scoresUpdated": "Konfidenzwerte wurden aktualisiert.",
+      "btUpdated": "Aktualisierte BT-Geräte",
+      "wifiUpdated": "Aktualisierte WLAN-Geräte",
+      "analysisFailed": "Analyse fehlgeschlagen",
+      "applyChanges": "Änderungen anwenden",
+      "reviewResults": "Analyse abgeschlossen. Ergebnisse unten prüfen:"
+    },
+    "oui": {
+      "updateSuccess": "OUI-Datenbank erfolgreich aktualisiert!\n\nEinträge:",
+      "runAnalyze": "\n\nFühren Sie 'Konfidenz analysieren' aus, um Hersteller-Lookups auf WLAN-Geräte anzuwenden.",
+      "updateFailed": "OUI-Datenbank konnte nicht aktualisiert werden:"
+    }
+  },
+  "triangulation": {
+    "title": "SAR Scanner - Geräte-Triangulation",
+    "header": "Geräte-Triangulationsanalyse",
+    "backToDashboard": "Zurück zum Dashboard",
+    "analyzeDevice": "Gerät analysieren",
+    "enterMac": "MAC-Adresse eingeben...",
+    "macPlaceholder": "Geben Sie eine gültige MAC-Adresse ein (z.B. AA:BB:CC:DD:EE:FF)",
+    "deviceInfo": {
+      "title": "Geräteinformationen",
+      "macAddress": "MAC-Adresse",
+      "deviceType": "Gerätetyp",
+      "duration": "Dauer"
+    },
+    "movement": {
+      "title": "Bewegungsanalyse",
+      "stationary": "Stationär",
+      "moving": "In Bewegung",
+      "confidence": "Konfidenz",
+      "estLocation": "Gesch. Standort"
+    },
+    "statistics": {
+      "title": "Statistiken",
+      "totalSightings": "Sichtungen gesamt",
+      "withLocation": "Mit Standort",
+      "totalDistance": "Gesamtstrecke",
+      "areaCovered": "Abgedeckte Fläche",
+      "avgSpeed": "Durchschn. Geschw.",
+      "maxSpeed": "Max. Geschw."
+    },
+    "ssids": {
+      "title": "Bekannte SSIDs"
+    },
+    "map": {
+      "title": "Standortkarte",
+      "firstSighting": "Erste Sichtung",
+      "lastSighting": "Letzte Sichtung",
+      "movementPath": "Bewegungspfad"
+    },
+    "clusters": {
+      "title": "Standort-Cluster",
+      "cluster": "Cluster",
+      "sightings": "Sichtungen"
+    },
+    "timeline": {
+      "title": "Sichtungs-Zeitachse",
+      "showing": "Zeige letzte",
+      "of": "von"
+    },
+    "loading": "Gerätesichtungen werden analysiert...",
+    "analysisFailed": "Analyse fehlgeschlagen",
+    "noSightings": "Keine Sichtungen für dieses Gerät gefunden",
+    "pleaseEnterMac": "Bitte geben Sie eine MAC-Adresse ein"
+  },
+  "language": {
+    "select": "Sprache",
+    "en": "English",
+    "pl": "Polski",
+    "de": "Deutsch"
+  }
+}

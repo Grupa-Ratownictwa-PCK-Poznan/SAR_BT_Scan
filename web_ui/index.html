@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SAR Scanner - Live Dashboard</title>
+    <title data-i18n="dashboard.title">SAR Scanner - Live Dashboard</title>
     
     <!-- Favicon -->
     <link rel="icon" href="/static/favicon.png" type="image/png" />
@@ -1207,6 +1207,49 @@
         .toggle-switch:hover .toggle-slider {
             opacity: 0.8;
         }
+
+        /* Language Selector */
+        .language-selector {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            padding: 6px 8px;
+            background: var(--bg-secondary);
+            border-radius: 4px;
+            margin-bottom: 2px;
+            transition: background 0.3s;
+        }
+
+        .language-selector label {
+            font-size: 10px;
+            color: var(--text-secondary);
+            margin-right: 4px;
+        }
+
+        .lang-btn {
+            padding: 4px 8px;
+            font-size: 10px;
+            font-weight: 600;
+            border: 1px solid var(--border-color);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            border-radius: 3px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .lang-btn:hover {
+            background: var(--rc-red);
+            color: var(--rc-white);
+            border-color: var(--rc-red);
+        }
+
+        .lang-btn.active {
+            background: var(--rc-red);
+            color: var(--rc-white);
+            border-color: var(--rc-dark-red);
+        }
     </style>
 </head>
 <body>
@@ -1226,26 +1269,34 @@
                 <i class="fas fa-moon"></i>
             </div>
 
+            <!-- Language Selector -->
+            <div class="language-selector">
+                <label data-i18n="language.select">Language</label>
+                <button class="lang-btn" data-lang="en">EN</button>
+                <button class="lang-btn" data-lang="pl">PL</button>
+                <button class="lang-btn" data-lang="de">DE</button>
+            </div>
+
             <!-- Status Indicators Panel -->
             <div class="panel">
                 <div class="panel-title">
-                    <i class="fas fa-heartbeat"></i> Status
+                    <i class="fas fa-heartbeat"></i> <span data-i18n="dashboard.status.title">Status</span>
                 </div>
                 <div class="indicators">
                     <div class="indicator" id="gpsIndicator">
-                        <div class="indicator-label">GPS Fix</div>
+                        <div class="indicator-label" data-i18n="dashboard.status.gpsFix">GPS Fix</div>
                         <div class="indicator-value error">--</div>
                     </div>
                     <div class="indicator" id="satsIndicator">
-                        <div class="indicator-label">Satellites</div>
+                        <div class="indicator-label" data-i18n="dashboard.status.satellites">Satellites</div>
                         <div class="indicator-value">0</div>
                     </div>
                     <div class="indicator" id="scanModeIndicator">
-                        <div class="indicator-label">Scan Mode</div>
+                        <div class="indicator-label" data-i18n="dashboard.status.scanMode">Scan Mode</div>
                         <div class="indicator-value">--</div>
                     </div>
                     <div class="indicator" id="wifiMonitorIndicator">
-                        <div class="indicator-label">WiFi Monitor</div>
+                        <div class="indicator-label" data-i18n="dashboard.status.wifiMonitor">WiFi Monitor</div>
                         <div class="indicator-value error">OFF</div>
                     </div>
                 </div>
@@ -1254,36 +1305,36 @@
             <!-- Pause/Resume Panel -->
             <div class="panel">
                 <div class="panel-title" style="display: flex; align-items: center; justify-content: space-between;">
-                    <span><i class="fas fa-pause-circle"></i> Updates</span>
+                    <span><i class="fas fa-pause-circle"></i> <span data-i18n="dashboard.updates.title">Updates</span></span>
                 </div>
                 <button id="pauseResumeBtn" style="width: 100%; padding: 6px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px; display: flex; align-items: center; justify-content: center; gap: 6px;">
-                    <i class="fas fa-play"></i> <span>All Systems Running</span>
+                    <i class="fas fa-play"></i> <span data-i18n="dashboard.updates.allRunning">All Systems Running</span>
                 </button>
                 <div style="font-size: 9px; color: #666; margin-top: 4px; text-align: center;">
-                    <span id="pauseStatus">Live updates active</span>
+                    <span id="pauseStatus" data-i18n="dashboard.updates.liveActive">Live updates active</span>
                 </div>
             </div>
 
             <!-- Statistics Panel -->
             <div class="panel">
                 <div class="panel-title">
-                    <i class="fas fa-chart-bar"></i> Statistics
+                    <i class="fas fa-chart-bar"></i> <span data-i18n="dashboard.statistics.title">Statistics</span>
                 </div>
                 <div class="stats-grid">
                     <div class="stat-box">
-                        <div class="stat-label">BT Devices</div>
+                        <div class="stat-label" data-i18n="dashboard.statistics.btDevices">BT Devices</div>
                         <div class="stat-value" id="btDeviceCount">0</div>
                     </div>
                     <div class="stat-box">
-                        <div class="stat-label">WiFi Devices</div>
+                        <div class="stat-label" data-i18n="dashboard.statistics.wifiDevices">WiFi Devices</div>
                         <div class="stat-value" id="wifiDeviceCount">0</div>
                     </div>
                     <div class="stat-box">
-                        <div class="stat-label">BT Sightings</div>
+                        <div class="stat-label" data-i18n="dashboard.statistics.btSightings">BT Sightings</div>
                         <div class="stat-value" id="btSightingCount">0</div>
                     </div>
                     <div class="stat-box">
-                        <div class="stat-label">WiFi Assoc</div>
+                        <div class="stat-label" data-i18n="dashboard.statistics.wifiAssoc">WiFi Assoc</div>
                         <div class="stat-value" id="wifiAssocCount">0</div>
                     </div>
                 </div>
@@ -1292,19 +1343,19 @@
             <!-- Analytics Panel -->
             <div class="panel">
                 <div class="panel-title">
-                    <i class="fas fa-microscope"></i> Analytics
+                    <i class="fas fa-microscope"></i> <span data-i18n="dashboard.analytics.title">Analytics</span>
                 </div>
                 <div style="display: flex; gap: 4px;">
                     <div class="filter-group" style="flex: 1; margin-bottom: 0;">
-                        <label style="font-size: 8px;">Confidence</label>
+                        <label style="font-size: 8px;" data-i18n="dashboard.analytics.confidence">Confidence</label>
                         <button id="analyzeConfidenceBtn" style="width: 100%; font-size: 10px; padding: 5px; background: var(--accent-green); color: white; border: none; border-radius: 3px; cursor: pointer; font-weight: bold; white-space: nowrap;">
-                            <i class="fas fa-brain"></i> Analyze
+                            <i class="fas fa-brain"></i> <span data-i18n="common.analyze">Analyze</span>
                         </button>
                     </div>
                     <div class="filter-group" style="flex: 1; margin-bottom: 0;">
-                        <label style="font-size: 8px;">Vendor DB</label>
+                        <label style="font-size: 8px;" data-i18n="dashboard.analytics.vendorDb">Vendor DB</label>
                         <button id="updateOuiBtn" style="width: 100%; font-size: 10px; padding: 5px; background: #9b59b6; color: white; border: none; border-radius: 3px; cursor: pointer; font-weight: bold; white-space: nowrap;">
-                            <i class="fas fa-download"></i> Update
+                            <i class="fas fa-download"></i> <span data-i18n="common.update">Update</span>
                         </button>
                     </div>
                 </div>
@@ -1313,25 +1364,25 @@
             <!-- Data Table with Tabs -->
             <div class="panel" style="flex: 1; display: flex; flex-direction: column;">
                 <div class="panel-title">
-                    <i class="fas fa-table"></i> Data
+                    <i class="fas fa-table"></i> <span data-i18n="dashboard.data.title">Data</span>
                 </div>
 
                 <!-- Tabs -->
                 <div class="tabs">
-                    <button class="tab-btn" data-tab="bt-devices">BT Devices</button>
-                    <button class="tab-btn" data-tab="bt-sightings">BT Sightings</button>
-                    <button class="tab-btn active" data-tab="wifi-devices">WiFi Devices</button>
-                    <button class="tab-btn" data-tab="wifi-assoc">WiFi Assoc</button>
+                    <button class="tab-btn" data-tab="bt-devices" data-i18n="dashboard.data.btDevicesTab">BT Devices</button>
+                    <button class="tab-btn" data-tab="bt-sightings" data-i18n="dashboard.data.btSightingsTab">BT Sightings</button>
+                    <button class="tab-btn active" data-tab="wifi-devices" data-i18n="dashboard.data.wifiDevicesTab">WiFi Devices</button>
+                    <button class="tab-btn" data-tab="wifi-assoc" data-i18n="dashboard.data.wifiAssocTab">WiFi Assoc</button>
                 </div>
 
                 <!-- Filters -->
                 <div class="filter-group">
-                    <input type="text" id="macFilter" placeholder="Filter by MAC..." style="font-size: 11px;">
-                    <input type="text" id="ssidFilter" placeholder="Filter by SSID..." style="display: none; font-size: 11px;">
+                    <input type="text" id="macFilter" data-i18n-placeholder="dashboard.filters.filterByMac" placeholder="Filter by MAC..." style="font-size: 11px;">
+                    <input type="text" id="ssidFilter" data-i18n-placeholder="dashboard.filters.filterBySsid" placeholder="Filter by SSID..." style="display: none; font-size: 11px;">
                 </div>
 
                 <div class="filter-group">
-                    <label>RSSI Range (dBm)</label>
+                    <label data-i18n="dashboard.filters.rssiRange">RSSI Range (dBm)</label>
                     <div style="display: flex; gap: 5px;">
                         <input type="range" id="rssiMin" min="-100" max="0" value="-100" style="flex: 1;">
                         <input type="range" id="rssiMax" min="-100" max="0" value="0" style="flex: 1;">
@@ -1343,7 +1394,7 @@
                 </div>
 
                 <div class="filter-group">
-                    <label>Confidence Range</label>
+                    <label data-i18n="dashboard.filters.confidenceRange">Confidence Range</label>
                     <div style="display: flex; gap: 5px;">
                         <input type="range" id="confidenceMin" min="0" max="100" value="0" style="flex: 1;">
                         <input type="range" id="confidenceMax" min="0" max="100" value="100" style="flex: 1;">
@@ -1355,18 +1406,18 @@
                 </div>
 
                 <div class="filter-group">
-                    <label>Time Range</label>
+                    <label data-i18n="dashboard.filters.timeRange">Time Range</label>
                     <div style="display: flex; gap: 5px; margin-bottom: 8px;">
                         <button id="timePreset1h" class="time-preset-btn" data-hours="1">1h</button>
                         <button id="timePreset6h" class="time-preset-btn" data-hours="6">6h</button>
                         <button id="timePreset24h" class="time-preset-btn" data-hours="24">24h</button>
-                        <button id="timePresetAll" class="time-preset-btn active" data-hours="0">All</button>
+                        <button id="timePresetAll" class="time-preset-btn active" data-hours="0" data-i18n="dashboard.filters.all">All</button>
                     </div>
-                    <div style="font-size: 11px; margin-bottom: 5px;">Or set custom range:</div>
+                    <div style="font-size: 11px; margin-bottom: 5px;" data-i18n="dashboard.filters.customRange">Or set custom range:</div>
                     <div style="display: flex; gap: 5px; flex-direction: column;">
                         <input type="datetime-local" id="timeStart" title="Start time" style="font-size: 11px; padding: 4px;">
                         <input type="datetime-local" id="timeEnd" title="End time" style="font-size: 11px; padding: 4px;">
-                        <button id="timeRangeApply" style="font-size: 11px; padding: 5px; background: var(--rc-red); color: white; border: none; border-radius: 3px; cursor: pointer;">Apply Range</button>
+                        <button id="timeRangeApply" style="font-size: 11px; padding: 5px; background: var(--rc-red); color: white; border: none; border-radius: 3px; cursor: pointer;" data-i18n="dashboard.filters.applyRange">Apply Range</button>
                     </div>
                 </div>
 
@@ -1375,16 +1426,16 @@
                     <table>
                         <thead>
                             <tr>
-                                <th>MAC Address</th>
-                                <th>Name</th>
-                                <th>Manufacturer</th>
-                                <th>Confidence</th>
-                                <th>Last Seen</th>
-                                <th>Notes</th>
+                                <th data-i18n="dashboard.data.macAddress">MAC Address</th>
+                                <th data-i18n="common.name">Name</th>
+                                <th data-i18n="common.manufacturer">Manufacturer</th>
+                                <th data-i18n="common.confidence">Confidence</th>
+                                <th data-i18n="common.lastSeen">Last Seen</th>
+                                <th data-i18n="common.notes">Notes</th>
                             </tr>
                         </thead>
                         <tbody id="btDevicesTable">
-                            <tr><td colspan="6" class="loading">Loading...</td></tr>
+                            <tr><td colspan="6" class="loading" data-i18n="common.loading">Loading...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -1393,13 +1444,13 @@
                     <table>
                         <thead>
                             <tr>
-                                <th>MAC</th>
-                                <th>RSSI</th>
-                                <th>Time</th>
+                                <th data-i18n="common.mac">MAC</th>
+                                <th data-i18n="common.rssi">RSSI</th>
+                                <th data-i18n="common.time">Time</th>
                             </tr>
                         </thead>
                         <tbody id="btSightingsTable">
-                            <tr><td colspan="3" class="loading">Loading...</td></tr>
+                            <tr><td colspan="3" class="loading" data-i18n="common.loading">Loading...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -1408,16 +1459,16 @@
                     <table>
                         <thead>
                             <tr>
-                                <th>MAC Address</th>
-                                <th>Vendor</th>
-                                <th>Type</th>
-                                <th>Confidence</th>
-                                <th>Last Seen</th>
-                                <th>Notes</th>
+                                <th data-i18n="dashboard.data.macAddress">MAC Address</th>
+                                <th data-i18n="common.vendor">Vendor</th>
+                                <th data-i18n="common.type">Type</th>
+                                <th data-i18n="common.confidence">Confidence</th>
+                                <th data-i18n="common.lastSeen">Last Seen</th>
+                                <th data-i18n="common.notes">Notes</th>
                             </tr>
                         </thead>
                         <tbody id="wifiDevicesTable">
-                            <tr><td colspan="6" class="loading">Loading...</td></tr>
+                            <tr><td colspan="6" class="loading" data-i18n="common.loading">Loading...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -1426,15 +1477,15 @@
                     <table>
                         <thead>
                             <tr>
-                                <th>MAC</th>
-                                <th>SSID</th>
-                                <th>Packet Type</th>
-                                <th>RSSI</th>
-                                <th>Timestamp</th>
+                                <th data-i18n="common.mac">MAC</th>
+                                <th data-i18n="common.ssid">SSID</th>
+                                <th data-i18n="dashboard.data.packetType">Packet Type</th>
+                                <th data-i18n="common.rssi">RSSI</th>
+                                <th data-i18n="common.timestamp">Timestamp</th>
                             </tr>
                         </thead>
                         <tbody id="wifiAssocTable">
-                            <tr><td colspan="5" class="loading">Loading...</td></tr>
+                            <tr><td colspan="5" class="loading" data-i18n="common.loading">Loading...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -1443,12 +1494,12 @@
             <!-- Map Type Selector -->
             <div class="panel">
                 <div class="panel-title">
-                    <i class="fas fa-map"></i> Map Display
+                    <i class="fas fa-map"></i> <span data-i18n="dashboard.map.title">Map Display</span>
                 </div>
                 <div style="display: flex; gap: 4px;">
-                    <button class="tab-btn" id="mapBtBtn" data-map-type="bt" style="flex: 1;">BT</button>
-                    <button class="tab-btn" id="mapWifiBtn" data-map-type="wifi" style="flex: 1;">WiFi</button>
-                    <button class="tab-btn active" id="mapAllBtn" data-map-type="all" style="flex: 1;">Both</button>
+                    <button class="tab-btn" id="mapBtBtn" data-map-type="bt" style="flex: 1;" data-i18n="common.bt">BT</button>
+                    <button class="tab-btn" id="mapWifiBtn" data-map-type="wifi" style="flex: 1;" data-i18n="common.wifi">WiFi</button>
+                    <button class="tab-btn active" id="mapAllBtn" data-map-type="all" style="flex: 1;" data-i18n="dashboard.map.both">BT+WiFi</button>
                 </div>
             </div>
 
@@ -1458,26 +1509,26 @@
                     <!-- Database Actions Row -->
                     <div style="display: flex; gap: 4px;">
                         <button id="downloadDbBtn" style="flex: 1; padding: 6px; background: #27ae60; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 3px; font-size: 10px;">
-                            <i class="fas fa-download"></i> <span>DB download</span>
+                            <i class="fas fa-download"></i> <span data-i18n="dashboard.actions.dbDownload">DB download</span>
                         </button>
                         <button id="purgeDbBtn" style="flex: 1; padding: 6px; background: #e74c3c; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 3px; font-size: 10px;">
-                            <i class="fas fa-trash"></i> <span>DB Purge</span>
+                            <i class="fas fa-trash"></i> <span data-i18n="dashboard.actions.dbPurge">DB Purge</span>
                         </button>
                         <button id="clearUsbBtn" style="flex: 1; padding: 6px; background: #f39c12; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 3px; font-size: 10px;">
-                            <i class="fas fa-hdd"></i> <span>USB Purge</span>
+                            <i class="fas fa-hdd"></i> <span data-i18n="dashboard.actions.usbPurge">USB Purge</span>
                         </button>
                     </div>
                     
                     <!-- System Control Buttons Row -->
                     <div style="display: flex; gap: 4px;">
                         <button id="updateBtn" style="flex: 1; padding: 6px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 3px; font-size: 10px;">
-                            <i class="fas fa-sync-alt"></i> <span>Update</span>
+                            <i class="fas fa-sync-alt"></i> <span data-i18n="common.update">Update</span>
                         </button>
                         <button id="rebootBtn" style="flex: 1; padding: 6px; background: #f39c12; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 3px; font-size: 10px;">
-                            <i class="fas fa-redo"></i> <span>Reboot</span>
+                            <i class="fas fa-redo"></i> <span data-i18n="dashboard.actions.reboot">Reboot</span>
                         </button>
                         <button id="shutdownBtn" style="flex: 1; padding: 6px; background: #c0392b; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 3px; font-size: 10px;">
-                            <i class="fas fa-power-off"></i> <span>Shutdown</span>
+                            <i class="fas fa-power-off"></i> <span data-i18n="dashboard.actions.shutdown">Shutdown</span>
                         </button>
                     </div>
                 </div>
@@ -1485,35 +1536,35 @@
                 <!-- System Status Section -->
                 <div style="margin-top: 12px; border-top: 2px solid var(--rc-red); padding-top: 12px;">
                     <div style="font-size: 12px; font-weight: bold; color: var(--rc-red); margin-bottom: 8px;">
-                        <i class="fas fa-info-circle"></i> System Status
+                        <i class="fas fa-info-circle"></i> <span data-i18n="dashboard.system.title">System Status</span>
                     </div>
                     <div id="systemStatus" style="font-size: 11px; line-height: 1.6; color: #666;">
                         <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                            <span><i class="fas fa-hdd" style="color: #3498db;"></i> Root Disk:</span>
+                            <span><i class="fas fa-hdd" style="color: #3498db;"></i> <span data-i18n="dashboard.system.rootDisk">Root Disk:</span></span>
                             <span id="diskRoot">-</span>
                         </div>
                         <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                            <span><i class="fas fa-usb" style="color: #e74c3c;"></i> USB:</span>
+                            <span><i class="fas fa-usb" style="color: #e74c3c;"></i> <span data-i18n="dashboard.system.usb">USB:</span></span>
                             <span id="diskUsb">-</span>
                         </div>
                         <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                            <span><i class="fas fa-database" style="color: #9b59b6;"></i> Database:</span>
+                            <span><i class="fas fa-database" style="color: #9b59b6;"></i> <span data-i18n="dashboard.system.database">Database:</span></span>
                             <span id="dbSize">-</span>
                         </div>
                         <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                            <span><i class="fas fa-memory" style="color: #2ecc71;"></i> Memory:</span>
+                            <span><i class="fas fa-memory" style="color: #2ecc71;"></i> <span data-i18n="dashboard.system.memory">Memory:</span></span>
                             <span id="memory">-</span>
                         </div>
                         <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                            <span><i class="fas fa-microchip" style="color: #9b59b6;"></i> CPU:</span>
+                            <span><i class="fas fa-microchip" style="color: #9b59b6;"></i> <span data-i18n="dashboard.system.cpu">CPU:</span></span>
                             <span id="cpu">-</span>
                         </div>
                         <div style="display: flex; justify-content: space-between; margin-bottom: 4px;" id="tempRow">
-                            <span><i class="fas fa-thermometer-half" style="color: #e67e22;"></i> Temp:</span>
+                            <span><i class="fas fa-thermometer-half" style="color: #e67e22;"></i> <span data-i18n="dashboard.system.temp">Temp:</span></span>
                             <span id="temperature">-</span>
                         </div>
                         <div style="display: flex; justify-content: space-between;" id="powerRow">
-                            <span><i class="fas fa-bolt" style="color: #f39c12;"></i> Power:</span>
+                            <span><i class="fas fa-bolt" style="color: #f39c12;"></i> <span data-i18n="dashboard.system.power">Power:</span></span>
                             <span id="power">-</span>
                         </div>
                     </div>
@@ -1530,10 +1581,10 @@
             <div class="map-container">
                 <div class="map-controls">
                     <div class="panel-title" style="flex: 1; margin: 0;">
-                        <i class="fas fa-map-location-dot"></i> Heatmap Overlay
+                        <i class="fas fa-map-location-dot"></i> <span data-i18n="dashboard.map.heatmapOverlay">Heatmap Overlay</span>
                     </div>
                     <a href="https://github.com/Grupa-Ratownictwa-PCK-Poznan/SAR_BT_Scan" target="_blank" class="collapse-btn" title="About this project">
-                        <i class="fas fa-info-circle"></i> About
+                        <i class="fas fa-info-circle"></i> <span data-i18n="common.about">About</span>
                     </a>
                 </div>
                 <div id="map" style="flex: 1;"></div>
@@ -1541,7 +1592,7 @@
                 <!-- Device Tooltip Popup -->
                 <div id="deviceTooltip" class="device-tooltip">
                     <div class="device-tooltip-title">
-                        WiFi Device Details
+                        <span data-i18n="dashboard.tooltip.wifiDetails">WiFi Device Details</span>
                         <button class="device-tooltip-close" onclick="closeDeviceTooltip()">&times;</button>
                     </div>
                     <div id="deviceTooltipContent"></div>
@@ -1696,7 +1747,8 @@
                 const notice = document.createElement('div');
                 notice.id = 'offlineNotice';
                 notice.className = 'offline-notice';
-                notice.innerHTML = '<i class="fas fa-wifi-slash"></i> Offline Mode - Map tiles unavailable';
+                const offlineText = typeof I18n !== 'undefined' && I18n.isReady() ? I18n.t('common.offlineMode') : 'Offline Mode - Map tiles unavailable';
+                notice.innerHTML = '<i class="fas fa-wifi-slash"></i> ' + offlineText;
                 mapContainer.appendChild(notice);
             }
         }
@@ -1938,7 +1990,8 @@
         function updateBTDevicesTable(devices) {
             const tbody = document.getElementById("btDevicesTable");
             if (devices.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="loading">No devices found</td></tr>';
+                const noDevicesText = typeof I18n !== 'undefined' && I18n.isReady() ? I18n.t('dashboard.data.noDevices') : 'No devices found';
+                tbody.innerHTML = '<tr><td colspan="6" class="loading">' + noDevicesText + '</td></tr>';
                 return;
             }
 
@@ -1983,7 +2036,8 @@
         function updateBTSightingsTable(sightings) {
             const tbody = document.getElementById("btSightingsTable");
             if (sightings.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="3" class="loading">No sightings found</td></tr>';
+                const noSightingsText = typeof I18n !== 'undefined' && I18n.isReady() ? I18n.t('dashboard.data.noSightings') : 'No sightings found';
+                tbody.innerHTML = '<tr><td colspan="3" class="loading">' + noSightingsText + '</td></tr>';
                 return;
             }
 
@@ -2009,7 +2063,8 @@
         function updateWiFiDevicesTable(devices) {
             const tbody = document.getElementById("wifiDevicesTable");
             if (devices.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="loading">No devices found</td></tr>';
+                const noDevicesText = typeof I18n !== 'undefined' && I18n.isReady() ? I18n.t('dashboard.data.noDevices') : 'No devices found';
+                tbody.innerHTML = '<tr><td colspan="6" class="loading">' + noDevicesText + '</td></tr>';
                 return;
             }
 
@@ -2054,7 +2109,8 @@
         function updateWiFiAssociationsTable(associations) {
             const tbody = document.getElementById("wifiAssocTable");
             if (associations.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="loading">No associations found</td></tr>';
+                const noAssocText = typeof I18n !== 'undefined' && I18n.isReady() ? I18n.t('dashboard.data.noAssociations') : 'No associations found';
+                tbody.innerHTML = '<tr><td colspan="5" class="loading">' + noAssocText + '</td></tr>';
                 return;
             }
 
@@ -3201,13 +3257,17 @@
             
             if (isPaused) {
                 btn.style.background = "#e74c3c";
-                btn.innerHTML = '<i class="fas fa-pause"></i> <span>PAUSED - Data Frozen</span>';
-                statusSpan.textContent = "Updates paused - data frozen for analysis";
+                const pausedText = typeof I18n !== 'undefined' && I18n.isReady() ? I18n.t('dashboard.updates.paused') : 'PAUSED - Data Frozen';
+                btn.innerHTML = '<i class="fas fa-pause"></i> <span>' + pausedText + '</span>';
+                const pausedStatus = typeof I18n !== 'undefined' && I18n.isReady() ? I18n.t('dashboard.updates.pausedStatus') : 'Updates paused - data frozen for analysis';
+                statusSpan.textContent = pausedStatus;
                 statusSpan.style.color = "#e74c3c";
             } else {
                 btn.style.background = "#3498db";
-                btn.innerHTML = '<i class="fas fa-play"></i> <span>All Systems Running</span>';
-                statusSpan.textContent = "Live updates active";
+                const runningText = typeof I18n !== 'undefined' && I18n.isReady() ? I18n.t('dashboard.updates.allRunning') : 'All Systems Running';
+                btn.innerHTML = '<i class="fas fa-play"></i> <span>' + runningText + '</span>';
+                const liveStatus = typeof I18n !== 'undefined' && I18n.isReady() ? I18n.t('dashboard.updates.liveActive') : 'Live updates active';
+                statusSpan.textContent = liveStatus;
                 statusSpan.style.color = "#666";
             }
         });
@@ -3335,10 +3395,44 @@
             });
         });
 
+        // ============= Language Selector =============
+        function initLanguageSelector() {
+            const langBtns = document.querySelectorAll('.lang-btn');
+            const currentLang = I18n.getLanguage();
+            
+            // Set active state on current language
+            langBtns.forEach(btn => {
+                if (btn.dataset.lang === currentLang) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+                
+                btn.addEventListener('click', () => {
+                    const lang = btn.dataset.lang;
+                    I18n.setLanguage(lang);
+                    
+                    // Update active state
+                    langBtns.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                });
+            });
+        }
+
         // ============= Initialization on Page Load =============
         window.addEventListener("load", () => {
             // Initialize dark mode first
             initDarkMode();
+            
+            // Initialize language selector after I18n is ready
+            if (typeof I18n !== 'undefined' && I18n.isReady()) {
+                initLanguageSelector();
+            } else {
+                // Wait for I18n to initialize
+                document.addEventListener('languageChanged', () => {
+                    initLanguageSelector();
+                }, { once: true });
+            }
             
             initMap();
             updateStatus();
@@ -3602,7 +3696,7 @@
     <div id="analysisModal" class="modal-overlay">
         <div class="modal-content">
             <div class="modal-header">
-                <h2><i class="fas fa-brain"></i> Confidence Analysis</h2>
+                <h2><i class="fas fa-brain"></i> <span data-i18n="dashboard.modal.confidenceAnalysis">Confidence Analysis</span></h2>
                 <button class="modal-close" onclick="hideAnalysisModal()">&times;</button>
             </div>
             <div class="modal-body" id="analysisModalContent">
@@ -3610,5 +3704,8 @@
             </div>
         </div>
     </div>
+
+    <!-- i18n Script -->
+    <script src="/static/js/i18n.js"></script>
 </body>
 </html>

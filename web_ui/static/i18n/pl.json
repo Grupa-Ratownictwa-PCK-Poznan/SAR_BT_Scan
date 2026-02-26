@@ -1,0 +1,235 @@
+{
+  "common": {
+    "loading": "Ładowanie...",
+    "error": "Błąd",
+    "noData": "Nie znaleziono danych",
+    "save": "Zapisz",
+    "cancel": "Anuluj",
+    "close": "Zamknij",
+    "apply": "Zastosuj",
+    "done": "Gotowe",
+    "yes": "Tak",
+    "no": "Nie",
+    "ok": "OK",
+    "back": "Wstecz",
+    "analyze": "Analizuj",
+    "update": "Aktualizuj",
+    "search": "Szukaj",
+    "filter": "Filtruj",
+    "clear": "Wyczyść",
+    "download": "Pobierz",
+    "settings": "Ustawienia",
+    "about": "O programie",
+    "mac": "MAC",
+    "name": "Nazwa",
+    "vendor": "Dostawca",
+    "manufacturer": "Producent",
+    "type": "Typ",
+    "confidence": "Pewność",
+    "lastSeen": "Ostatnio widziany",
+    "firstSeen": "Pierwszy raz widziany",
+    "notes": "Notatki",
+    "rssi": "RSSI",
+    "time": "Czas",
+    "timestamp": "Znacznik czasu",
+    "ssid": "SSID",
+    "offlineMode": "Tryb offline - Kafelki mapy niedostępne",
+    "editNote": "Edytuj notatkę",
+    "saveNote": "Zapisz notatkę",
+    "addNotes": "Dodaj notatki o tym urządzeniu...",
+    "analyzeLocation": "Analizuj lokalizację",
+    "bt": "BT",
+    "wifi": "WiFi",
+    "hidden": "Ukryta sieć"
+  },
+  "dashboard": {
+    "title": "Skaner SAR - Panel główny",
+    "status": {
+      "title": "Status",
+      "gpsFix": "Fix GPS",
+      "satellites": "Satelity",
+      "scanMode": "Tryb skanowania",
+      "wifiMonitor": "Monitor WiFi",
+      "fixed": "USTALONY",
+      "noFix": "BRAK",
+      "on": "WŁ.",
+      "off": "WYŁ."
+    },
+    "updates": {
+      "title": "Aktualizacje",
+      "allRunning": "Wszystkie systemy działają",
+      "paused": "WSTRZYMANO - Dane zamrożone",
+      "liveActive": "Aktualizacje na żywo aktywne",
+      "pausedStatus": "Aktualizacje wstrzymane - dane zamrożone do analizy"
+    },
+    "statistics": {
+      "title": "Statystyki",
+      "btDevices": "Urządzenia BT",
+      "wifiDevices": "Urządzenia WiFi",
+      "btSightings": "Obserwacje BT",
+      "wifiAssoc": "Asocjacje WiFi"
+    },
+    "analytics": {
+      "title": "Analityka",
+      "confidence": "Pewność",
+      "vendorDb": "Baza dostawców"
+    },
+    "data": {
+      "title": "Dane",
+      "btDevicesTab": "Urządzenia BT",
+      "btSightingsTab": "Obserwacje BT",
+      "wifiDevicesTab": "Urządzenia WiFi",
+      "wifiAssocTab": "Asocjacje WiFi",
+      "macAddress": "Adres MAC",
+      "packetType": "Typ pakietu",
+      "noDevices": "Nie znaleziono urządzeń",
+      "noSightings": "Nie znaleziono obserwacji",
+      "noAssociations": "Nie znaleziono asocjacji"
+    },
+    "filters": {
+      "filterByMac": "Filtruj po MAC...",
+      "filterBySsid": "Filtruj po SSID...",
+      "rssiRange": "Zakres RSSI (dBm)",
+      "confidenceRange": "Zakres pewności",
+      "timeRange": "Zakres czasu",
+      "customRange": "Lub ustaw własny zakres:",
+      "applyRange": "Zastosuj zakres",
+      "all": "Wszystko"
+    },
+    "map": {
+      "title": "Wyświetlanie mapy",
+      "heatmapOverlay": "Nakładka cieplna",
+      "both": "BT+WiFi"
+    },
+    "actions": {
+      "dbDownload": "Pobierz bazę",
+      "dbPurge": "Wyczyść bazę",
+      "usbPurge": "Wyczyść USB",
+      "reboot": "Restart",
+      "shutdown": "Wyłącz"
+    },
+    "system": {
+      "title": "Status systemu",
+      "rootDisk": "Dysk główny:",
+      "usb": "USB:",
+      "database": "Baza danych:",
+      "memory": "Pamięć:",
+      "cpu": "CPU:",
+      "temp": "Temp.:",
+      "power": "Moc:",
+      "notMounted": "Nie zamontowany"
+    },
+    "tooltip": {
+      "btDetails": "Szczegóły urządzenia BT",
+      "wifiDetails": "Szczegóły urządzenia WiFi",
+      "ssids": "Sieci SSID",
+      "noSsids": "Nie znaleziono SSID",
+      "seen": "Widziany",
+      "last": "Ostatnio"
+    },
+    "confirmations": {
+      "purgeDb": "⚠️ UWAGA: Spowoduje to usunięcie WSZYSTKICH danych z bazy!\n\nKopia zapasowa zostanie utworzona jako 'results_bak.db'.\n\nCzy na pewno?",
+      "purgeUsb": "⚠️ UWAGA: Spowoduje to usunięcie WSZYSTKICH plików z pamięci USB!\n\nCzy na pewno?",
+      "updateSystem": "⚠️ Aktualizacja pobierze najnowsze zmiany z repozytorium git.\n\nKontynuować?",
+      "rebootSystem": "⚠️ UWAGA: System zostanie natychmiast zrestartowany!\n\nSpowoduje to rozłączenie wszystkich aktywnych sesji.\n\nKontynuować?",
+      "shutdownSystem": "⚠️ UWAGA: System zostanie natychmiast wyłączony!\n\nBędzie wymagane ręczne ponowne włączenie.\n\nKontynuować?"
+    },
+    "messages": {
+      "dbPurged": "✅ Baza danych wyczyszczona pomyślnie!\nKopia zapasowa zapisana jako:",
+      "usbCleared": "✅ Pamięć USB wyczyszczona pomyślnie!",
+      "updateComplete": "✅ Aktualizacja zakończona pomyślnie!\n\nWynik:",
+      "updateStatus": "⚠️ Aktualizacja zakończona ze statusem:",
+      "rebootInitiated": "🔄 Restart zainicjowany! System uruchomi się ponownie za kilka sekund.",
+      "shutdownInitiated": "⏹️ Wyłączanie zainicjowane! System wyłączy się za kilka sekund.",
+      "errorDownloadDb": "Błąd pobierania bazy danych:",
+      "errorPurgeDb": "Błąd czyszczenia bazy danych:",
+      "errorClearUsb": "Błąd czyszczenia pamięci USB:",
+      "errorUpdate": "❌ Błąd aktualizacji systemu:",
+      "errorReboot": "❌ Błąd podczas restartu:",
+      "errorShutdown": "❌ Błąd podczas wyłączania:",
+      "noteSaved": "Notatka zapisana pomyślnie",
+      "errorSaveNote": "Błąd zapisywania notatki:",
+      "editNotePrompt": "Edytuj notatkę dla urządzenia"
+    },
+    "modal": {
+      "confidenceAnalysis": "Analiza pewności",
+      "analyzing": "Analizowanie wzorców urządzeń...",
+      "sessionDuration": "Czas trwania sesji",
+      "totalDevices": "Łącznie urządzeń",
+      "highConfidence": "Wysoka pewność (≥70)",
+      "lowConfidence": "Niska pewność (≤30)",
+      "topChanges": "Najważniejsze zmiany:",
+      "analysisComplete": "Analiza zakończona!",
+      "scoresUpdated": "Wyniki pewności zostały zaktualizowane.",
+      "btUpdated": "Zaktualizowane urządzenia BT",
+      "wifiUpdated": "Zaktualizowane urządzenia WiFi",
+      "analysisFailed": "Analiza nie powiodła się",
+      "applyChanges": "Zastosuj zmiany",
+      "reviewResults": "Analiza zakończona. Przejrzyj wyniki poniżej:"
+    },
+    "oui": {
+      "updateSuccess": "Baza OUI zaktualizowana pomyślnie!\n\nWpisy:",
+      "runAnalyze": "\n\nUruchom 'Analizuj pewność' aby zastosować wyszukiwanie dostawców do urządzeń WiFi.",
+      "updateFailed": "Nie udało się zaktualizować bazy OUI:"
+    }
+  },
+  "triangulation": {
+    "title": "Skaner SAR - Triangulacja urządzenia",
+    "header": "Analiza triangulacji urządzenia",
+    "backToDashboard": "Powrót do panelu",
+    "analyzeDevice": "Analizuj urządzenie",
+    "enterMac": "Wprowadź adres MAC...",
+    "macPlaceholder": "Wprowadź prawidłowy adres MAC (np. AA:BB:CC:DD:EE:FF)",
+    "deviceInfo": {
+      "title": "Informacje o urządzeniu",
+      "macAddress": "Adres MAC",
+      "deviceType": "Typ urządzenia",
+      "duration": "Czas trwania"
+    },
+    "movement": {
+      "title": "Analiza ruchu",
+      "stationary": "Stacjonarny",
+      "moving": "W ruchu",
+      "confidence": "Pewność",
+      "estLocation": "Szac. lokalizacja"
+    },
+    "statistics": {
+      "title": "Statystyki",
+      "totalSightings": "Łącznie obserwacji",
+      "withLocation": "Z lokalizacją",
+      "totalDistance": "Łączny dystans",
+      "areaCovered": "Pokryty obszar",
+      "avgSpeed": "Śr. prędkość",
+      "maxSpeed": "Maks. prędkość"
+    },
+    "ssids": {
+      "title": "Znane sieci SSID"
+    },
+    "map": {
+      "title": "Mapa lokalizacji",
+      "firstSighting": "Pierwsze widzenie",
+      "lastSighting": "Ostatnie widzenie",
+      "movementPath": "Ścieżka ruchu"
+    },
+    "clusters": {
+      "title": "Skupiska lokalizacji",
+      "cluster": "Skupisko",
+      "sightings": "obserwacji"
+    },
+    "timeline": {
+      "title": "Oś czasu obserwacji",
+      "showing": "Pokazywanie ostatnich",
+      "of": "z"
+    },
+    "loading": "Analizowanie obserwacji urządzenia...",
+    "analysisFailed": "Analiza nie powiodła się",
+    "noSightings": "Nie znaleziono obserwacji dla tego urządzenia",
+    "pleaseEnterMac": "Wprowadź adres MAC"
+  },
+  "language": {
+    "select": "Język",
+    "en": "English",
+    "pl": "Polski",
+    "de": "Deutsch"
+  }
+}
