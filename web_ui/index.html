@@ -1869,7 +1869,8 @@
                 // Update scan mode
                 const scanModeIndicator = document.getElementById("scanModeIndicator");
                 const scanModeValue = scanModeIndicator.querySelector(".indicator-value");
-                scanModeValue.textContent = (status.scanner.mode || "N/A").toUpperCase();
+                const mode = (status.scanner.mode || "N/A").toLowerCase();
+                scanModeValue.textContent = mode === "both" ? "BT+WiFi" : mode.toUpperCase();
                 if (status.scanner.mode) {
                     scanModeIndicator.className = "indicator active";
                     scanModeValue.className = "indicator-value good";
