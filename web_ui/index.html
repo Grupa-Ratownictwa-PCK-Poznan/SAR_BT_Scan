@@ -1252,6 +1252,29 @@
             color: var(--rc-red);
             border-color: #fff;
         }
+
+        /* Tooltip visibility control */
+        body:not(.show-tooltips) [data-i18n-title] {
+            pointer-events: auto;
+        }
+        
+        body:not(.show-tooltips) [data-i18n-title]::after {
+            display: none !important;
+        }
+        
+        /* Hide native tooltips when toggle is off */
+        body:not(.show-tooltips) [title] {
+            position: relative;
+        }
+        
+        body:not(.show-tooltips) [data-tooltip-text] {
+            position: relative;
+        }
+        
+        body:not(.show-tooltips) [data-tooltip-text]:hover::after,
+        body:not(.show-tooltips) [data-tooltip-text]:hover::before {
+            display: none !important;
+        }
     </style>
 </head>
 <body>
@@ -1291,7 +1314,7 @@
                 <div class="panel-title" style="display: flex; align-items: center; justify-content: space-between;">
                     <span><i class="fas fa-pause-circle"></i> <span data-i18n="dashboard.updates.title">Updates</span></span>
                 </div>
-                <button id="pauseResumeBtn" style="width: 100%; padding: 6px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                <button id="pauseResumeBtn" data-i18n-title="tooltips.pauseResumeBtn" style="width: 100%; padding: 6px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px; display: flex; align-items: center; justify-content: center; gap: 6px;">
                     <i class="fas fa-play"></i> <span data-i18n="dashboard.updates.allRunning">All Systems Running</span>
                 </button>
                 <div style="font-size: 9px; color: #666; margin-top: 4px; text-align: center;">
@@ -1332,13 +1355,13 @@
                 <div style="display: flex; gap: 4px;">
                     <div class="filter-group" style="flex: 1; margin-bottom: 0;">
                         <label style="font-size: 8px;" data-i18n="dashboard.analytics.confidence">Confidence</label>
-                        <button id="analyzeConfidenceBtn" style="width: 100%; font-size: 10px; padding: 5px; background: var(--accent-green); color: white; border: none; border-radius: 3px; cursor: pointer; font-weight: bold; white-space: nowrap;">
+                        <button id="analyzeConfidenceBtn" data-i18n-title="tooltips.analyzeConfidenceBtn" style="width: 100%; font-size: 10px; padding: 5px; background: var(--accent-green); color: white; border: none; border-radius: 3px; cursor: pointer; font-weight: bold; white-space: nowrap;">
                             <i class="fas fa-brain"></i> <span data-i18n="common.analyze">Analyze</span>
                         </button>
                     </div>
                     <div class="filter-group" style="flex: 1; margin-bottom: 0;">
                         <label style="font-size: 8px;" data-i18n="dashboard.analytics.vendorDb">Vendor DB</label>
-                        <button id="updateOuiBtn" style="width: 100%; font-size: 10px; padding: 5px; background: #9b59b6; color: white; border: none; border-radius: 3px; cursor: pointer; font-weight: bold; white-space: nowrap;">
+                        <button id="updateOuiBtn" data-i18n-title="tooltips.updateOuiBtn" style="width: 100%; font-size: 10px; padding: 5px; background: #9b59b6; color: white; border: none; border-radius: 3px; cursor: pointer; font-weight: bold; white-space: nowrap;">
                             <i class="fas fa-download"></i> <span data-i18n="common.update">Update</span>
                         </button>
                     </div>
@@ -1353,23 +1376,23 @@
 
                 <!-- Tabs -->
                 <div class="tabs">
-                    <button class="tab-btn" data-tab="bt-devices" data-i18n="dashboard.data.btDevicesTab">BT Devices</button>
-                    <button class="tab-btn" data-tab="bt-sightings" data-i18n="dashboard.data.btSightingsTab">BT Sightings</button>
-                    <button class="tab-btn active" data-tab="wifi-devices" data-i18n="dashboard.data.wifiDevicesTab">WiFi Devices</button>
-                    <button class="tab-btn" data-tab="wifi-assoc" data-i18n="dashboard.data.wifiAssocTab">WiFi Assoc</button>
+                    <button class="tab-btn" data-tab="bt-devices" data-i18n="dashboard.data.btDevicesTab" data-i18n-title="tooltips.tabBtDevices">BT Devices</button>
+                    <button class="tab-btn" data-tab="bt-sightings" data-i18n="dashboard.data.btSightingsTab" data-i18n-title="tooltips.tabBtSightings">BT Sightings</button>
+                    <button class="tab-btn active" data-tab="wifi-devices" data-i18n="dashboard.data.wifiDevicesTab" data-i18n-title="tooltips.tabWifiDevices">WiFi Devices</button>
+                    <button class="tab-btn" data-tab="wifi-assoc" data-i18n="dashboard.data.wifiAssocTab" data-i18n-title="tooltips.tabWifiAssoc">WiFi Assoc</button>
                 </div>
 
                 <!-- Filters -->
                 <div class="filter-group">
-                    <input type="text" id="macFilter" data-i18n-placeholder="dashboard.filters.filterByMac" placeholder="Filter by MAC..." style="font-size: 11px;">
-                    <input type="text" id="ssidFilter" data-i18n-placeholder="dashboard.filters.filterBySsid" placeholder="Filter by SSID..." style="display: none; font-size: 11px;">
+                    <input type="text" id="macFilter" data-i18n-placeholder="dashboard.filters.filterByMac" data-i18n-title="tooltips.macFilter" placeholder="Filter by MAC..." style="font-size: 11px;">
+                    <input type="text" id="ssidFilter" data-i18n-placeholder="dashboard.filters.filterBySsid" data-i18n-title="tooltips.ssidFilter" placeholder="Filter by SSID..." style="display: none; font-size: 11px;">
                 </div>
 
                 <div class="filter-group">
                     <label data-i18n="dashboard.filters.rssiRange">RSSI Range (dBm)</label>
                     <div style="display: flex; gap: 5px;">
-                        <input type="range" id="rssiMin" min="-100" max="0" value="-100" style="flex: 1;">
-                        <input type="range" id="rssiMax" min="-100" max="0" value="0" style="flex: 1;">
+                        <input type="range" id="rssiMin" min="-100" max="0" value="-100" style="flex: 1;" data-i18n-title="tooltips.rssiMinSlider">
+                        <input type="range" id="rssiMax" min="-100" max="0" value="0" style="flex: 1;" data-i18n-title="tooltips.rssiMaxSlider">
                     </div>
                     <div class="range-values">
                         <span id="rssiMinValue">-100</span>
@@ -1380,8 +1403,8 @@
                 <div class="filter-group">
                     <label data-i18n="dashboard.filters.confidenceRange">Confidence Range</label>
                     <div style="display: flex; gap: 5px;">
-                        <input type="range" id="confidenceMin" min="0" max="100" value="0" style="flex: 1;">
-                        <input type="range" id="confidenceMax" min="0" max="100" value="100" style="flex: 1;">
+                        <input type="range" id="confidenceMin" min="0" max="100" value="0" style="flex: 1;" data-i18n-title="tooltips.confidenceMinSlider">
+                        <input type="range" id="confidenceMax" min="0" max="100" value="100" style="flex: 1;" data-i18n-title="tooltips.confidenceMaxSlider">
                     </div>
                     <div class="range-values">
                         <span id="confidenceMinValue">0</span>
@@ -1392,16 +1415,16 @@
                 <div class="filter-group">
                     <label data-i18n="dashboard.filters.timeRange">Time Range</label>
                     <div style="display: flex; gap: 5px; margin-bottom: 8px;">
-                        <button id="timePreset1h" class="time-preset-btn" data-hours="1">1h</button>
-                        <button id="timePreset6h" class="time-preset-btn" data-hours="6">6h</button>
-                        <button id="timePreset24h" class="time-preset-btn" data-hours="24">24h</button>
-                        <button id="timePresetAll" class="time-preset-btn active" data-hours="0" data-i18n="dashboard.filters.all">All</button>
+                        <button id="timePreset1h" class="time-preset-btn" data-hours="1" data-i18n-title="tooltips.timePreset1h">1h</button>
+                        <button id="timePreset6h" class="time-preset-btn" data-hours="6" data-i18n-title="tooltips.timePreset6h">6h</button>
+                        <button id="timePreset24h" class="time-preset-btn" data-hours="24" data-i18n-title="tooltips.timePreset24h">24h</button>
+                        <button id="timePresetAll" class="time-preset-btn active" data-hours="0" data-i18n="dashboard.filters.all" data-i18n-title="tooltips.timePresetAll">All</button>
                     </div>
                     <div style="font-size: 11px; margin-bottom: 5px;" data-i18n="dashboard.filters.customRange">Or set custom range:</div>
                     <div style="display: flex; gap: 5px; flex-direction: column;">
                         <input type="datetime-local" id="timeStart" title="Start time" style="font-size: 11px; padding: 4px;">
                         <input type="datetime-local" id="timeEnd" title="End time" style="font-size: 11px; padding: 4px;">
-                        <button id="timeRangeApply" style="font-size: 11px; padding: 5px; background: var(--rc-red); color: white; border: none; border-radius: 3px; cursor: pointer;" data-i18n="dashboard.filters.applyRange">Apply Range</button>
+                        <button id="timeRangeApply" data-i18n-title="tooltips.timeRangeApply" style="font-size: 11px; padding: 5px; background: var(--rc-red); color: white; border: none; border-radius: 3px; cursor: pointer;" data-i18n="dashboard.filters.applyRange">Apply Range</button>
                     </div>
                 </div>
 
@@ -1481,9 +1504,9 @@
                     <i class="fas fa-map"></i> <span data-i18n="dashboard.map.title">Map Display</span>
                 </div>
                 <div style="display: flex; gap: 4px;">
-                    <button class="tab-btn" id="mapBtBtn" data-map-type="bt" style="flex: 1;" data-i18n="common.bt">BT</button>
-                    <button class="tab-btn" id="mapWifiBtn" data-map-type="wifi" style="flex: 1;" data-i18n="common.wifi">WiFi</button>
-                    <button class="tab-btn active" id="mapAllBtn" data-map-type="all" style="flex: 1;" data-i18n="dashboard.map.both">BT+WiFi</button>
+                    <button class="tab-btn" id="mapBtBtn" data-map-type="bt" style="flex: 1;" data-i18n="common.bt" data-i18n-title="tooltips.mapBtBtn">BT</button>
+                    <button class="tab-btn" id="mapWifiBtn" data-map-type="wifi" style="flex: 1;" data-i18n="common.wifi" data-i18n-title="tooltips.mapWifiBtn">WiFi</button>
+                    <button class="tab-btn active" id="mapAllBtn" data-map-type="all" style="flex: 1;" data-i18n="dashboard.map.both" data-i18n-title="tooltips.mapAllBtn">BT+WiFi</button>
                 </div>
             </div>
 
@@ -1492,26 +1515,26 @@
                 <div style="display: flex; gap: 4px; flex-direction: column;">
                     <!-- Database Actions Row -->
                     <div style="display: flex; gap: 4px;">
-                        <button id="downloadDbBtn" style="flex: 1; padding: 6px; background: #27ae60; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 3px; font-size: 10px;">
+                        <button id="downloadDbBtn" data-i18n-title="tooltips.downloadDbBtn" style="flex: 1; padding: 6px; background: #27ae60; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 3px; font-size: 10px;">
                             <i class="fas fa-download"></i> <span data-i18n="dashboard.actions.dbDownload">DB download</span>
                         </button>
-                        <button id="purgeDbBtn" style="flex: 1; padding: 6px; background: #e74c3c; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 3px; font-size: 10px;">
+                        <button id="purgeDbBtn" data-i18n-title="tooltips.purgeDbBtn" style="flex: 1; padding: 6px; background: #e74c3c; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 3px; font-size: 10px;">
                             <i class="fas fa-trash"></i> <span data-i18n="dashboard.actions.dbPurge">DB Purge</span>
                         </button>
-                        <button id="clearUsbBtn" style="flex: 1; padding: 6px; background: #f39c12; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 3px; font-size: 10px;">
+                        <button id="clearUsbBtn" data-i18n-title="tooltips.clearUsbBtn" style="flex: 1; padding: 6px; background: #f39c12; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 3px; font-size: 10px;">
                             <i class="fas fa-hdd"></i> <span data-i18n="dashboard.actions.usbPurge">USB Purge</span>
                         </button>
                     </div>
                     
                     <!-- System Control Buttons Row -->
                     <div style="display: flex; gap: 4px;">
-                        <button id="updateBtn" style="flex: 1; padding: 6px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 3px; font-size: 10px;">
+                        <button id="updateBtn" data-i18n-title="tooltips.updateBtn" style="flex: 1; padding: 6px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 3px; font-size: 10px;">
                             <i class="fas fa-sync-alt"></i> <span data-i18n="common.update">Update</span>
                         </button>
-                        <button id="rebootBtn" style="flex: 1; padding: 6px; background: #f39c12; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 3px; font-size: 10px;">
+                        <button id="rebootBtn" data-i18n-title="tooltips.rebootBtn" style="flex: 1; padding: 6px; background: #f39c12; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 3px; font-size: 10px;">
                             <i class="fas fa-redo"></i> <span data-i18n="dashboard.actions.reboot">Reboot</span>
                         </button>
-                        <button id="shutdownBtn" style="flex: 1; padding: 6px; background: #c0392b; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 3px; font-size: 10px;">
+                        <button id="shutdownBtn" data-i18n-title="tooltips.shutdownBtn" style="flex: 1; padding: 6px; background: #c0392b; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 3px; font-size: 10px;">
                             <i class="fas fa-power-off"></i> <span data-i18n="dashboard.actions.shutdown">Shutdown</span>
                         </button>
                     </div>
@@ -1569,12 +1592,12 @@
                     </div>
                     <!-- Language Selector -->
                     <div class="language-selector">
-                        <button class="lang-btn" data-lang="en">EN</button>
-                        <button class="lang-btn" data-lang="pl">PL</button>
-                        <button class="lang-btn" data-lang="de">DE</button>
+                        <button class="lang-btn" data-lang="en" data-i18n-title="tooltips.langEn">EN</button>
+                        <button class="lang-btn" data-lang="pl" data-i18n-title="tooltips.langPl">PL</button>
+                        <button class="lang-btn" data-lang="de" data-i18n-title="tooltips.langDe">DE</button>
                     </div>
                     <!-- Dark Mode Toggle -->
-                    <div class="theme-toggle-container">
+                    <div class="theme-toggle-container" data-i18n-title="tooltips.darkModeToggle">
                         <i class="fas fa-sun"></i>
                         <label class="toggle-switch">
                             <input type="checkbox" id="darkModeToggle">
@@ -1582,7 +1605,15 @@
                         </label>
                         <i class="fas fa-moon"></i>
                     </div>
-                    <a href="https://github.com/Grupa-Ratownictwa-PCK-Poznan/SAR_BT_Scan" target="_blank" class="collapse-btn" title="About this project">
+                    <!-- Tooltip Toggle -->
+                    <div class="theme-toggle-container" id="tooltipToggleContainer" data-i18n-title="tooltips.toggleTooltips">
+                        <i class="fas fa-question-circle"></i>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="tooltipToggle">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <a href="https://github.com/Grupa-Ratownictwa-PCK-Poznan/SAR_BT_Scan" target="_blank" class="collapse-btn" id="aboutBtn" data-i18n-title="tooltips.aboutBtn">
                         <i class="fas fa-info-circle"></i> <span data-i18n="common.about">About</span>
                     </a>
                 </div>
@@ -1621,6 +1652,7 @@
 
         // ============= State =============
         let map = null;
+        let tileLayer = null;
         let heatmapLayer = null;
         let mapMarkers = [];
         let mapDataType = "all";
@@ -1695,10 +1727,40 @@
             map = L.map("map").setView([51.505, -0.09], 13);
             console.log("Map object created");
 
-            // Try to add OpenStreetMap tiles (will work if online, gracefully fail if offline)
-            const tileLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-                attribution: "© OpenStreetMap contributors",
+            // Add tile layer (will be set based on theme)
+            updateMapTiles();
+            
+            console.log("Map tiles added");
+            
+            // Add event listener for map size changes
+            setTimeout(() => {
+                map.invalidateSize();
+                console.log("Map size invalidated");
+            }, 100);
+
+            updateHeatmap();
+            console.log("Initial heatmap update called");
+        }
+        
+        function updateMapTiles() {
+            if (!map) return;
+            
+            // Remove existing tile layer
+            if (tileLayer) {
+                map.removeLayer(tileLayer);
+            }
+            
+            const isDarkMode = document.body.classList.contains('dark-mode');
+            const tileUrl = isDarkMode 
+                ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+                : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+            const attribution = isDarkMode
+                ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                : '© OpenStreetMap contributors';
+            
+            tileLayer = L.tileLayer(tileUrl, {
                 maxZoom: 19,
+                attribution: attribution,
                 errorTileUrl: ''  // Don't show broken image icons
             });
             
@@ -1726,17 +1788,6 @@
                     showOfflineMapNotice();
                 }
             }, 3000);
-            
-            console.log("OSM tiles added to map");
-            
-            // Add event listener for map size changes
-            setTimeout(() => {
-                map.invalidateSize();
-                console.log("Map size invalidated");
-            }, 100);
-
-            updateHeatmap();
-            console.log("Initial heatmap update called");
         }
 
         function showOfflineMapNotice() {
@@ -3247,6 +3298,56 @@
                 document.body.classList.remove('dark-mode');
                 localStorage.setItem('theme-preference', 'light');
             }
+            updateMapTiles();
+        });
+
+        // ============= Tooltip Toggle =============
+        function initTooltips() {
+            // Check if user has a saved preference (default is OFF)
+            const savedTooltips = localStorage.getItem('tooltips-enabled');
+            const showTooltips = savedTooltips === 'true';
+            
+            // Set initial state
+            if (showTooltips) {
+                document.body.classList.add('show-tooltips');
+                document.getElementById('tooltipToggle').checked = true;
+            }
+            
+            // Apply tooltip titles from i18n
+            applyTooltipTitles();
+        }
+        
+        function applyTooltipTitles() {
+            // Only apply titles if tooltips are enabled
+            const showTooltips = document.body.classList.contains('show-tooltips');
+            
+            document.querySelectorAll('[data-i18n-title]').forEach(element => {
+                const key = element.getAttribute('data-i18n-title');
+                if (key && showTooltips) {
+                    const translation = typeof I18n !== 'undefined' && I18n.isReady() ? I18n.t(key) : '';
+                    if (translation && translation !== key) {
+                        element.setAttribute('title', translation);
+                    }
+                } else {
+                    element.removeAttribute('title');
+                }
+            });
+        }
+
+        document.getElementById("tooltipToggle").addEventListener("change", (e) => {
+            if (e.target.checked) {
+                document.body.classList.add('show-tooltips');
+                localStorage.setItem('tooltips-enabled', 'true');
+            } else {
+                document.body.classList.remove('show-tooltips');
+                localStorage.setItem('tooltips-enabled', 'false');
+            }
+            applyTooltipTitles();
+        });
+        
+        // Re-apply tooltips when language changes
+        document.addEventListener('languageChanged', () => {
+            applyTooltipTitles();
         });
 
         // ============= Event Listeners =============
@@ -3424,13 +3525,18 @@
             // Initialize dark mode first
             initDarkMode();
             
+            // Initialize tooltips
+            initTooltips();
+            
             // Initialize language selector after I18n is ready
             if (typeof I18n !== 'undefined' && I18n.isReady()) {
                 initLanguageSelector();
+                applyTooltipTitles(); // Apply tooltips after i18n is ready
             } else {
                 // Wait for I18n to initialize
                 document.addEventListener('languageChanged', () => {
                     initLanguageSelector();
+                    applyTooltipTitles(); // Apply tooltips after i18n is ready
                 }, { once: true });
             }
             

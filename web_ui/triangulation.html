@@ -916,6 +916,7 @@
         
         // ============= State =============
         let map = null;
+        let tileLayer = null;
         let pathLayer = null;
         let markersLayer = null;
         let currentResult = null;
@@ -998,10 +999,33 @@
             // Initialize Leaflet map
             map = L.map('map').setView([52.4064, 16.9252], 13);  // Default to Poznań
             
-            // Try to add OpenStreetMap tiles (will work if online, gracefully fail if offline)
-            const tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            // Add tile layer (will be set based on theme)
+            updateMapTiles();
+
+            // Initialize layers
+            pathLayer = L.layerGroup().addTo(map);
+            markersLayer = L.layerGroup().addTo(map);
+        }
+        
+        function updateMapTiles() {
+            if (!map) return;
+            
+            // Remove existing tile layer
+            if (tileLayer) {
+                map.removeLayer(tileLayer);
+            }
+            
+            const isDarkMode = document.body.classList.contains('dark-mode');
+            const tileUrl = isDarkMode 
+                ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+                : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+            const attribution = isDarkMode
+                ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                : '© OpenStreetMap contributors';
+            
+            tileLayer = L.tileLayer(tileUrl, {
                 maxZoom: 19,
-                attribution: '© OpenStreetMap contributors',
+                attribution: attribution,
                 errorTileUrl: ''  // Don't show broken image icons
             });
             
@@ -1029,10 +1053,6 @@
                     showOfflineMapNotice();
                 }
             }, 3000);
-
-            // Initialize layers
-            pathLayer = L.layerGroup().addTo(map);
-            markersLayer = L.layerGroup().addTo(map);
         }
         
         function showOfflineMapNotice() {
@@ -1544,6 +1564,7 @@
                 document.body.classList.remove('dark-mode');
                 localStorage.setItem('theme-preference', 'light');
             }
+            updateMapTiles();
         });
 
         // ============= Language Selector =============
