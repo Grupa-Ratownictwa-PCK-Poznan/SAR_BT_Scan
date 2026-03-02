@@ -54,6 +54,14 @@ except ImportError:
     def guess_device_type(mac, vendor=None): return ""
     def lookup_and_guess(mac): return ("", "")
 
+# Import MAC randomization utilities
+try:
+    from web_ui.mac_utils import is_locally_administered_mac
+    MAC_UTILS_AVAILABLE = True
+except ImportError:
+    MAC_UTILS_AVAILABLE = False
+    def is_locally_administered_mac(mac): return False
+
 # Database path resolution (same logic as storage.py)
 DB_PATH = SD_STORAGE + DB_FILE
 if not os.path.exists(DB_PATH):
@@ -101,6 +109,26 @@ class DeviceAnalysis:
     # Multi-session fields
     session_count: int = 1  # Number of distinct sessions
     whitelisted: bool = False  # Is this a known SAR device
+    # --- Enhanced analysis fields (v2) ---
+    # RSSI trend analysis
+    rssi_std_dev: Optional[float] = None  # Standard deviation of RSSI values
+    rssi_has_peak: bool = False  # Rise-then-fall pattern detected
+    # WiFi-specific analysis
+    ssid_count: int = 0  # Number of unique SSIDs probed
+    ssid_list: List[str] = field(default_factory=list)  # SSIDs probed
+    is_beacon_device: Optional[bool] = None  # True=AP, False=client, None=BT/unknown
+    # MAC analysis
+    is_randomized_mac: bool = False  # Locally-administered MAC (randomized)
+    # BT device identification
+    device_name: Optional[str] = None  # BLE advertised name
+    manufacturer_name: Optional[str] = None  # BLE manufacturer
+    # Temporal analysis
+    burstiness_cov: Optional[float] = None  # CoV of inter-sighting intervals
+    active_presence_ratio: Optional[float] = None  # Time-bucketed presence ratio
+    # Spatial analysis
+    gps_spread_meters: Optional[float] = None  # Mean distance from GPS centroid
+    # Multi-scanner
+    scanner_count: int = 1  # Number of distinct scanners that saw this device
 
 
 class ConfidenceAnalyzer:
@@ -116,6 +144,43 @@ class ConfidenceAnalyzer:
     # GPS clustering thresholds
     HQ_RATIO_HIGH = 0.90  # >90% sightings near HQ = very likely SAR team
     HQ_RATIO_LOW = 0.20   # <20% sightings near HQ = likely in field
+    
+    # RSSI trend thresholds
+    RSSI_HIGH_VARIANCE_THRESHOLD = 10.0  # σ > 10 dBm = moving device
+    RSSI_LOW_VARIANCE_THRESHOLD = 3.0    # σ < 3 dBm = stationary device
+    RSSI_PEAK_MIN_DELTA = 3.0            # Min dBm difference for peak detection
+    
+    # Burstiness thresholds
+    HIGH_BURSTINESS_COV = 1.5   # CoV > 1.5 = bursty/irregular sightings
+    LOW_BURSTINESS_COV = 0.3    # CoV < 0.3 = very regular/periodic
+    
+    # GPS spread thresholds (meters)
+    HIGH_GPS_SPREAD = 200   # > 200m average spread = moving device
+    LOW_GPS_SPREAD = 20     # < 20m spread = stationary device
+    
+    # Active presence ratio bucket size (seconds)
+    PRESENCE_BUCKET_SECONDS = 60
+    
+    # Personal device keywords (checked in BT name/manufacturer, case-insensitive)
+    PERSONAL_DEVICE_KEYWORDS = [
+        'iphone', 'ipad', 'macbook', 'apple watch', 'airpods', 'airpod',
+        'galaxy', 'samsung', 'pixel', 'oneplus', 'huawei', 'xiaomi', 'oppo', 'vivo',
+        'redmi', 'realme', 'nokia', 'sony xperia', 'motorola moto',
+        'fitbit', 'mi band', 'amazfit', 'band',
+        'bose', 'jabra', 'beats', 'jbl', 'sony wh', 'sony wf',
+        'tile', 'airtag', 'smarttag',
+    ]
+    
+    # SAR/infrastructure equipment keywords (checked in BT name/manufacturer, case-insensitive)
+    SAR_EQUIPMENT_KEYWORDS = [
+        'garmin', 'kenwood', 'motorola solutions', 'baofeng', 'yaesu', 'icom',
+        'hytera', 'sepura', 'harris', 'tait', 'vertex standard',
+        'dji', 'drone', 'mavic', 'phantom', 'matrice',
+        'gopro', 'flir', 'thermal',
+        'ubiquiti', 'mikrotik', 'cisco', 'netgear', 'tp-link',
+        'raspberry', 'esp32', 'arduino',
+        'radio', 'transceiver', 'repeater',
+    ]
     
     def __init__(self, db_path: str = None):
         self.db_path = db_path or DB_PATH
@@ -259,6 +324,156 @@ class ConfidenceAnalyzer:
         
         return session_count
     
+    def _compute_rssi_trend(self, timestamps: List[int], rssi_values: List[float]) -> Tuple[Optional[float], Optional[float], bool]:
+        """
+        Compute RSSI trend (slope), standard deviation, and peak detection.
+        
+        A rise-then-fall RSSI pattern indicates a device passing by the scanner,
+        which is a strong indicator of a person moving through the area.
+        
+        Returns:
+            Tuple of (slope, std_dev, has_peak)
+            - slope: dBm change per second (positive = getting stronger)
+            - std_dev: Standard deviation of RSSI readings
+            - has_peak: True if rise-then-fall pattern detected (pass-by)
+        """
+        if len(rssi_values) < 3:
+            return None, None, False
+        
+        n = len(rssi_values)
+        
+        # Standard deviation
+        mean_rssi = sum(rssi_values) / n
+        variance = sum((r - mean_rssi) ** 2 for r in rssi_values) / n
+        std_dev = math.sqrt(variance)
+        
+        # Linear regression for slope
+        t0 = timestamps[0]
+        t_norm = [float(t - t0) for t in timestamps]
+        sum_t = sum(t_norm)
+        sum_r = sum(rssi_values)
+        sum_tr = sum(t * r for t, r in zip(t_norm, rssi_values))
+        sum_t2 = sum(t * t for t in t_norm)
+        
+        denom = n * sum_t2 - sum_t * sum_t
+        slope = (n * sum_tr - sum_t * sum_r) / denom if denom != 0 else 0
+        
+        # Peak detection: compare middle portion RSSI to edges
+        if n >= 5:
+            quarter = max(1, n // 4)
+            edge_start = rssi_values[:quarter]
+            edge_end = rssi_values[-quarter:]
+            middle = rssi_values[quarter:-quarter] if quarter < n - quarter else rssi_values
+            
+            edge_start_mean = sum(edge_start) / len(edge_start)
+            edge_end_mean = sum(edge_end) / len(edge_end)
+            middle_mean = sum(middle) / len(middle) if middle else mean_rssi
+            
+            has_peak = (
+                middle_mean > edge_start_mean + self.RSSI_PEAK_MIN_DELTA and
+                middle_mean > edge_end_mean + self.RSSI_PEAK_MIN_DELTA
+            )
+        else:
+            has_peak = False
+        
+        return slope, std_dev, has_peak
+    
+    def _compute_burstiness(self, timestamps: List[int]) -> Optional[float]:
+        """
+        Compute coefficient of variation (CoV) of inter-sighting intervals.
+        
+        High CoV = bursty/irregular (person passing through)
+        Low CoV = regular/periodic (static SAR equipment scanning constantly)
+        
+        Returns:
+            CoV value, or None if insufficient data
+        """
+        if len(timestamps) < 3:
+            return None
+        
+        intervals = [timestamps[i] - timestamps[i-1] for i in range(1, len(timestamps))]
+        intervals = [i for i in intervals if i > 0]  # Filter zero intervals
+        
+        if not intervals:
+            return None
+        
+        mean_interval = sum(intervals) / len(intervals)
+        if mean_interval == 0:
+            return 0.0
+        
+        variance = sum((i - mean_interval) ** 2 for i in intervals) / len(intervals)
+        std_dev = math.sqrt(variance)
+        
+        return std_dev / mean_interval
+    
+    def _compute_gps_spread(self, gps_coords: List[Tuple[float, float]]) -> Optional[float]:
+        """
+        Compute spatial spread (mean distance from centroid) of GPS coordinates.
+        
+        Large spread = device is moving (interesting for SAR)
+        Small spread = stationary (likely infrastructure)
+        
+        Returns:
+            Mean distance from centroid in meters, or None
+        """
+        if len(gps_coords) < 2:
+            return None
+        
+        # Compute centroid
+        avg_lat = sum(c[0] for c in gps_coords) / len(gps_coords)
+        avg_lon = sum(c[1] for c in gps_coords) / len(gps_coords)
+        
+        # Compute mean distance from centroid
+        distances = [self._haversine_distance(avg_lat, avg_lon, c[0], c[1]) for c in gps_coords]
+        
+        return sum(distances) / len(distances)
+    
+    def _compute_active_presence_ratio(self, timestamps: List[int], session_start: int, session_end: int) -> float:
+        """
+        Compute time-bucketed presence ratio.
+        
+        Divides session into fixed-size buckets and counts how many contain
+        at least one sighting. More accurate than span-based presence ratio
+        because a device seen once at minute 5 and once at minute 55 gets
+        a low active ratio (2/60) vs high span ratio (50/60).
+        
+        Returns:
+            Ratio of occupied buckets (0.0 to 1.0)
+        """
+        if not timestamps:
+            return 0.0
+        
+        bucket_size = self.PRESENCE_BUCKET_SECONDS
+        total_buckets = max(1, (session_end - session_start) // bucket_size + 1)
+        
+        occupied = set()
+        for ts in timestamps:
+            bucket_idx = (ts - session_start) // bucket_size
+            occupied.add(bucket_idx)
+        
+        return min(1.0, len(occupied) / total_buckets)
+    
+    def _classify_device_name(self, name: Optional[str], manufacturer: Optional[str]) -> Optional[str]:
+        """
+        Classify device as personal or SAR equipment based on name/manufacturer.
+        
+        Returns:
+            'personal', 'sar_equipment', or None (unknown)
+        """
+        search_text = ' '.join(filter(None, [name, manufacturer])).lower()
+        if not search_text:
+            return None
+        
+        for keyword in self.PERSONAL_DEVICE_KEYWORDS:
+            if keyword in search_text:
+                return 'personal'
+        
+        for keyword in self.SAR_EQUIPMENT_KEYWORDS:
+            if keyword in search_text:
+                return 'sar_equipment'
+        
+        return None
+    
     def is_whitelisted(self, mac: str) -> bool:
         """Check if a MAC address is in the whitelist."""
         # Normalize MAC for comparison
@@ -322,18 +537,18 @@ class ConfidenceAnalyzer:
         try:
             # Get device info
             device = con.execute(
-                "SELECT first_seen, last_seen, confidence FROM devices WHERE addr = ?",
+                "SELECT first_seen, last_seen, confidence, name, manufacturer FROM devices WHERE addr = ?",
                 (addr,)
             ).fetchone()
             
             if not device:
                 return None
             
-            first_seen, last_seen, old_confidence = device
+            first_seen, last_seen, old_confidence, bt_name, bt_manufacturer = device
             
-            # Get all sightings for this device with GPS data
+            # Get all sightings for this device with GPS and scanner data
             sightings = con.execute("""
-                SELECT ts_unix, rssi, lat, lon FROM sightings 
+                SELECT ts_unix, rssi, lat, lon, scanner_name FROM sightings 
                 WHERE addr = ? AND ts_unix IS NOT NULL
                 ORDER BY ts_unix
             """, (addr,)).fetchall()
@@ -364,8 +579,8 @@ class ConfidenceAnalyzer:
             early_cutoff = session.start_time + boundary_window
             late_cutoff = session.end_time - boundary_window
             
-            early_sightings = [(ts, rssi) for ts, rssi, _, _ in sightings if ts <= early_cutoff]
-            late_sightings = [(ts, rssi) for ts, rssi, _, _ in sightings if ts >= late_cutoff]
+            early_sightings = [(ts, rssi) for ts, rssi, _, _, _ in sightings if ts <= early_cutoff]
+            late_sightings = [(ts, rssi) for ts, rssi, _, _, _ in sightings if ts >= late_cutoff]
             
             early_presence = len(early_sightings) > 0
             late_presence = len(late_sightings) > 0
@@ -375,6 +590,30 @@ class ConfidenceAnalyzer:
             
             early_rssi = sum(early_rssi_vals) / len(early_rssi_vals) if early_rssi_vals else None
             late_rssi = sum(late_rssi_vals) / len(late_rssi_vals) if late_rssi_vals else None
+            
+            # --- Enhanced analysis computations (v2) ---
+            # RSSI trend and variance
+            rssi_timestamps = [s[0] for s in sightings if s[1] is not None]
+            rssi_vals_ordered = [s[1] for s in sightings if s[1] is not None]
+            _, rssi_std_dev, rssi_has_peak = self._compute_rssi_trend(rssi_timestamps, rssi_vals_ordered)
+            
+            # MAC randomization check
+            is_randomized = is_locally_administered_mac(addr)
+            
+            # Sighting burstiness
+            burstiness_cov = self._compute_burstiness(timestamps)
+            
+            # GPS spatial spread
+            gps_spread = self._compute_gps_spread(gps_coords)
+            
+            # Active (time-bucketed) presence ratio
+            active_presence = self._compute_active_presence_ratio(
+                timestamps, session.start_time, session.end_time
+            )
+            
+            # Scanner count
+            scanner_names = set(s[4] for s in sightings if s[4] is not None)
+            scanner_count_val = max(1, len(scanner_names))
             
             # OUI-based vendor and device type enrichment (hybrid approach for BT too)
             vendor_name, guessed_type = lookup_and_guess(addr)
@@ -396,7 +635,16 @@ class ConfidenceAnalyzer:
                     avg_rssi=avg_rssi,
                     hq_ratio=hq_ratio,
                     avg_distance_from_hq=avg_distance,
-                    session_count=session_count
+                    session_count=session_count,
+                    rssi_std_dev=rssi_std_dev,
+                    rssi_has_peak=rssi_has_peak,
+                    is_randomized_mac=is_randomized,
+                    device_name=bt_name,
+                    manufacturer_name=bt_manufacturer,
+                    burstiness_cov=burstiness_cov,
+                    gps_spread=gps_spread,
+                    scanner_count=scanner_count_val,
+                    active_presence_ratio=active_presence,
                 )
             
             return DeviceAnalysis(
@@ -419,7 +667,16 @@ class ConfidenceAnalyzer:
                 session_count=session_count,
                 whitelisted=is_whitelisted,
                 vendor_name=vendor_name,
-                guessed_type=guessed_type
+                guessed_type=guessed_type,
+                rssi_std_dev=rssi_std_dev,
+                rssi_has_peak=rssi_has_peak,
+                is_randomized_mac=is_randomized,
+                device_name=bt_name,
+                manufacturer_name=bt_manufacturer,
+                burstiness_cov=burstiness_cov,
+                active_presence_ratio=active_presence,
+                gps_spread_meters=gps_spread,
+                scanner_count=scanner_count_val,
             )
         finally:
             con.close()
@@ -442,9 +699,9 @@ class ConfidenceAnalyzer:
             
             first_seen, last_seen, old_confidence = device
             
-            # Get all associations for this device with GPS data
+            # Get all associations for this device with GPS and scanner data
             associations = con.execute("""
-                SELECT ts_unix, rssi, lat, lon FROM wifi_associations 
+                SELECT ts_unix, rssi, lat, lon, scanner_name FROM wifi_associations 
                 WHERE mac = ? AND ts_unix IS NOT NULL
                 ORDER BY ts_unix
             """, (mac,)).fetchall()
@@ -475,8 +732,8 @@ class ConfidenceAnalyzer:
             early_cutoff = session.start_time + boundary_window
             late_cutoff = session.end_time - boundary_window
             
-            early_associations = [(ts, rssi) for ts, rssi, _, _ in associations if ts <= early_cutoff]
-            late_associations = [(ts, rssi) for ts, rssi, _, _ in associations if ts >= late_cutoff]
+            early_associations = [(ts, rssi) for ts, rssi, _, _, _ in associations if ts <= early_cutoff]
+            late_associations = [(ts, rssi) for ts, rssi, _, _, _ in associations if ts >= late_cutoff]
             
             early_presence = len(early_associations) > 0
             late_presence = len(late_associations) > 0
@@ -486,6 +743,55 @@ class ConfidenceAnalyzer:
             
             early_rssi = sum(early_rssi_vals) / len(early_rssi_vals) if early_rssi_vals else None
             late_rssi = sum(late_rssi_vals) / len(late_rssi_vals) if late_rssi_vals else None
+            
+            # --- Enhanced analysis computations (v2) ---
+            # RSSI trend and variance
+            rssi_timestamps = [a[0] for a in associations if a[1] is not None]
+            rssi_vals_ordered = [a[1] for a in associations if a[1] is not None]
+            _, rssi_std_dev, rssi_has_peak = self._compute_rssi_trend(rssi_timestamps, rssi_vals_ordered)
+            
+            # MAC randomization check
+            is_randomized = is_locally_administered_mac(mac)
+            
+            # Sighting burstiness
+            burstiness_cov = self._compute_burstiness(timestamps)
+            
+            # GPS spatial spread
+            gps_spread = self._compute_gps_spread(gps_coords)
+            
+            # Active (time-bucketed) presence ratio
+            active_presence = self._compute_active_presence_ratio(
+                timestamps, session.start_time, session.end_time
+            )
+            
+            # Scanner count
+            scanner_names = set(a[4] for a in associations if a[4] is not None)
+            scanner_count_val = max(1, len(scanner_names))
+            
+            # WiFi-specific: SSID analysis
+            ssid_data = con.execute("""
+                SELECT DISTINCT ssid FROM wifi_associations 
+                WHERE mac = ? AND ssid IS NOT NULL AND ssid != '' AND ssid != '<hidden>'
+            """, (mac,)).fetchall()
+            unique_ssids = [row[0] for row in ssid_data]
+            ssid_count = len(unique_ssids)
+            
+            # WiFi-specific: Packet type analysis (Beacon = AP, ProbeRequest = client)
+            packet_type_data = con.execute("""
+                SELECT packet_type, COUNT(*) FROM wifi_associations 
+                WHERE mac = ? AND packet_type IS NOT NULL
+                GROUP BY packet_type
+            """, (mac,)).fetchall()
+            pt_counts = {pt: cnt for pt, cnt in packet_type_data}
+            beacon_count = pt_counts.get('Beacon', 0)
+            probe_count = pt_counts.get('ProbeRequest', 0)
+            
+            if beacon_count > 0 and probe_count == 0:
+                is_beacon_device = True
+            elif probe_count > 0 and beacon_count == 0:
+                is_beacon_device = False
+            else:
+                is_beacon_device = None  # Mixed or unknown
             
             # OUI-based vendor and device type enrichment
             vendor_name, guessed_type = lookup_and_guess(mac)
@@ -507,7 +813,17 @@ class ConfidenceAnalyzer:
                     avg_rssi=avg_rssi,
                     hq_ratio=hq_ratio,
                     avg_distance_from_hq=avg_distance,
-                    session_count=session_count
+                    session_count=session_count,
+                    rssi_std_dev=rssi_std_dev,
+                    rssi_has_peak=rssi_has_peak,
+                    ssid_count=ssid_count,
+                    is_randomized_mac=is_randomized,
+                    manufacturer_name=vendor_name,
+                    burstiness_cov=burstiness_cov,
+                    is_beacon_device=is_beacon_device,
+                    gps_spread=gps_spread,
+                    scanner_count=scanner_count_val,
+                    active_presence_ratio=active_presence,
                 )
             
             return DeviceAnalysis(
@@ -530,7 +846,17 @@ class ConfidenceAnalyzer:
                 session_count=session_count,
                 whitelisted=is_whitelisted,
                 vendor_name=vendor_name,
-                guessed_type=guessed_type
+                guessed_type=guessed_type,
+                rssi_std_dev=rssi_std_dev,
+                rssi_has_peak=rssi_has_peak,
+                ssid_count=ssid_count,
+                ssid_list=unique_ssids,
+                is_beacon_device=is_beacon_device,
+                is_randomized_mac=is_randomized,
+                burstiness_cov=burstiness_cov,
+                active_presence_ratio=active_presence,
+                gps_spread_meters=gps_spread,
+                scanner_count=scanner_count_val,
             )
         finally:
             con.close()
@@ -547,7 +873,19 @@ class ConfidenceAnalyzer:
         avg_rssi: Optional[float],
         hq_ratio: Optional[float] = None,
         avg_distance_from_hq: Optional[float] = None,
-        session_count: int = 1
+        session_count: int = 1,
+        # Enhanced analysis parameters (v2)
+        rssi_std_dev: Optional[float] = None,
+        rssi_has_peak: bool = False,
+        ssid_count: Optional[int] = None,
+        is_randomized_mac: bool = False,
+        device_name: Optional[str] = None,
+        manufacturer_name: Optional[str] = None,
+        burstiness_cov: Optional[float] = None,
+        is_beacon_device: Optional[bool] = None,
+        gps_spread: Optional[float] = None,
+        scanner_count: int = 1,
+        active_presence_ratio: Optional[float] = None,
     ) -> Tuple[int, List[str]]:
         """
         Calculate confidence score based on various factors.
@@ -647,6 +985,112 @@ class ConfidenceAnalyzer:
                 confidence -= 5
                 factors.append(f"Seen in {session_count} sessions → -5")
         
+        # ---- Enhanced factors (v2) ----
+        
+        # Factor 9: RSSI Trend / Variance (movement detection)
+        # A rise-then-fall RSSI pattern indicates someone passing by the scanner
+        if rssi_has_peak:
+            confidence += 15
+            factors.append("RSSI rise-then-fall pattern detected → +15 (device passed by)")
+        elif rssi_std_dev is not None:
+            if rssi_std_dev > self.RSSI_HIGH_VARIANCE_THRESHOLD:
+                confidence += 8
+                factors.append(f"High RSSI variance (σ={rssi_std_dev:.1f} dBm) → +8 (moving device)")
+            elif rssi_std_dev < self.RSSI_LOW_VARIANCE_THRESHOLD and sighting_count >= 5:
+                confidence -= 8
+                factors.append(f"Low RSSI variance (σ={rssi_std_dev:.1f} dBm) → -8 (stationary)")
+        
+        # Factor 10: WiFi SSID Probing (WiFi only)
+        # Personal phones probe for multiple remembered networks
+        if ssid_count is not None:
+            if ssid_count >= 3:
+                confidence += 12
+                factors.append(f"Probes {ssid_count} unique SSIDs → +12 (personal device)")
+            elif ssid_count >= 1:
+                confidence += 5
+                factors.append(f"Probes {ssid_count} unique SSID(s) → +5")
+        
+        # Factor 11: MAC Randomization
+        # Randomized MACs indicate modern smartphones/tablets (iOS, Android)
+        if is_randomized_mac:
+            confidence += 10
+            factors.append("Randomized MAC (locally-administered) → +10 (modern personal device)")
+        
+        # Factor 12: Device Name/Manufacturer Classification
+        # Known personal device names boost confidence; SAR equipment lowers it
+        device_classification = self._classify_device_name(device_name, manufacturer_name)
+        device_name_str = ' / '.join(filter(None, [device_name, manufacturer_name])) or 'unknown'
+        if device_classification == 'personal':
+            confidence += 12
+            factors.append(f"Personal device identified ({device_name_str}) → +12")
+        elif device_classification == 'sar_equipment':
+            confidence -= 15
+            factors.append(f"SAR/infrastructure equipment ({device_name_str}) → -15")
+        
+        # Factor 13: Sighting Burstiness (temporal clustering)
+        # Bursty/irregular sightings suggest a person passing through
+        if burstiness_cov is not None:
+            if burstiness_cov > self.HIGH_BURSTINESS_COV:
+                confidence += 8
+                factors.append(f"Bursty sighting pattern (CoV={burstiness_cov:.2f}) → +8 (irregular)")
+            elif burstiness_cov < self.LOW_BURSTINESS_COV:
+                confidence -= 8
+                factors.append(f"Regular sighting pattern (CoV={burstiness_cov:.2f}) → -8 (periodic)")
+        
+        # Factor 14: WiFi Packet Type (WiFi only)
+        # Beacon-only = access point (infrastructure), ProbeRequest-only = client device
+        if is_beacon_device is True:
+            confidence -= 20
+            factors.append("Beacon-only device (Access Point) → -20 (infrastructure)")
+        elif is_beacon_device is False:
+            confidence += 5
+            factors.append("ProbeRequest-only device (client) → +5 (personal device)")
+        
+        # Factor 15: GPS Spatial Spread
+        # Large spread = device is moving through the area
+        if gps_spread is not None:
+            if gps_spread > self.HIGH_GPS_SPREAD:
+                confidence += 10
+                factors.append(f"Large GPS spread ({gps_spread:.0f}m) → +10 (moving device)")
+            elif gps_spread < self.LOW_GPS_SPREAD and sighting_count >= 5:
+                confidence -= 5
+                factors.append(f"Tiny GPS spread ({gps_spread:.1f}m) → -5 (stationary)")
+        
+        # Factor 16: Cross-Scanner Consistency
+        # Devices seen by many scanners at once are likely ubiquitous SAR equipment
+        if scanner_count >= 3:
+            confidence -= 8
+            factors.append(f"Seen by {scanner_count} scanners → -8 (ubiquitous)")
+        elif scanner_count == 1 and sighting_count <= 5:
+            confidence += 3
+            factors.append("Single scanner, few sightings → +3 (localized)")
+        
+        # Factor 17: Active Presence Ratio (more accurate than span-based)
+        # Detects discrepancy between time span and actual sighting density
+        if active_presence_ratio is not None:
+            if presence_ratio > 0.5 and active_presence_ratio < 0.15:
+                confidence += 10
+                factors.append(f"Active presence much lower than span ({active_presence_ratio:.1%} vs {presence_ratio:.1%}) → +10 (sporadic)")
+        
+        # Factor 18: Signal Convergence (meta-factor)
+        # When multiple independent signals agree, boost the overall score
+        positive_count = sum(1 for f in factors if '→ +' in f)
+        negative_count = sum(1 for f in factors if '→ -' in f)
+        
+        if positive_count >= 5:
+            confidence += 10
+            factors.append(f"Strong signal convergence: {positive_count} positive indicators → +10")
+        elif positive_count >= 4:
+            confidence += 5
+            factors.append(f"Signal convergence: {positive_count} positive indicators → +5")
+        
+        if negative_count >= 5:
+            confidence -= 10
+            factors.append(f"Strong signal convergence: {negative_count} negative indicators → -10")
+        elif negative_count >= 4:
+            confidence -= 5
+            factors.append(f"Signal convergence: {negative_count} negative indicators → -5")
+        
         # Clamp to valid range
         confidence = max(0, min(100, confidence))
         
@@ -734,6 +1178,9 @@ class ConfidenceAnalyzer:
         # Count devices with GPS data
         has_gps = [a for a in self.analyses if a.hq_ratio is not None]
         multi_session = [a for a in self.analyses if a.session_count > 1]
+        randomized_macs = [a for a in self.analyses if a.is_randomized_mac]
+        beacon_devices = [a for a in self.analyses if a.is_beacon_device is True]
+        with_rssi_peak = [a for a in self.analyses if a.rssi_has_peak]
         
         return {
             "session": {
@@ -749,7 +1196,10 @@ class ConfidenceAnalyzer:
                 "low_confidence": len(low_confidence),
                 "whitelisted": len(whitelisted),
                 "with_gps_data": len(has_gps),
-                "multi_session": len(multi_session)
+                "multi_session": len(multi_session),
+                "randomized_macs": len(randomized_macs),
+                "beacon_devices": len(beacon_devices),
+                "rssi_peak_detected": len(with_rssi_peak)
             },
             "config": {
                 "hq_location": self.hq_coords,
@@ -810,14 +1260,44 @@ def run_analysis(dry_run: bool = False, verbose: bool = False) -> Dict:
             print(f"\n[{analysis.device_type.upper()}] {analysis.mac}")
             print(f"  Confidence: {analysis.old_confidence} → {analysis.new_confidence}")
             print(f"  Sightings: {analysis.sighting_count}, Avg RSSI: {avg_rssi_str}")
-            print(f"  Presence ratio: {analysis.presence_ratio:.1%}")
+            print(f"  Presence ratio: {analysis.presence_ratio:.1%} (active: {analysis.active_presence_ratio:.1%})" if analysis.active_presence_ratio is not None else f"  Presence ratio: {analysis.presence_ratio:.1%}")
             print(f"  Boundaries: early={analysis.early_presence}, late={analysis.late_presence}")
+            # RSSI trend
+            if analysis.rssi_std_dev is not None:
+                peak_str = " ⬆⬇ PEAK" if analysis.rssi_has_peak else ""
+                print(f"  RSSI σ={analysis.rssi_std_dev:.1f} dBm{peak_str}")
+            # MAC randomization
+            if analysis.is_randomized_mac:
+                print(f"  MAC: randomized (locally-administered)")
+            # GPS spread
+            if analysis.gps_spread_meters is not None:
+                print(f"  GPS spread: {analysis.gps_spread_meters:.0f}m from centroid")
+            # Scanner count
+            if analysis.scanner_count > 1:
+                print(f"  Scanners: {analysis.scanner_count}")
+            # Burstiness
+            if analysis.burstiness_cov is not None:
+                print(f"  Burstiness CoV: {analysis.burstiness_cov:.2f}")
             # Show enrichment for WiFi devices
             if analysis.device_type == "wifi":
                 if analysis.vendor_name:
                     print(f"  Vendor (OUI): {analysis.vendor_name}")
                 if analysis.guessed_type:
                     print(f"  Device Type (guess): {analysis.guessed_type}")
+                if analysis.ssid_count > 0:
+                    ssids_preview = ', '.join(analysis.ssid_list[:5])
+                    extra = f" (+{analysis.ssid_count - 5} more)" if analysis.ssid_count > 5 else ""
+                    print(f"  SSIDs probed ({analysis.ssid_count}): {ssids_preview}{extra}")
+                if analysis.is_beacon_device is True:
+                    print(f"  Packet type: Beacon (Access Point)")
+                elif analysis.is_beacon_device is False:
+                    print(f"  Packet type: ProbeRequest (client)")
+            # BT device name/manufacturer
+            if analysis.device_type == "bt":
+                if analysis.device_name:
+                    print(f"  BT Name: {analysis.device_name}")
+                if analysis.manufacturer_name:
+                    print(f"  BT Manufacturer: {analysis.manufacturer_name}")
             if analysis.factors:
                 print("  Factors:")
                 for f in analysis.factors:
@@ -832,6 +1312,9 @@ def run_analysis(dry_run: bool = False, verbose: bool = False) -> Dict:
     print(f"  Total devices analyzed: {len(analyses)}")
     print(f"  High confidence (≥70): {summary['devices']['high_confidence']}")
     print(f"  Low confidence (≤30): {summary['devices']['low_confidence']}")
+    print(f"  Randomized MACs: {summary['devices'].get('randomized_macs', 0)}")
+    print(f"  Beacon devices (APs): {summary['devices'].get('beacon_devices', 0)}")
+    print(f"  RSSI peaks detected: {summary['devices'].get('rssi_peak_detected', 0)}")
     
     if summary.get('high_confidence_devices'):
         print(f"\n  Top candidates (high confidence):")
