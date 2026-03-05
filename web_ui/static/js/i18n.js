@@ -16,6 +16,21 @@ const I18n = (function() {
     let currentLanguage = DEFAULT_LANGUAGE;
     let isLoaded = false;
 
+    // Cookie helpers (mirrors main app utilities)
+    function _setCookie(name, value, days) {
+        days = days || 365;
+        const expires = new Date(Date.now() + days * 864e5).toUTCString();
+        document.cookie = name + '=' + encodeURIComponent(value) + '; expires=' + expires + '; path=/; SameSite=Lax';
+    }
+    function _getCookie(name) {
+        const cookies = document.cookie.split('; ');
+        for (const c of cookies) {
+            const parts = c.split('=');
+            if (parts[0] === name) return decodeURIComponent(parts.slice(1).join('='));
+        }
+        return null;
+    }
+
     /**
      * Get nested property from object using dot notation
      * @param {Object} obj - The object to search
@@ -51,8 +66,9 @@ const I18n = (function() {
      * @returns {Promise<void>}
      */
     async function init() {
-        // Get saved language preference
-        const savedLang = localStorage.getItem(STORAGE_KEY);
+        // Get saved language preference (cookie first, then localStorage, then browser)
+        const cookieLang = _getCookie('sar_language');
+        const savedLang = cookieLang || localStorage.getItem(STORAGE_KEY);
         if (savedLang && SUPPORTED_LANGUAGES.includes(savedLang)) {
             currentLanguage = savedLang;
         } else {
@@ -190,6 +206,7 @@ const I18n = (function() {
         }
 
         currentLanguage = lang;
+        _setCookie('sar_language', lang);
         localStorage.setItem(STORAGE_KEY, lang);
         applyTranslations();
 

@@ -1658,7 +1658,8 @@
         let mapDataType = "all";
         let currentTab = "wifi-devices";
         let wsConnection = null;
-        let sidebarWidth = Math.floor(window.innerWidth * 0.5);
+        let savedSidebarWidth = getCookie('sar_sidebar_width');
+        let sidebarWidth = savedSidebarWidth ? parseInt(savedSidebarWidth, 10) : Math.floor(window.innerWidth * 0.5);
         let isDraggingDivider = false;
         let mapMinimized = false;
         let isPaused = false;  // Pause/resume data updates
@@ -1679,6 +1680,28 @@
         let currentTimePreset = 0; // hours, 0 = all (DEFAULT)
         let customTimeStart = null; // Unix timestamp
         let customTimeEnd = null;   // Unix timestamp
+
+        // ============= Cookie Utilities =============
+        /**
+         * Set a cookie with the given name, value, and expiry (in days).
+         * Defaults to 365 days.
+         */
+        function setCookie(name, value, days = 365) {
+            const expires = new Date(Date.now() + days * 864e5).toUTCString();
+            document.cookie = name + '=' + encodeURIComponent(value) + '; expires=' + expires + '; path=/; SameSite=Lax';
+        }
+
+        /**
+         * Get a cookie value by name. Returns null if not found.
+         */
+        function getCookie(name) {
+            const cookies = document.cookie.split('; ');
+            for (const c of cookies) {
+                const [k, ...v] = c.split('=');
+                if (k === name) return decodeURIComponent(v.join('='));
+            }
+            return null;
+        }
 
         // ============= Initialization =============
         function initTimeFilters() {
@@ -3046,6 +3069,10 @@
         });
 
         document.addEventListener("mouseup", () => {
+            if (isDraggingDivider) {
+                isDraggingDivider = false;
+                setCookie('sar_sidebar_width', sidebarWidth);
+            }
             isDraggingDivider = false;
         });
 
@@ -3278,8 +3305,8 @@
 
         // ============= Dark Mode Toggle =============
         function initDarkMode() {
-            // Check if user has a saved preference
-            const savedTheme = localStorage.getItem('theme-preference');
+            // Check cookie first, then localStorage fallback, then OS preference
+            const savedTheme = getCookie('sar_theme') || localStorage.getItem('theme-preference');
             const isDarkMode = savedTheme === 'dark' || 
                               (savedTheme === null && window.matchMedia('(prefers-color-scheme: dark)').matches);
             
@@ -3293,9 +3320,11 @@
         document.getElementById("darkModeToggle").addEventListener("change", (e) => {
             if (e.target.checked) {
                 document.body.classList.add('dark-mode');
+                setCookie('sar_theme', 'dark');
                 localStorage.setItem('theme-preference', 'dark');
             } else {
                 document.body.classList.remove('dark-mode');
+                setCookie('sar_theme', 'light');
                 localStorage.setItem('theme-preference', 'light');
             }
             updateMapTiles();
@@ -3303,8 +3332,8 @@
 
         // ============= Tooltip Toggle =============
         function initTooltips() {
-            // Check if user has a saved preference (default is OFF)
-            const savedTooltips = localStorage.getItem('tooltips-enabled');
+            // Check cookie first, then localStorage fallback (default is OFF)
+            const savedTooltips = getCookie('sar_tooltips') || localStorage.getItem('tooltips-enabled');
             const showTooltips = savedTooltips === 'true';
             
             // Set initial state
@@ -3337,9 +3366,11 @@
         document.getElementById("tooltipToggle").addEventListener("change", (e) => {
             if (e.target.checked) {
                 document.body.classList.add('show-tooltips');
+                setCookie('sar_tooltips', 'true');
                 localStorage.setItem('tooltips-enabled', 'true');
             } else {
                 document.body.classList.remove('show-tooltips');
+                setCookie('sar_tooltips', 'false');
                 localStorage.setItem('tooltips-enabled', 'false');
             }
             applyTooltipTitles();
@@ -3540,6 +3571,15 @@
                 }, { once: true });
             }
             
+            // Apply saved sidebar width from cookie
+            if (savedSidebarWidth) {
+                const sw = parseInt(savedSidebarWidth, 10);
+                if (sw > 250 && sw < window.innerWidth - 100) {
+                    document.getElementById('sidebar').style.width = sw + 'px';
+                    sidebarWidth = sw;
+                }
+            }
+
             initMap();
             updateStatus();
             updateLiveTime();
