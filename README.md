@@ -43,6 +43,7 @@ The prototype has been successfully tested on:
 - **GPS integration** — coordinates and time tagging for all detections
 - **SQLite storage** with optimized schema and WAL mode
 - **Automatic manufacturer resolution** — Bluetooth SIG company IDs + WiFi OUI vendors
+- **Expanded device type classification** — identifies phones, routers, wearables, headphones, hearing aids, pacemakers, insulin pumps, drones, SAR devices, IoT, TVs, home appliances, civil infrastructure, and more using BLE service UUIDs, device names, OUI vendors, WiFi SSIDs, and heuristics
 - **Analyst notes** — add custom annotations to Bluetooth and WiFi devices
 - **Dual-mode operation** — scan BT only, WiFi only, or both simultaneously
 - **Supervisor watchdog** — keeps scanner running, creates timestamped database backups
@@ -67,6 +68,7 @@ SAR_BT_Scan/
 ├── wifi_oui_lookup.py         # IEEE OUI vendor database (38,904 entries)
 ├── freeze_wifi_oui.py         # Utility to update OUI database from IEEE registry
 ├── confidence_analyzer.py     # Device confidence scoring algorithm
+├── device_type_classifier.py  # Expanded device type classification (21 categories)
 ├── triangulation.py           # Device location and movement analysis
 ├── ble_protocol.py            # BLE GATT protocol definitions
 ├── ble_publisher.py           # BLE GATT sighting broadcaster
@@ -667,6 +669,7 @@ Example post-processing map:
 - [USER_GUIDE_PL.md](USER_GUIDE_PL.md) — Podręcznik użytkownika (Polish)
 - [docs/WIFI_SETUP.md](docs/WIFI_SETUP.md) — Detailed WiFi adapter configuration and monitor mode setup
 - [docs/CONFIDENCE_ANALYZER.md](docs/CONFIDENCE_ANALYZER.md) — Device confidence scoring algorithm
+- [docs/DEVICE_TYPE_CLASSIFIER.md](docs/DEVICE_TYPE_CLASSIFIER.md) — Expanded device type classification
 - [docs/TRIANGULATION.md](docs/TRIANGULATION.md) — Device triangulation and movement analysis
 - [docs/WEB_UI_README.md](docs/WEB_UI_README.md) — Full web dashboard documentation
 - [docs/WEB_UI_QUICKSTART.md](docs/WEB_UI_QUICKSTART.md) — Web dashboard quick start guide
@@ -708,6 +711,7 @@ Example post-processing map:
 - ✅ Dark/light theme support
 - ✅ Interactive device tooltips with notes editing
 - ✅ BLE GATT publisher for companion apps
+- ✅ Expanded device type classification (21 categories, BLE UUIDs + name + vendor + SSID heuristics)
 - 🕓 Configurable SSID filtering  
 - 🕓 Meshtastic telemetry for live updates  
 - 🕓 Export to GeoJSON and QGIS project

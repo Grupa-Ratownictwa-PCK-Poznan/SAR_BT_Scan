@@ -62,6 +62,14 @@ except ImportError:
     MAC_UTILS_AVAILABLE = False
     def is_locally_administered_mac(mac): return False
 
+# Import device type classifier (expanded analysis)
+try:
+    from device_type_classifier import classify_device
+    CLASSIFIER_AVAILABLE = True
+except ImportError:
+    CLASSIFIER_AVAILABLE = False
+    def classify_device(**kwargs): return ""
+
 # Database path resolution (same logic as storage.py)
 DB_PATH = SD_STORAGE + DB_FILE
 if not os.path.exists(DB_PATH):
@@ -546,9 +554,9 @@ class ConfidenceAnalyzer:
             
             first_seen, last_seen, old_confidence, bt_name, bt_manufacturer = device
             
-            # Get all sightings for this device with GPS and scanner data
+            # Get all sightings for this device with GPS, scanner, and service data
             sightings = con.execute("""
-                SELECT ts_unix, rssi, lat, lon, scanner_name FROM sightings 
+                SELECT ts_unix, rssi, lat, lon, scanner_name, service_uuid, local_name FROM sightings 
                 WHERE addr = ? AND ts_unix IS NOT NULL
                 ORDER BY ts_unix
             """, (addr,)).fetchall()
@@ -579,8 +587,8 @@ class ConfidenceAnalyzer:
             early_cutoff = session.start_time + boundary_window
             late_cutoff = session.end_time - boundary_window
             
-            early_sightings = [(ts, rssi) for ts, rssi, _, _, _ in sightings if ts <= early_cutoff]
-            late_sightings = [(ts, rssi) for ts, rssi, _, _, _ in sightings if ts >= late_cutoff]
+            early_sightings = [(s[0], s[1]) for s in sightings if s[0] <= early_cutoff]
+            late_sightings = [(s[0], s[1]) for s in sightings if s[0] >= late_cutoff]
             
             early_presence = len(early_sightings) > 0
             late_presence = len(late_sightings) > 0
@@ -617,6 +625,20 @@ class ConfidenceAnalyzer:
             
             # OUI-based vendor and device type enrichment (hybrid approach for BT too)
             vendor_name, guessed_type = lookup_and_guess(addr)
+            
+            # Collect unique service UUIDs from all sightings for classification
+            service_uuids = list(set(s[5] for s in sightings if s[5]))
+            
+            # Expanded device type classification (name + manufacturer + UUIDs + OUI)
+            classified_type = classify_device(
+                name=bt_name,
+                manufacturer=bt_manufacturer,
+                service_uuids=service_uuids,
+                oui_vendor=vendor_name,
+                is_randomized_mac=is_randomized,
+            )
+            if classified_type:
+                guessed_type = classified_type
             
             # Calculate new confidence
             if is_whitelisted:
@@ -795,6 +817,16 @@ class ConfidenceAnalyzer:
             
             # OUI-based vendor and device type enrichment
             vendor_name, guessed_type = lookup_and_guess(mac)
+            
+            # Expanded device type classification (OUI + SSIDs + beacon + MAC)
+            classified_type = classify_device(
+                oui_vendor=vendor_name,
+                ssids=unique_ssids,
+                is_beacon=is_beacon_device,
+                is_randomized_mac=is_randomized,
+            )
+            if classified_type:
+                guessed_type = classified_type
             
             # Calculate new confidence
             if is_whitelisted:
@@ -1139,10 +1171,25 @@ class ConfidenceAnalyzer:
         try:
             for analysis in self.analyses:
                 if analysis.device_type == "bt":
-                    con.execute(
-                        "UPDATE devices SET confidence = ? WHERE addr = ?",
-                        (analysis.new_confidence, analysis.mac)
-                    )
+                    if analysis.guessed_type:
+                        # Persist classified device type to notes field
+                        row = con.execute("SELECT notes FROM devices WHERE addr = ?", (analysis.mac,)).fetchone()
+                        existing = (row[0] or '') if row else ''
+                        # Remove old [type:...] tag if present
+                        if existing.startswith('[type:'):
+                            bracket_end = existing.find(']')
+                            if bracket_end >= 0:
+                                existing = existing[bracket_end + 1:].strip()
+                        new_notes = f"[type:{analysis.guessed_type}] {existing}".strip()
+                        con.execute(
+                            "UPDATE devices SET confidence = ?, notes = ? WHERE addr = ?",
+                            (analysis.new_confidence, new_notes, analysis.mac)
+                        )
+                    else:
+                        con.execute(
+                            "UPDATE devices SET confidence = ? WHERE addr = ?",
+                            (analysis.new_confidence, analysis.mac)
+                        )
                     bt_count += 1
                 else:
                     # Update confidence, vendor, and device_type for WiFi devices
@@ -1298,6 +1345,8 @@ def run_analysis(dry_run: bool = False, verbose: bool = False) -> Dict:
                     print(f"  BT Name: {analysis.device_name}")
                 if analysis.manufacturer_name:
                     print(f"  BT Manufacturer: {analysis.manufacturer_name}")
+                if analysis.guessed_type:
+                    print(f"  Device Type: {analysis.guessed_type}")
             if analysis.factors:
                 print("  Factors:")
                 for f in analysis.factors:

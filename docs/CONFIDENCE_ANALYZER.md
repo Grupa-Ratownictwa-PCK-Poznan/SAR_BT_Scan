@@ -14,6 +14,7 @@ This helps SAR teams quickly identify devices of interest by filtering out their
 - **RSSI trend analysis** - detects pass-by patterns (rise-then-fall signal)
 - **WiFi SSID probing** - personal phones probe for remembered networks
 - **WiFi packet type** - distinguishes clients (ProbeRequest) from APs (Beacon)
+- **Expanded device type classification** - 21 categories via BLE service UUIDs, name keywords, OUI vendors, WiFi SSIDs, and heuristics (see [DEVICE_TYPE_CLASSIFIER.md](DEVICE_TYPE_CLASSIFIER.md))
 - **MAC randomization detection** - randomized MACs indicate modern personal devices
 - **Device name/manufacturer classification** - identifies personal vs SAR equipment
 - **Sighting burstiness** - irregular patterns suggest a person passing through
@@ -193,6 +194,8 @@ Checks BLE advertised name and manufacturer against keyword lists to identify pe
 **Personal keywords:** iphone, ipad, galaxy, samsung, pixel, airpods, fitbit, beats, jbl, tile, airtag, etc.
 
 **SAR/infrastructure keywords:** garmin, kenwood, motorola solutions, baofeng, dji, drone, ubiquiti, cisco, raspberry, esp32, etc.
+
+> **Note:** In addition to this confidence scoring factor, the analyzer now runs the expanded **Device Type Classifier** (`device_type_classifier.py`) which provides a detailed category label (e.g., `phone`, `headphones`, `hearing_aid`, `insulin_pump`, `drone`, `router`, etc.) based on BLE service UUIDs, device names, manufacturer names, OUI vendors, WiFi SSIDs, and beacon status. See [DEVICE_TYPE_CLASSIFIER.md](DEVICE_TYPE_CLASSIFIER.md) for the full list of 21 categories and classification rules.
 
 ### Factor 13: Sighting Burstiness (NEW v2)
 
@@ -412,7 +415,7 @@ Factors:
 The analyzer requires:
 
 - **BT Devices**: `devices` table with `addr`, `first_seen`, `last_seen`, `confidence`, `name`, `manufacturer`
-- **BT Sightings**: `sightings` table with `addr`, `ts_unix`, `rssi`, `lat`, `lon`, `scanner_name`
+- **BT Sightings**: `sightings` table with `addr`, `ts_unix`, `rssi`, `lat`, `lon`, `scanner_name`, `service_uuid`, `local_name`
 - **WiFi Devices**: `wifi_devices` table with `mac`, `first_seen`, `last_seen`, `confidence`
 - **WiFi Associations**: `wifi_associations` table with `mac`, `ts_unix`, `rssi`, `lat`, `lon`, `ssid`, `packet_type`, `scanner_name`
 
@@ -602,6 +605,11 @@ If `HQ_LATITUDE` and `HQ_LONGITUDE` are not set (None), the analyzer automatical
 - [ ] Historical trend analysis dashboard
 - [ ] Automated report generation
 - [ ] Custom keyword lists via configuration file (instead of code)
+
+### Completed (v3)
+- [x] Expanded device type classification — 21 categories using BLE service UUIDs, name/manufacturer keywords, OUI vendors, WiFi SSIDs, beacon status, and MAC heuristics (see [DEVICE_TYPE_CLASSIFIER.md](DEVICE_TYPE_CLASSIFIER.md))
+- [x] BT device type persisted to `notes` field as `[type:...]` tag
+- [x] WiFi device type classification (replaces simple OUI guess with multi-signal classifier)
 
 ### Completed (v2)
 - [x] Device name/manufacturer analysis
