@@ -924,9 +924,17 @@
         // ============= i18n Helper =============
         function t(key, fallback = '') {
             if (typeof I18n !== 'undefined' && I18n.isReady()) {
-                return I18n.t(key);
+                const translated = I18n.t(key);
+                return translated !== key ? translated : fallback;
             }
-            return fallback;
+            return fallback || key;
+        }
+
+        function currentLocale() {
+            const lang = typeof I18n !== 'undefined' ? I18n.getLanguage() : 'en';
+            if (lang === 'pl') return 'pl-PL';
+            if (lang === 'de') return 'de-DE';
+            return 'en-US';
         }
 
         // ============= Note Saving Function =============
@@ -955,7 +963,7 @@
                 
                 if (!response.ok) {
                     const error = await response.json();
-                    throw new Error(error.error || 'Failed to save note');
+                    throw new Error(error.error || t('triangulation.saveNoteFailed', 'Failed to save note'));
                 }
                 
                 // Update current result
@@ -1095,7 +1103,7 @@
                 
                 if (!response.ok) {
                     const error = await response.json();
-                    throw new Error(error.error || 'Analysis failed');
+                    throw new Error(error.error || t('triangulation.analysisFailed', 'Analysis failed'));
                 }
                 
                 const result = await response.json();
@@ -1328,7 +1336,7 @@
                                 ${cluster.center_lat.toFixed(6)}, ${cluster.center_lon.toFixed(6)}
                             </div>
                             <div style="margin-top: 4px;">
-                                ${cluster.avg_rssi ? `RSSI: ${cluster.avg_rssi.toFixed(1)} dBm | ` : ''}
+                                ${cluster.avg_rssi ? `${t('common.rssi', 'RSSI')}: ${cluster.avg_rssi.toFixed(1)} dBm | ` : ''}
                                 ${cluster.first_seen_str ? formatTime(cluster.first_seen) : ''} 
                                 - ${cluster.last_seen_str ? formatTime(cluster.last_seen) : ''}
                             </div>
@@ -1432,11 +1440,11 @@
                 let popupContent = `
                     <div class="popup-time">${point.time_display}</div>
                     <div class="popup-info">
-                        <strong>${point.source.toUpperCase()}</strong><br>
+                        <strong>${point.source === 'bt' ? t('common.bt', 'BT') : t('common.wifi', 'WiFi')}</strong><br>
                 `;
-                if (point.rssi) popupContent += `RSSI: ${point.rssi} dBm<br>`;
-                if (point.ssid) popupContent += `SSID: ${point.ssid}<br>`;
-                if (point.name) popupContent += `Name: ${point.name}<br>`;
+                if (point.rssi) popupContent += `${t('common.rssi', 'RSSI')}: ${point.rssi} dBm<br>`;
+                if (point.ssid) popupContent += `${t('common.ssid', 'SSID')}: ${point.ssid}<br>`;
+                if (point.name) popupContent += `${t('common.name', 'Name')}: ${point.name}<br>`;
                 popupContent += `
                         <small>${point.lat.toFixed(6)}, ${point.lon.toFixed(6)}</small>
                     </div>
@@ -1461,8 +1469,8 @@
                     clusterMarker.bindPopup(`
                         <div class="popup-time">Cluster #${index + 1}</div>
                         <div class="popup-info">
-                            ${cluster.sighting_count} sightings<br>
-                            ${cluster.avg_rssi ? `Avg RSSI: ${cluster.avg_rssi.toFixed(1)} dBm` : ''}
+                            ${cluster.sighting_count} ${t('triangulation.clusters.sightings', 'sightings')}<br>
+                            ${cluster.avg_rssi ? `${t('triangulation.statistics.avgRssi', 'Avg RSSI')}: ${cluster.avg_rssi.toFixed(1)} dBm` : ''}
                         </div>
                     `);
                 });
@@ -1491,13 +1499,13 @@
         function formatDateTime(timestamp) {
             if (!timestamp) return '—';
             const date = new Date(timestamp * 1000);
-            return date.toLocaleString();
+            return date.toLocaleString(currentLocale());
         }
 
         function formatTime(timestamp) {
             if (!timestamp) return '—';
             const date = new Date(timestamp * 1000);
-            return date.toLocaleTimeString();
+            return date.toLocaleTimeString(currentLocale());
         }
 
         function formatDistance(meters) {

@@ -41,6 +41,7 @@
     "bt": "BT",
     "wifi": "WiFi",
     "hidden": "Hidden Network"
+    ,"unknown": "Unknown"
   },
   "dashboard": {
     "title": "SAR Scanner - Live Dashboard",
@@ -82,6 +83,12 @@
       "wifiAssocTab": "WiFi Assoc",
       "macAddress": "MAC Address",
       "packetType": "Packet Type",
+      "packetBeacon": "Beacon",
+      "packetProbe": "Probe",
+      "packetAccessPoint": "AP",
+      "packetBeaconAp": "Beacon (AP)",
+      "packetProbeClient": "Probe (Client)",
+      "bluetooth": "Bluetooth",
       "noDevices": "No devices found",
       "noSightings": "No sightings found",
       "noAssociations": "No associations found"
@@ -94,11 +101,15 @@
       "timeRange": "Time Range",
       "customRange": "Or set custom range:",
       "applyRange": "Apply Range",
+      "selectStartEnd": "Please select both start and end times",
       "all": "All"
     },
     "map": {
       "title": "Map Display",
       "heatmapOverlay": "Heatmap Overlay",
+      "signalDetails": "Signal Details",
+      "signal": "Signal",
+      "intensity": "Intensity",
       "both": "BT+WiFi"
     },
     "actions": {
@@ -147,9 +158,15 @@
       "errorUpdate": "❌ Error updating system:",
       "errorReboot": "❌ Error initiating reboot:",
       "errorShutdown": "❌ Error initiating shutdown:",
+      "errorUpdateOui": "Error updating OUI database:",
       "noteSaved": "Note saved successfully",
       "errorSaveNote": "Error saving note:",
-      "editNotePrompt": "Edit note for device"
+      "editNotePrompt": "Edit note for device",
+      "updating": "Updating...",
+      "noOutput": "No output",
+      "unknownStatus": "Unknown status",
+      "unknownError": "Unknown error",
+      "na": "N/A"
     },
     "modal": {
       "confidenceAnalysis": "Confidence Analysis",
@@ -200,7 +217,8 @@
       "totalDistance": "Total Distance",
       "areaCovered": "Area Covered",
       "avgSpeed": "Avg Speed",
-      "maxSpeed": "Max Speed"
+      "maxSpeed": "Max Speed",
+      "avgRssi": "Avg RSSI"
     },
     "ssids": {
       "title": "Known SSIDs"
@@ -223,6 +241,7 @@
     },
     "loading": "Analyzing device sightings...",
     "analysisFailed": "Analysis Failed",
+    "saveNoteFailed": "Failed to save note",
     "noSightings": "No sightings found for this device",
     "pleaseEnterMac": "Please enter a MAC address"
   },

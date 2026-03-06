@@ -1703,6 +1703,29 @@
             return null;
         }
 
+        function t(key, fallback = '') {
+            if (typeof I18n !== 'undefined' && I18n.isReady()) {
+                const translated = I18n.t(key);
+                return translated !== key ? translated : fallback;
+            }
+            return fallback || key;
+        }
+
+        function currentLocale() {
+            const lang = typeof I18n !== 'undefined' ? I18n.getLanguage() : 'en';
+            if (lang === 'pl') return 'pl-PL';
+            if (lang === 'de') return 'de-DE';
+            return 'en-US';
+        }
+
+        function formatDateTimeFromSeconds(timestampSeconds) {
+            return new Date(timestampSeconds * 1000).toLocaleString(currentLocale());
+        }
+
+        function formatTimeFromSeconds(timestampSeconds) {
+            return new Date(timestampSeconds * 1000).toLocaleTimeString(currentLocale());
+        }
+
         // ============= Initialization =============
         function initTimeFilters() {
             // Set default datetime inputs (not used by default since currentTimePreset=0 means ALL)
@@ -1863,12 +1886,12 @@
                 const data = await response.json();
                 const serverDate = new Date(data.timestamp_str);
                 
-                const dateStr = serverDate.toLocaleDateString("en-US", {
+                const dateStr = serverDate.toLocaleDateString(currentLocale(), {
                     weekday: "short",
                     month: "short",
                     day: "2-digit"
                 });
-                const timeStr = serverDate.toLocaleTimeString("en-US", {
+                const timeStr = serverDate.toLocaleTimeString(currentLocale(), {
                     hour12: false,
                     hour: "2-digit",
                     minute: "2-digit",
@@ -1888,11 +1911,11 @@
             if (data.gps.fix_ok) {
                 gpsIndicator.className = "indicator active";
                 gpsValue.className = "indicator-value good";
-                gpsValue.textContent = "✓ FIXED";
+                gpsValue.textContent = `✓ ${t('dashboard.status.fixed', 'FIXED')}`;
             } else {
                 gpsIndicator.className = "indicator inactive";
                 gpsValue.className = "indicator-value error";
-                gpsValue.textContent = "✗ NO FIX";
+                gpsValue.textContent = `✗ ${t('dashboard.status.noFix', 'NO FIX')}`;
             }
 
             // Update satellites
@@ -1927,7 +1950,7 @@
                 } else {
                     gpsIndicator.className = "indicator inactive";
                     gpsValue.className = "indicator-value error";
-                    gpsValue.textContent = "✗ NO FIX";
+                    gpsValue.textContent = `✗ ${t('dashboard.status.noFix', 'NO FIX')}`;
                 }
 
                 // Update satellites
@@ -1956,11 +1979,11 @@
                     wifiMonitorIndicator.className = "indicator active";
                     wifiMonitorValue.className = "indicator-value good";
                     const bands = status.scanner.wifi_bands || "unknown";
-                    wifiMonitorValue.textContent = `✓ ON (${bands})`;
+                    wifiMonitorValue.textContent = `✓ ${t('dashboard.status.on', 'ON')} (${bands})`;
                 } else {
                     wifiMonitorIndicator.className = "indicator inactive";
                     wifiMonitorValue.className = "indicator-value error";
-                    wifiMonitorValue.textContent = "✗ OFF";
+                    wifiMonitorValue.textContent = `✗ ${t('dashboard.status.off', 'OFF')}`;
                 }
             } catch (error) {
                 console.error("Error updating status:", error);
@@ -2085,11 +2108,11 @@
                             </div>
                             ${device.confidence}
                         </td>
-                        <td>${new Date(device.last_seen * 1000).toLocaleTimeString()}</td>
+                        <td>${formatTimeFromSeconds(device.last_seen)}</td>
                         <td style="max-width: 150px;">
                             <div class="note-cell">
                                 <span class="note-text" title="${escapedNotes}">${device.notes || "—"}</span>
-                                <button class="note-edit-btn" onclick="event.stopPropagation(); editBTNote('${device.mac}', '${escapedNotes}')" title="Edit note">
+                                <button class="note-edit-btn" onclick="event.stopPropagation(); editBTNote('${device.mac}', '${escapedNotes}')" title="${t('common.editNote', 'Edit note')}">
                                     <i class="fas fa-edit"></i>
                                 </button>
                             </div>
@@ -2128,7 +2151,7 @@
                             </div>
                             ${s.rssi}
                         </td>
-                        <td>${new Date(s.timestamp * 1000).toLocaleTimeString()}</td>
+                        <td>${formatTimeFromSeconds(s.timestamp)}</td>
                     </tr>
                 `;
             }).join("");
@@ -2158,11 +2181,11 @@
                             </div>
                             ${device.confidence}
                         </td>
-                        <td>${new Date(device.last_seen * 1000).toLocaleTimeString()}</td>
+                        <td>${formatTimeFromSeconds(device.last_seen)}</td>
                         <td style="max-width: 150px;">
                             <div class="note-cell">
                                 <span class="note-text" title="${escapedNotes}">${device.notes || "—"}</span>
-                                <button class="note-edit-btn" onclick="event.stopPropagation(); editWiFiNote('${device.mac}', '${escapedNotes}')" title="Edit note">
+                                <button class="note-edit-btn" onclick="event.stopPropagation(); editWiFiNote('${device.mac}', '${escapedNotes}')" title="${t('common.editNote', 'Edit note')}">
                                     <i class="fas fa-edit"></i>
                                 </button>
                             </div>
@@ -2192,10 +2215,10 @@
                 const rssiPercent = Math.max(0, Math.min(100, (a.rssi + 100)));
                 const hasNote = wifiDevicesWithNotes.has(a.mac);
                 const rssiColor = rssiPercent > 70 ? "#2ecc71" : rssiPercent > 40 ? "#e67e22" : "#e74c3c";
-                const timestamp = new Date(a.timestamp * 1000).toLocaleString();
+                const timestamp = formatDateTimeFromSeconds(a.timestamp);
                 const packetTypeBadge = a.packet_type === 'Beacon' 
-                    ? '<span style="background: #3498db; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; font-weight: bold;">📡 Beacon</span>'
-                    : '<span style="background: #e74c3c; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; font-weight: bold;">🔍 Probe</span>';
+                    ? '<span style="background: #3498db; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; font-weight: bold;">📡 ' + t('dashboard.data.packetBeacon', 'Beacon') + '</span>'
+                    : '<span style="background: #e74c3c; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; font-weight: bold;">🔍 ' + t('dashboard.data.packetProbe', 'Probe') + '</span>';
                 return `
                     <tr class="${hasNote ? 'has-note' : ''}">
                         <td class="mac-addr clickable-mac" data-mac="${a.mac}" style="cursor: pointer; color: var(--accent-blue); text-decoration: underline;">${a.mac}</td>
@@ -2262,36 +2285,38 @@
                     // Format popup content
                     let popupHTML = `
                         <div style="font-size: 12px; width: 200px;">
-                            <b>Signal Details</b><hr style="margin: 5px 0;">
+                            <b>${t('dashboard.map.signalDetails', 'Signal Details')}</b><hr style="margin: 5px 0;">
                     `;
                     
                     // Device MAC
                     if (point.mac) {
-                        popupHTML += `<b>MAC:</b> ${point.mac}<br>`;
+                        popupHTML += `<b>${t('common.mac', 'MAC')}:</b> ${point.mac}<br>`;
                     }
                     
                     // SSID (for WiFi)
                     if (point.ssid) {
-                        popupHTML += `<b>SSID:</b> ${point.ssid}<br>`;
+                        popupHTML += `<b>${t('common.ssid', 'SSID')}:</b> ${point.ssid}<br>`;
                     }
                     
                     // Packet Type (for WiFi associations)
                     if (point.packet_type) {
-                        const typeLabel = point.packet_type === 'Beacon' ? '📡 Beacon (AP)' : '🔍 Probe (Client)';
-                        popupHTML += `<b>Packet:</b> ${typeLabel}<br>`;
+                        const typeLabel = point.packet_type === 'Beacon'
+                            ? `📡 ${t('dashboard.data.packetBeaconAp', 'Beacon (AP)')}`
+                            : `🔍 ${t('dashboard.data.packetProbeClient', 'Probe (Client)')}`;
+                        popupHTML += `<b>${t('dashboard.data.packetType', 'Packet Type')}:</b> ${typeLabel}<br>`;
                     }
                     
                     // Signal strength
-                    popupHTML += `<b>Signal:</b> ${rssi} dBm<br>`;
-                    popupHTML += `<b>Intensity:</b> ${(intensity * 100).toFixed(0)}%<br>`;
+                    popupHTML += `<b>${t('dashboard.map.signal', 'Signal')}:</b> ${rssi} dBm<br>`;
+                    popupHTML += `<b>${t('dashboard.map.intensity', 'Intensity')}:</b> ${(intensity * 100).toFixed(0)}%<br>`;
                     
                     // Type (BT or WiFi)
-                    popupHTML += `<b>Type:</b> ${point.type === 'assoc' ? 'WiFi' : 'Bluetooth'}<br>`;
+                    popupHTML += `<b>${t('common.type', 'Type')}:</b> ${point.type === 'assoc' ? t('common.wifi', 'WiFi') : t('dashboard.data.bluetooth', 'Bluetooth')}<br>`;
                     
                     // Timestamp
                     if (point.timestamp) {
                         const date = new Date(point.timestamp * 1000);
-                        popupHTML += `<b>Time:</b> ${date.toLocaleString()}<br>`;
+                        popupHTML += `<b>${t('common.time', 'Time')}:</b> ${date.toLocaleString(currentLocale())}<br>`;
                     }
                     
                     popupHTML += `</div>`;
@@ -2303,7 +2328,7 @@
                         weight: 1,
                         opacity: 0.7,
                         fillOpacity: intensity,
-                        title: `${point.mac || 'Unknown'} - ${point.ssid || 'BT'}`
+                        title: `${point.mac || t('common.unknown', 'Unknown')} - ${point.ssid || t('common.bt', 'BT')}`
                     });
                     
                     circleMarker.bindPopup(popupHTML);
@@ -2460,7 +2485,7 @@
             const titleDiv = tooltip.querySelector(".device-tooltip-title");
             
             // Update title to reflect BT device
-            titleDiv.innerHTML = `BT Device Details <button class="device-tooltip-close" onclick="closeDeviceTooltip()">&times;</button>`;
+            titleDiv.innerHTML = `${t('dashboard.tooltip.btDetails', 'BT Device Details')} <button class="device-tooltip-close" onclick="closeDeviceTooltip()">&times;</button>`;
 
             // Decode HTML entities in notes
             const decodedNotes = notes.replace(/&quot;/g, '"').replace(/&#39;/g, "'");
@@ -2468,7 +2493,7 @@
             // Build tooltip HTML
             let html = `
                 <div class="device-tooltip-row">
-                    <span class="device-tooltip-label">MAC:</span>
+                    <span class="device-tooltip-label">${t('common.mac', 'MAC')}:</span>
                     <span class="device-tooltip-value" style="font-family: 'Courier New', monospace;">${mac}</span>
                 </div>
             `;
@@ -2476,7 +2501,7 @@
             if (name && name !== "—") {
                 html += `
                     <div class="device-tooltip-row">
-                        <span class="device-tooltip-label">Name:</span>
+                        <span class="device-tooltip-label">${t('common.name', 'Name')}:</span>
                         <span class="device-tooltip-value">${name}</span>
                     </div>
                 `;
@@ -2485,7 +2510,7 @@
             if (manufacturer && manufacturer !== "—") {
                 html += `
                     <div class="device-tooltip-row">
-                        <span class="device-tooltip-label">Manufacturer:</span>
+                        <span class="device-tooltip-label">${t('common.manufacturer', 'Manufacturer')}:</span>
                         <span class="device-tooltip-value">${manufacturer}</span>
                     </div>
                 `;
@@ -2493,15 +2518,15 @@
 
             html += `
                 <div class="device-tooltip-row">
-                    <span class="device-tooltip-label">Last Seen:</span>
-                    <span class="device-tooltip-value">${new Date(lastSeen * 1000).toLocaleString()}</span>
+                    <span class="device-tooltip-label">${t('common.lastSeen', 'Last Seen')}:</span>
+                    <span class="device-tooltip-value">${formatDateTimeFromSeconds(lastSeen)}</span>
                 </div>
             `;
 
             if (confidence !== undefined && confidence !== null) {
                 html += `
                     <div class="device-tooltip-row">
-                        <span class="device-tooltip-label">Confidence:</span>
+                        <span class="device-tooltip-label">${t('common.confidence', 'Confidence')}:</span>
                         <span class="device-tooltip-value">${confidence}%</span>
                     </div>
                 `;
@@ -2511,12 +2536,12 @@
             html += `
                 <div class="device-tooltip-notes">
                     <div class="device-tooltip-notes-title">
-                        <i class="fas fa-sticky-note"></i> Notes
+                        <i class="fas fa-sticky-note"></i> ${t('common.notes', 'Notes')}
                     </div>
-                    <textarea id="btNoteInput" class="device-tooltip-notes-input" placeholder="Add notes about this device...">${decodedNotes}</textarea>
+                    <textarea id="btNoteInput" class="device-tooltip-notes-input" placeholder="${t('common.addNotes', 'Add notes about this device...')}">${decodedNotes}</textarea>
                     <div class="device-tooltip-notes-actions">
                         <button class="device-tooltip-notes-btn save" onclick="saveBTNoteFromTooltip('${mac}')">
-                            <i class="fas fa-save"></i> Save
+                            <i class="fas fa-save"></i> ${t('common.save', 'Save')}
                         </button>
                     </div>
                 </div>
@@ -2527,7 +2552,7 @@
                 <div style="margin-top: 12px; padding-top: 10px; border-top: 1px solid #ddd;">
                     <button onclick="openTriangulation('${mac}')" 
                             style="width: 100%; padding: 8px 12px; background: var(--rc-red); color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 11px; display: flex; align-items: center; justify-content: center; gap: 6px;">
-                        <i class="fas fa-crosshairs"></i> Analyze Location
+                        <i class="fas fa-crosshairs"></i> ${t('common.analyzeLocation', 'Analyze Location')}
                     </button>
                 </div>
             `;
@@ -2665,6 +2690,8 @@
             try {
                 const tooltip = document.getElementById("deviceTooltip");
                 const contentDiv = document.getElementById("deviceTooltipContent");
+                const titleDiv = tooltip.querySelector(".device-tooltip-title");
+                titleDiv.innerHTML = `${t('dashboard.tooltip.wifiDetails', 'WiFi Device Details')} <button class="device-tooltip-close" onclick="closeDeviceTooltip()">&times;</button>`;
 
                 // Fetch detailed device information and SSIDs
                 let deviceInfo = {};
@@ -2681,7 +2708,7 @@
                 // Build tooltip HTML
                 let html = `
                     <div class="device-tooltip-row">
-                        <span class="device-tooltip-label">MAC:</span>
+                        <span class="device-tooltip-label">${t('common.mac', 'MAC')}:</span>
                         <span class="device-tooltip-value" style="font-family: 'Courier New', monospace;">${mac}</span>
                     </div>
                 `;
@@ -2691,17 +2718,17 @@
                 if (displayVendor !== "—") {
                     html += `
                         <div class="device-tooltip-row">
-                            <span class="device-tooltip-label">Vendor:</span>
+                            <span class="device-tooltip-label">${t('common.vendor', 'Vendor')}:</span>
                             <span class="device-tooltip-value">${displayVendor}</span>
                         </div>
                     `;
                 }
 
                 // Display device type if available
-                if (deviceInfo.device_type && deviceInfo.device_type !== "Unknown") {
+                if (deviceInfo.device_type && deviceInfo.device_type !== t('common.unknown', 'Unknown')) {
                     html += `
                         <div class="device-tooltip-row">
-                            <span class="device-tooltip-label">Type:</span>
+                            <span class="device-tooltip-label">${t('common.type', 'Type')}:</span>
                             <span class="device-tooltip-value">${deviceInfo.device_type}</span>
                         </div>
                     `;
@@ -2711,7 +2738,7 @@
                 if (deviceInfo.confidence > 0) {
                     html += `
                         <div class="device-tooltip-row">
-                            <span class="device-tooltip-label">Confidence:</span>
+                            <span class="device-tooltip-label">${t('common.confidence', 'Confidence')}:</span>
                             <span class="device-tooltip-value">${deviceInfo.confidence}%</span>
                         </div>
                     `;
@@ -2721,8 +2748,8 @@
                 if (deviceInfo.first_seen) {
                     html += `
                         <div class="device-tooltip-row">
-                            <span class="device-tooltip-label">First Seen:</span>
-                            <span class="device-tooltip-value">${new Date(deviceInfo.first_seen * 1000).toLocaleString()}</span>
+                            <span class="device-tooltip-label">${t('common.firstSeen', 'First Seen')}:</span>
+                            <span class="device-tooltip-value">${formatDateTimeFromSeconds(deviceInfo.first_seen)}</span>
                         </div>
                     `;
                 }
@@ -2731,8 +2758,8 @@
                 const displayLastSeen = deviceInfo.last_seen || lastSeen;
                 html += `
                     <div class="device-tooltip-row">
-                        <span class="device-tooltip-label">Last Seen:</span>
-                        <span class="device-tooltip-value">${new Date(displayLastSeen * 1000).toLocaleString()}</span>
+                        <span class="device-tooltip-label">${t('common.lastSeen', 'Last Seen')}:</span>
+                        <span class="device-tooltip-value">${formatDateTimeFromSeconds(displayLastSeen)}</span>
                     </div>
                 `;
 
@@ -2741,12 +2768,12 @@
                 html += `
                     <div class="device-tooltip-notes">
                         <div class="device-tooltip-notes-title">
-                            <i class="fas fa-sticky-note"></i> Notes
+                            <i class="fas fa-sticky-note"></i> ${t('common.notes', 'Notes')}
                         </div>
-                        <textarea id="wifiNoteInput" class="device-tooltip-notes-input" placeholder="Add notes about this device...">${currentNotes}</textarea>
+                        <textarea id="wifiNoteInput" class="device-tooltip-notes-input" placeholder="${t('common.addNotes', 'Add notes about this device...')}">${currentNotes}</textarea>
                         <div class="device-tooltip-notes-actions">
                             <button class="device-tooltip-notes-btn save" onclick="saveWiFiNoteFromTooltip('${mac}')">
-                                <i class="fas fa-save"></i> Save
+                                <i class="fas fa-save"></i> ${t('common.save', 'Save')}
                             </button>
                         </div>
                     </div>
@@ -2756,15 +2783,15 @@
                 if (ssids.length > 0) {
                     html += `
                         <div class="device-tooltip-ssids">
-                            <div class="device-tooltip-ssids-title">SSIDs (${ssids.length}):</div>
+                            <div class="device-tooltip-ssids-title">${t('dashboard.tooltip.ssids', 'SSIDs')} (${ssids.length}):</div>
                     `;
                     ssids.forEach(ssidInfo => {
-                        const ssidName = ssidInfo.ssid ? ssidInfo.ssid : '<em>Hidden Network</em>';
+                        const ssidName = ssidInfo.ssid ? ssidInfo.ssid : `<em>${t('common.hidden', 'Hidden Network')}</em>`;
                         
                         // Group types for display
-                        const typeLabels = ssidInfo.types.map(t => {
-                            const typeLabel = t.type === 'Beacon' ? '📡 AP' : '🔍 Probe';
-                            const signalStr = t.avg_rssi ? ` (${t.avg_rssi} dBm)` : '';
+                        const typeLabels = ssidInfo.types.map(typeInfo => {
+                            const typeLabel = typeInfo.type === 'Beacon' ? `📡 ${t('dashboard.data.packetAccessPoint', 'AP')}` : `🔍 ${t('dashboard.data.packetProbe', 'Probe')}`;
+                            const signalStr = typeInfo.avg_rssi ? ` (${typeInfo.avg_rssi} dBm)` : '';
                             return `${typeLabel}${signalStr}`;
                         }).join(' • ');
                         
@@ -2775,7 +2802,7 @@
                                     ${typeLabels}
                                 </div>
                                 <div style="font-size: 11px; color: #555;">
-                                    Seen ${ssidInfo.count}× • Last: ${new Date(ssidInfo.last_seen * 1000).toLocaleTimeString()}
+                                    ${t('dashboard.tooltip.seen', 'Seen')} ${ssidInfo.count}x • ${t('dashboard.tooltip.last', 'Last')}: ${formatTimeFromSeconds(ssidInfo.last_seen)}
                                 </div>
                             </div>
                         `;
@@ -2784,8 +2811,8 @@
                 } else {
                     html += `
                         <div class="device-tooltip-ssids">
-                            <div class="device-tooltip-ssids-title">SSIDs:</div>
-                            <div style="color: #666; font-size: 12px; font-style: italic;">No SSIDs found</div>
+                            <div class="device-tooltip-ssids-title">${t('dashboard.tooltip.ssids', 'SSIDs')}:</div>
+                            <div style="color: #666; font-size: 12px; font-style: italic;">${t('dashboard.tooltip.noSsids', 'No SSIDs found')}</div>
                         </div>
                     `;
                 }
@@ -2795,7 +2822,7 @@
                     <div style="margin-top: 12px; padding-top: 10px; border-top: 1px solid #ddd;">
                         <button onclick="openTriangulation('${mac}')" 
                                 style="width: 100%; padding: 8px 12px; background: var(--rc-red); color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 11px; display: flex; align-items: center; justify-content: center; gap: 6px;">
-                            <i class="fas fa-crosshairs"></i> Analyze Location
+                            <i class="fas fa-crosshairs"></i> ${t('common.analyzeLocation', 'Analyze Location')}
                         </button>
                     </div>
                 `;
@@ -2818,7 +2845,7 @@
         // Edit BT note from table cell
         function editBTNote(mac, currentNote) {
             const decodedNote = currentNote.replace(/&quot;/g, '"').replace(/&#39;/g, "'");
-            const newNote = prompt("Edit note for device " + mac + ":", decodedNote);
+            const newNote = prompt(`${t('dashboard.messages.editNotePrompt', 'Edit note for device')} ${mac}:`, decodedNote);
             if (newNote !== null) {
                 saveBTNote(mac, newNote);
             }
@@ -2827,7 +2854,7 @@
         // Edit WiFi note from table cell
         function editWiFiNote(mac, currentNote) {
             const decodedNote = currentNote.replace(/&quot;/g, '"').replace(/&#39;/g, "'");
-            const newNote = prompt("Edit note for device " + mac + ":", decodedNote);
+            const newNote = prompt(`${t('dashboard.messages.editNotePrompt', 'Edit note for device')} ${mac}:`, decodedNote);
             if (newNote !== null) {
                 saveWiFiNote(mac, newNote);
             }
@@ -2862,7 +2889,7 @@
                 
                 if (!response.ok) {
                     const error = await response.json();
-                    throw new Error(error.error || 'Failed to save note');
+                    throw new Error(error.error || t('dashboard.messages.errorSaveNote', 'Error saving note:'));
                 }
                 
                 // Update the table row
@@ -2895,7 +2922,7 @@
                 console.log("BT note saved successfully for", mac);
             } catch (error) {
                 console.error("Error saving BT note:", error);
-                alert("Error saving note: " + error.message);
+                alert(t('dashboard.messages.errorSaveNote', 'Error saving note:') + " " + error.message);
             }
         }
         
@@ -2912,7 +2939,7 @@
                 
                 if (!response.ok) {
                     const error = await response.json();
-                    throw new Error(error.error || 'Failed to save note');
+                    throw new Error(error.error || t('dashboard.messages.errorSaveNote', 'Error saving note:'));
                 }
                 
                 // Update the table row
@@ -2945,7 +2972,7 @@
                 console.log("WiFi note saved successfully for", mac);
             } catch (error) {
                 console.error("Error saving WiFi note:", error);
-                alert("Error saving note: " + error.message);
+                alert(t('dashboard.messages.errorSaveNote', 'Error saving note:') + " " + error.message);
             }
         }
 
@@ -3081,7 +3108,7 @@
             try {
                 const response = await fetch(`${API_BASE}/api/download-db`);
                 if (!response.ok) {
-                    alert("Error downloading database: " + response.statusText);
+                    alert(t('dashboard.messages.errorDownloadDb', 'Error downloading database:') + " " + response.statusText);
                     return;
                 }
                 
@@ -3096,12 +3123,12 @@
                 document.body.removeChild(a);
             } catch (err) {
                 console.error("Error downloading database:", err);
-                alert("Error downloading database: " + err.message);
+                alert(t('dashboard.messages.errorDownloadDb', 'Error downloading database:') + " " + err.message);
             }
         });
 
         document.getElementById("purgeDbBtn").addEventListener("click", async () => {
-            const confirmed = confirm("⚠️ WARNING: This will delete ALL data in the database!\n\nA backup will be created as 'results_bak.db'.\n\nAre you sure?");
+            const confirmed = confirm(t('dashboard.confirmations.purgeDb', "⚠️ WARNING: This will delete ALL data in the database!\n\nA backup will be created as 'results_bak.db'.\n\nAre you sure?"));
             if (!confirmed) return;
             
             try {
@@ -3111,22 +3138,22 @@
                 const data = await response.json();
                 
                 if (!response.ok) {
-                    alert("Error purging database: " + (data.error || response.statusText));
+                    alert(t('dashboard.messages.errorPurgeDb', 'Error purging database:') + " " + (data.error || response.statusText));
                     return;
                 }
                 
-                alert("✅ Database purged successfully!\nBackup saved as: " + data.backup_path);
+                alert(t('dashboard.messages.dbPurged', '✅ Database purged successfully!\nBackup saved as:') + " " + data.backup_path);
                 
                 // Refresh the page to show cleared data
                 setTimeout(() => location.reload(), 1000);
             } catch (err) {
                 console.error("Error purging database:", err);
-                alert("Error purging database: " + err.message);
+                alert(t('dashboard.messages.errorPurgeDb', 'Error purging database:') + " " + err.message);
             }
         });
 
         document.getElementById("clearUsbBtn").addEventListener("click", async () => {
-            const confirmed = confirm("⚠️ WARNING: This will delete ALL files in the USB storage!\n\nAre you sure?");
+            const confirmed = confirm(t('dashboard.confirmations.purgeUsb', "⚠️ WARNING: This will delete ALL files in the USB storage!\n\nAre you sure?"));
             if (!confirmed) return;
             
             try {
@@ -3136,29 +3163,29 @@
                 const data = await response.json();
                 
                 if (!response.ok) {
-                    alert("Error clearing USB storage: " + (data.error || response.statusText));
+                    alert(t('dashboard.messages.errorClearUsb', 'Error clearing USB storage:') + " " + (data.error || response.statusText));
                     return;
                 }
                 
-                alert("✅ USB storage cleared successfully!");
+                alert(t('dashboard.messages.usbCleared', '✅ USB storage cleared successfully!'));
                 
                 // Update system status to show new disk space
                 updateSystemStatus();
             } catch (err) {
                 console.error("Error clearing USB storage:", err);
-                alert("Error clearing USB storage: " + err.message);
+                alert(t('dashboard.messages.errorClearUsb', 'Error clearing USB storage:') + " " + err.message);
             }
         });
 
         // System control buttons
         document.getElementById("updateBtn").addEventListener("click", async () => {
-            const confirmed = confirm("⚠️ Update will fetch latest changes from git repository.\n\nContinue?");
+            const confirmed = confirm(t('dashboard.confirmations.updateSystem', "⚠️ Update will fetch latest changes from git repository.\n\nContinue?"));
             if (!confirmed) return;
             
             const btn = document.getElementById("updateBtn");
             const originalContent = btn.innerHTML;
             btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ' + t('dashboard.messages.updating', 'Updating...');
             
             try {
                 const response = await fetch(`${API_BASE}/api/system/update`, {
@@ -3167,13 +3194,13 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    alert("✅ Update completed successfully!\n\nOutput:\n" + (data.output || "No output"));
+                    alert(t('dashboard.messages.updateComplete', '✅ Update completed successfully!\n\nOutput:') + "\n" + (data.output || t('dashboard.messages.noOutput', 'No output')));
                 } else {
-                    alert("⚠️ Update completed with status:\n\n" + (data.error || data.output || "Unknown status"));
+                    alert(t('dashboard.messages.updateStatus', '⚠️ Update completed with status:') + "\n\n" + (data.error || data.output || t('dashboard.messages.unknownStatus', 'Unknown status')));
                 }
             } catch (err) {
                 console.error("Error updating system:", err);
-                alert("❌ Error updating system: " + err.message);
+                alert(t('dashboard.messages.errorUpdate', '❌ Error updating system:') + " " + err.message);
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = originalContent;
@@ -3181,7 +3208,7 @@
         });
 
         document.getElementById("rebootBtn").addEventListener("click", async () => {
-            const confirmed = confirm("⚠️ WARNING: System will reboot immediately!\n\nThis will disconnect all active sessions.\n\nContinue?");
+            const confirmed = confirm(t('dashboard.confirmations.rebootSystem', "⚠️ WARNING: System will reboot immediately!\n\nThis will disconnect all active sessions.\n\nContinue?"));
             if (!confirmed) return;
             
             try {
@@ -3191,21 +3218,21 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    alert("🔄 Reboot initiated! System will restart in a few seconds.");
+                    alert(t('dashboard.messages.rebootInitiated', '🔄 Reboot initiated! System will restart in a few seconds.'));
                     // Disable the UI to prevent further interactions
                     document.body.style.opacity = "0.5";
                     document.body.style.pointerEvents = "none";
                 } else {
-                    alert("❌ Error initiating reboot: " + (data.error || "Unknown error"));
+                    alert(t('dashboard.messages.errorReboot', '❌ Error initiating reboot:') + " " + (data.error || t('dashboard.messages.unknownError', 'Unknown error')));
                 }
             } catch (err) {
                 console.error("Error rebooting system:", err);
-                alert("❌ Error rebooting system: " + err.message);
+                alert(t('dashboard.messages.errorReboot', '❌ Error initiating reboot:') + " " + err.message);
             }
         });
 
         document.getElementById("shutdownBtn").addEventListener("click", async () => {
-            const confirmed = confirm("⚠️ WARNING: System will shutdown immediately!\n\nYou will need to manually power it back on.\n\nContinue?");
+            const confirmed = confirm(t('dashboard.confirmations.shutdownSystem', "⚠️ WARNING: System will shutdown immediately!\n\nYou will need to manually power it back on.\n\nContinue?"));
             if (!confirmed) return;
             
             try {
@@ -3215,16 +3242,16 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    alert("⏹️ Shutdown initiated! System will power off in a few seconds.");
+                    alert(t('dashboard.messages.shutdownInitiated', '⏹️ Shutdown initiated! System will power off in a few seconds.'));
                     // Disable the UI to prevent further interactions
                     document.body.style.opacity = "0.5";
                     document.body.style.pointerEvents = "none";
                 } else {
-                    alert("❌ Error initiating shutdown: " + (data.error || "Unknown error"));
+                    alert(t('dashboard.messages.errorShutdown', '❌ Error initiating shutdown:') + " " + (data.error || t('dashboard.messages.unknownError', 'Unknown error')));
                 }
             } catch (err) {
                 console.error("Error shutting down system:", err);
-                alert("❌ Error shutting down system: " + err.message);
+                alert(t('dashboard.messages.errorShutdown', '❌ Error initiating shutdown:') + " " + err.message);
             }
         });
 
@@ -3265,7 +3292,7 @@
                     const usbFree = formatBytes(data.disk.usb.free);
                     document.getElementById("diskUsb").textContent = `${usbPercent}% (${usbFree} free)`;
                 } else {
-                    document.getElementById("diskUsb").textContent = "Not mounted";
+                    document.getElementById("diskUsb").textContent = t('dashboard.system.notMounted', 'Not mounted');
                 }
                 
                 // Update database size
@@ -3497,7 +3524,7 @@
             const endStr = document.getElementById("timeEnd").value;
             
             if (!startStr || !endStr) {
-                alert("Please select both start and end times");
+                alert(t('dashboard.filters.selectStartEnd', 'Please select both start and end times'));
                 return;
             }
             
@@ -3636,7 +3663,7 @@
             if (content) content.innerHTML = `
                 <div class="analysis-loading">
                     <i class="fas fa-spinner"></i>
-                    <p>Analyzing device patterns...</p>
+                    <p>${t('dashboard.modal.analyzing', 'Analyzing device patterns...')}</p>
                 </div>
             `;
         }
@@ -3650,7 +3677,7 @@
             let deviceListHtml = '';
             if (data.devices_detail && data.devices_detail.length > 0) {
                 deviceListHtml = `
-                    <h4 style="margin-top: 15px;">Top Changes:</h4>
+                    <h4 style="margin-top: 15px;">${t('dashboard.modal.topChanges', 'Top Changes:')}</h4>
                     <div class="analysis-device-list">
                         ${data.devices_detail.slice(0, 15).map(d => `
                             <div class="analysis-device-item">
@@ -3664,23 +3691,23 @@
             
             const content = getAnalysisModalContent();
             if (content) content.innerHTML = `
-                <p>Analysis complete. Review the results below:</p>
+                <p>${t('dashboard.modal.reviewResults', 'Analysis complete. Review the results below:')}</p>
                 
                 <div class="analysis-stats">
                     <div class="analysis-stat">
-                        <div class="analysis-stat-label">Session Duration</div>
+                        <div class="analysis-stat-label">${t('dashboard.modal.sessionDuration', 'Session Duration')}</div>
                         <div class="analysis-stat-value">${data.session?.duration_human || 'N/A'}</div>
                     </div>
                     <div class="analysis-stat">
-                        <div class="analysis-stat-label">Total Devices</div>
+                        <div class="analysis-stat-label">${t('dashboard.modal.totalDevices', 'Total Devices')}</div>
                         <div class="analysis-stat-value">${btTotal + wifiTotal}</div>
                     </div>
                     <div class="analysis-stat">
-                        <div class="analysis-stat-label">High Confidence (≥70)</div>
+                        <div class="analysis-stat-label">${t('dashboard.modal.highConfidence', 'High Confidence (≥70)')}</div>
                         <div class="analysis-stat-value" style="color: #2ecc71;">${highConfidence}</div>
                     </div>
                     <div class="analysis-stat">
-                        <div class="analysis-stat-label">Low Confidence (≤30)</div>
+                        <div class="analysis-stat-label">${t('dashboard.modal.lowConfidence', 'Low Confidence (≤30)')}</div>
                         <div class="analysis-stat-value" style="color: #e74c3c;">${lowConfidence}</div>
                     </div>
                 </div>
@@ -3688,9 +3715,9 @@
                 ${deviceListHtml}
                 
                 <div class="modal-footer">
-                    <button class="modal-btn modal-btn-secondary" onclick="hideAnalysisModal()">Cancel</button>
+                    <button class="modal-btn modal-btn-secondary" onclick="hideAnalysisModal()">${t('common.cancel', 'Cancel')}</button>
                     <button class="modal-btn modal-btn-danger" onclick="applyAnalysis()">
-                        <i class="fas fa-check"></i> Apply Changes
+                        <i class="fas fa-check"></i> ${t('dashboard.modal.applyChanges', 'Apply Changes')}
                     </button>
                 </div>
             `;
@@ -3704,16 +3731,16 @@
             if (content) content.innerHTML = `
                 <div style="text-align: center; padding: 20px;">
                     <i class="fas fa-check-circle" style="font-size: 48px; color: #2ecc71;"></i>
-                    <h3 style="margin-top: 15px;">Analysis Complete!</h3>
-                    <p>Confidence scores have been updated.</p>
+                    <h3 style="margin-top: 15px;">${t('dashboard.modal.analysisComplete', 'Analysis Complete!')}</h3>
+                    <p>${t('dashboard.modal.scoresUpdated', 'Confidence scores have been updated.')}</p>
                     
                     <div class="analysis-stats" style="margin-top: 20px;">
                         <div class="analysis-stat">
-                            <div class="analysis-stat-label">BT Devices Updated</div>
+                            <div class="analysis-stat-label">${t('dashboard.modal.btUpdated', 'BT Devices Updated')}</div>
                             <div class="analysis-stat-value">${btUpdated}</div>
                         </div>
                         <div class="analysis-stat">
-                            <div class="analysis-stat-label">WiFi Devices Updated</div>
+                            <div class="analysis-stat-label">${t('dashboard.modal.wifiUpdated', 'WiFi Devices Updated')}</div>
                             <div class="analysis-stat-value">${wifiUpdated}</div>
                         </div>
                     </div>
@@ -3721,7 +3748,7 @@
                 
                 <div class="modal-footer">
                     <button class="modal-btn modal-btn-primary" onclick="hideAnalysisModal(); loadBTDevices(); loadWiFiDevices();">
-                        <i class="fas fa-check"></i> Done
+                        <i class="fas fa-check"></i> ${t('common.done', 'Done')}
                     </button>
                 </div>
             `;
@@ -3732,12 +3759,12 @@
             if (content) content.innerHTML = `
                 <div style="text-align: center; padding: 20px;">
                     <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #e74c3c;"></i>
-                    <h3 style="margin-top: 15px;">Analysis Failed</h3>
+                    <h3 style="margin-top: 15px;">${t('dashboard.modal.analysisFailed', 'Analysis Failed')}</h3>
                     <p style="color: #e74c3c;">${error}</p>
                 </div>
                 
                 <div class="modal-footer">
-                    <button class="modal-btn modal-btn-secondary" onclick="hideAnalysisModal()">Close</button>
+                    <button class="modal-btn modal-btn-secondary" onclick="hideAnalysisModal()">${t('common.close', 'Close')}</button>
                 </div>
             `;
         }
@@ -3810,19 +3837,19 @@
             const originalText = btn.innerHTML;
             
             try {
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ' + t('dashboard.messages.updating', 'Updating...');
                 btn.disabled = true;
                 
                 const response = await fetch("/api/oui/update", { method: "POST" });
                 const result = await response.json();
                 
                 if (response.ok) {
-                    alert(`OUI database updated successfully!\n\nEntries: ${result.entries || 'N/A'}\n\nRun 'Analyze Confidence' to apply vendor lookups to WiFi devices.`);
+                    alert(`${t('dashboard.oui.updateSuccess', 'OUI database updated successfully!\n\nEntries:')} ${result.entries || t('dashboard.messages.na', 'N/A')}${t('dashboard.oui.runAnalyze', "\n\nRun 'Analyze Confidence' to apply vendor lookups to WiFi devices.")}`);
                 } else {
-                    alert(`Failed to update OUI database: ${result.error || 'Unknown error'}`);
+                    alert(`${t('dashboard.oui.updateFailed', 'Failed to update OUI database:')} ${result.error || t('dashboard.messages.unknownError', 'Unknown error')}`);
                 }
             } catch (error) {
-                alert(`Error updating OUI database: ${error.message}`);
+                alert(`${t('dashboard.messages.errorUpdateOui', 'Error updating OUI database:')} ${error.message}`);
             } finally {
                 btn.innerHTML = originalText;
                 btn.disabled = false;

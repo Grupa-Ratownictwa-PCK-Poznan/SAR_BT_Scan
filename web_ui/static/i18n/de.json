@@ -40,7 +40,8 @@
     "analyzeLocation": "Standort analysieren",
     "bt": "BT",
     "wifi": "WLAN",
-    "hidden": "Verstecktes Netzwerk"
+    "hidden": "Verstecktes Netzwerk",
+    "unknown": "Unbekannt"
   },
   "dashboard": {
     "title": "SAR Scanner - Live-Dashboard",
@@ -82,6 +83,12 @@
       "wifiAssocTab": "WLAN-Assoz.",
       "macAddress": "MAC-Adresse",
       "packetType": "Pakettyp",
+      "packetBeacon": "Beacon",
+      "packetProbe": "Probe",
+      "packetAccessPoint": "AP",
+      "packetBeaconAp": "Beacon (AP)",
+      "packetProbeClient": "Probe (Client)",
+      "bluetooth": "Bluetooth",
       "noDevices": "Keine Geräte gefunden",
       "noSightings": "Keine Sichtungen gefunden",
       "noAssociations": "Keine Assoziationen gefunden"
@@ -94,11 +101,15 @@
       "timeRange": "Zeitbereich",
       "customRange": "Oder benutzerdefinierten Bereich festlegen:",
       "applyRange": "Bereich anwenden",
+      "selectStartEnd": "Bitte Start- und Endzeit auswählen",
       "all": "Alle"
     },
     "map": {
       "title": "Kartenanzeige",
       "heatmapOverlay": "Heatmap-Overlay",
+      "signalDetails": "Signaldetails",
+      "signal": "Signal",
+      "intensity": "Intensität",
       "both": "BT+WiFi"
     },
     "actions": {
@@ -147,9 +158,15 @@
       "errorUpdate": "❌ Fehler beim Aktualisieren des Systems:",
       "errorReboot": "❌ Fehler beim Neustart:",
       "errorShutdown": "❌ Fehler beim Herunterfahren:",
+      "errorUpdateOui": "Fehler beim Aktualisieren der OUI-Datenbank:",
       "noteSaved": "Notiz erfolgreich gespeichert",
       "errorSaveNote": "Fehler beim Speichern der Notiz:",
-      "editNotePrompt": "Notiz für Gerät bearbeiten"
+      "editNotePrompt": "Notiz für Gerät bearbeiten",
+      "updating": "Aktualisierung...",
+      "noOutput": "Keine Ausgabe",
+      "unknownStatus": "Unbekannter Status",
+      "unknownError": "Unbekannter Fehler",
+      "na": "k.A."
     },
     "modal": {
       "confidenceAnalysis": "Konfidenz-Analyse",
@@ -200,7 +217,8 @@
       "totalDistance": "Gesamtstrecke",
       "areaCovered": "Abgedeckte Fläche",
       "avgSpeed": "Durchschn. Geschw.",
-      "maxSpeed": "Max. Geschw."
+      "maxSpeed": "Max. Geschw.",
+      "avgRssi": "Durchschn. RSSI"
     },
     "ssids": {
       "title": "Bekannte SSIDs"
@@ -223,6 +241,7 @@
     },
     "loading": "Gerätesichtungen werden analysiert...",
     "analysisFailed": "Analyse fehlgeschlagen",
+    "saveNoteFailed": "Notiz konnte nicht gespeichert werden",
     "noSightings": "Keine Sichtungen für dieses Gerät gefunden",
     "pleaseEnterMac": "Bitte geben Sie eine MAC-Adresse ein"
   },
