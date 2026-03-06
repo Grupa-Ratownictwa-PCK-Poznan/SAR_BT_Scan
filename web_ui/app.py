@@ -90,52 +90,66 @@ def get_db_path():
     return DB_PATH
 
 
+# Whitelist of allowed sort columns for SQL ORDER BY (prevents injection)
+_BT_SORT_COLUMNS = {
+    "mac": "addr", "name": "name", "manufacturer": "manufacturer",
+    "confidence": "confidence", "last_seen": "last_seen", "first_seen": "first_seen"
+}
+_WIFI_SORT_COLUMNS = {
+    "mac": "mac", "manufacturer": "vendor", "device_type": "device_type",
+    "confidence": "confidence", "last_seen": "last_seen", "first_seen": "first_seen"
+}
+
+
 def query_devices(device_type: str, limit: int = 1000, offset: int = 0, 
-                  filters: Optional[Dict] = None) -> List[Dict]:
-    """Query devices from database with optional filters.
+                  filters: Optional[Dict] = None,
+                  sort_by: Optional[str] = None,
+                  sort_dir: str = "desc") -> tuple:
+    """Query devices from database with SQL-level filters, sorting, and pagination.
     
-    Args:
-        device_type: "bt" or "wifi"
-        limit: Maximum number of results
-        offset: Pagination offset
-        filters: Optional dict with filter keys:
-                - mac_filter: MAC address substring
-                - manufacturer_filter: Manufacturer/vendor name substring
-                - confidence_min: Minimum confidence (0-100)
-                - confidence_max: Maximum confidence (0-100)
-                - rssi_min: Minimum RSSI
-                - rssi_max: Maximum RSSI
-                - time_start: Unix timestamp
-                - time_end: Unix timestamp
+    Returns:
+        Tuple of (devices_list, total_count) where total_count is the number
+        of matching records before pagination.
     """
     filters = filters or {}
     results = []
+    total_count = 0
+    
+    if sort_dir not in ("asc", "desc"):
+        sort_dir = "desc"
     
     try:
         with db() as con:
             if device_type == "bt":
-                query = "SELECT addr, first_seen, last_seen, name, manufacturer_hex, manufacturer, confidence, notes FROM devices ORDER BY last_seen DESC"
-                cursor = con.execute(query)
+                db_sort_col = _BT_SORT_COLUMNS.get(sort_by, "last_seen")
+                order_dir = "ASC" if sort_dir == "asc" else "DESC"
+                
+                base = "FROM devices WHERE 1=1"
+                params = []
+                
+                if filters.get("mac_filter"):
+                    base += " AND addr LIKE ? COLLATE NOCASE"
+                    params.append(f"%{filters['mac_filter']}%")
+                
+                if filters.get("manufacturer_filter"):
+                    base += " AND manufacturer LIKE ? COLLATE NOCASE"
+                    params.append(f"%{filters['manufacturer_filter']}%")
+                
+                if "confidence_min" in filters:
+                    base += " AND confidence >= ?"
+                    params.append(filters["confidence_min"])
+                
+                if "confidence_max" in filters:
+                    base += " AND confidence <= ?"
+                    params.append(filters["confidence_max"])
+                
+                total_count = con.execute(f"SELECT COUNT(*) {base}", params).fetchone()[0]
+                
+                query = f"SELECT addr, first_seen, last_seen, name, manufacturer_hex, manufacturer, confidence, notes {base} ORDER BY {db_sort_col} {order_dir} LIMIT ? OFFSET ?"
+                cursor = con.execute(query, params + [limit, offset])
                 
                 for row in cursor.fetchall():
                     addr, first_seen, last_seen, name, manufacturer_hex, manufacturer, confidence, notes = row
-                    
-                    # Filter by MAC if specified
-                    if "mac_filter" in filters and filters["mac_filter"].lower() not in addr.lower():
-                        continue
-                    
-                    # Filter by manufacturer if specified
-                    if "manufacturer_filter" in filters and filters["manufacturer_filter"]:
-                        mf = filters["manufacturer_filter"].lower()
-                        if not manufacturer or mf not in manufacturer.lower():
-                            continue
-                    
-                    # Filter by confidence if specified
-                    if "confidence_min" in filters and confidence < filters["confidence_min"]:
-                        continue
-                    if "confidence_max" in filters and confidence > filters["confidence_max"]:
-                        continue
-                    
                     results.append({
                         "type": "device",
                         "mac": addr,
@@ -150,24 +164,39 @@ def query_devices(device_type: str, limit: int = 1000, offset: int = 0,
                     })
             
             elif device_type == "wifi":
-                # If SSID filter is specified, only return devices that have associations with matching SSIDs
-                if "ssid_filter" in filters and filters["ssid_filter"]:
-                    ssid_val = filters["ssid_filter"]
-                    query = """SELECT mac, first_seen, last_seen, vendor, device_type, confidence, notes 
-                               FROM wifi_devices 
-                               WHERE mac IN (SELECT DISTINCT mac FROM wifi_associations WHERE ssid LIKE ? COLLATE NOCASE)
-                               ORDER BY last_seen DESC"""
-                    cursor = con.execute(query, (f"%{ssid_val}%",))
-                else:
-                    query = "SELECT mac, first_seen, last_seen, vendor, device_type, confidence, notes FROM wifi_devices ORDER BY last_seen DESC"
-                    cursor = con.execute(query)
+                db_sort_col = _WIFI_SORT_COLUMNS.get(sort_by, "last_seen")
+                order_dir = "ASC" if sort_dir == "asc" else "DESC"
+                
+                base = "FROM wifi_devices WHERE 1=1"
+                params = []
+                
+                if filters.get("ssid_filter"):
+                    base += " AND mac IN (SELECT DISTINCT mac FROM wifi_associations WHERE ssid LIKE ? COLLATE NOCASE)"
+                    params.append(f"%{filters['ssid_filter']}%")
+                
+                if filters.get("mac_filter"):
+                    base += " AND mac LIKE ? COLLATE NOCASE"
+                    params.append(f"%{filters['mac_filter']}%")
+                
+                if filters.get("manufacturer_filter"):
+                    base += " AND vendor LIKE ? COLLATE NOCASE"
+                    params.append(f"%{filters['manufacturer_filter']}%")
+                
+                if "confidence_min" in filters:
+                    base += " AND confidence >= ?"
+                    params.append(filters["confidence_min"])
+                
+                if "confidence_max" in filters:
+                    base += " AND confidence <= ?"
+                    params.append(filters["confidence_max"])
+                
+                total_count = con.execute(f"SELECT COUNT(*) {base}", params).fetchone()[0]
+                
+                query = f"SELECT mac, first_seen, last_seen, vendor, device_type, confidence, notes {base} ORDER BY {db_sort_col} {order_dir} LIMIT ? OFFSET ?"
+                cursor = con.execute(query, params + [limit, offset])
                 
                 for row in cursor.fetchall():
                     mac, first_seen, last_seen, vendor, device_type_val, confidence, notes = row
-                    
-                    # Filter by MAC if specified (case-insensitive)
-                    if "mac_filter" in filters and filters["mac_filter"].lower() not in mac.lower():
-                        continue
                     
                     # Try to recover vendor for randomized MACs
                     display_manufacturer = vendor or ""
@@ -175,18 +204,6 @@ def query_devices(device_type: str, limit: int = 1000, offset: int = 0,
                         recovered_vendor, was_randomized = lookup_randomized_mac_vendor(mac)
                         if recovered_vendor:
                             display_manufacturer = recovered_vendor
-                    
-                    # Filter by manufacturer if specified
-                    if "manufacturer_filter" in filters and filters["manufacturer_filter"]:
-                        mf = filters["manufacturer_filter"].lower()
-                        if not display_manufacturer or mf not in display_manufacturer.lower():
-                            continue
-                    
-                    # Filter by confidence if specified
-                    if "confidence_min" in filters and confidence < filters["confidence_min"]:
-                        continue
-                    if "confidence_max" in filters and confidence > filters["confidence_max"]:
-                        continue
                     
                     results.append({
                         "type": "device",
@@ -203,7 +220,7 @@ def query_devices(device_type: str, limit: int = 1000, offset: int = 0,
     except Exception as e:
         print(f"Error querying {device_type} devices: {e}")
     
-    return results[offset:offset + limit]
+    return results, total_count
 
 
 def query_sightings(mac_filter: Optional[str] = None, 
@@ -418,8 +435,10 @@ async def get_bt_devices(limit: int = Query(100, ge=1, le=1000),
                         mac_filter: Optional[str] = None,
                         manufacturer_filter: Optional[str] = None,
                         confidence_min: Optional[int] = Query(None, ge=0, le=100),
-                        confidence_max: Optional[int] = Query(None, ge=0, le=100)):
-    """Get BT devices list with optional filters."""
+                        confidence_max: Optional[int] = Query(None, ge=0, le=100),
+                        sort_by: Optional[str] = None,
+                        sort_dir: str = Query("desc", regex="^(asc|desc)$")):
+    """Get BT devices list with optional filters and sorting."""
     filters = {}
     if mac_filter:
         filters["mac_filter"] = mac_filter
@@ -430,8 +449,9 @@ async def get_bt_devices(limit: int = Query(100, ge=1, le=1000),
     if confidence_max is not None:
         filters["confidence_max"] = confidence_max
     
-    devices = query_devices("bt", limit=limit, offset=offset, filters=filters)
-    return {"devices": devices, "count": len(devices)}
+    devices, total_count = query_devices("bt", limit=limit, offset=offset, filters=filters,
+                                          sort_by=sort_by, sort_dir=sort_dir)
+    return {"devices": devices, "count": len(devices), "total_count": total_count}
 
 
 @app.get("/api/bt/sightings")
@@ -473,8 +493,10 @@ async def get_wifi_devices(limit: int = Query(100, ge=1, le=1000),
                           manufacturer_filter: Optional[str] = None,
                           ssid_filter: Optional[str] = None,
                           confidence_min: Optional[int] = Query(None, ge=0, le=100),
-                          confidence_max: Optional[int] = Query(None, ge=0, le=100)):
-    """Get WiFi devices list with optional filters."""
+                          confidence_max: Optional[int] = Query(None, ge=0, le=100),
+                          sort_by: Optional[str] = None,
+                          sort_dir: str = Query("desc", regex="^(asc|desc)$")):
+    """Get WiFi devices list with optional filters and sorting."""
     filters = {}
     if mac_filter:
         filters["mac_filter"] = mac_filter
@@ -487,8 +509,9 @@ async def get_wifi_devices(limit: int = Query(100, ge=1, le=1000),
     if confidence_max is not None:
         filters["confidence_max"] = confidence_max
     
-    devices = query_devices("wifi", limit=limit, offset=offset, filters=filters)
-    return {"devices": devices, "count": len(devices)}
+    devices, total_count = query_devices("wifi", limit=limit, offset=offset, filters=filters,
+                                          sort_by=sort_by, sort_dir=sort_dir)
+    return {"devices": devices, "count": len(devices), "total_count": total_count}
 
 
 @app.get("/api/wifi/associations")

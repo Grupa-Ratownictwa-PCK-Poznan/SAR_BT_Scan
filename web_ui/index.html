@@ -2056,7 +2056,11 @@
                 state.dir = 'desc';
             }
             updateSortIndicators(table);
-            rerenderTable(table);
+            // Device tables: reload from server with sort params applied to whole DB
+            // Sighting/assoc tables: client-side re-sort of cached data
+            if (table === 'btDevices') loadBTDevices();
+            else if (table === 'wifiDevices') loadWiFiDevices();
+            else rerenderTable(table);
         }
 
         function updateSortIndicators(table) {
@@ -2107,6 +2111,8 @@
                 const confidenceMax = parseInt(document.getElementById("confidenceMax").value);
                 const params = new URLSearchParams({
                     limit: 100,
+                    sort_by: sortState.btDevices.key,
+                    sort_dir: sortState.btDevices.dir,
                     ...(macFilter && { mac_filter: macFilter }),
                     ...(manufacturerFilter && { manufacturer_filter: manufacturerFilter }),
                     ...(confidenceMin !== 0 && { confidence_min: confidenceMin }),
@@ -2117,7 +2123,7 @@
                 const data = await response.json();
 
                 cachedBTDevices = data.devices;
-                updateBTDevicesTable(sortData(cachedBTDevices, sortState.btDevices.key, sortState.btDevices.dir));
+                updateBTDevicesTable(cachedBTDevices);
             } catch (error) {
                 console.error("Error loading BT devices:", error);
             }
@@ -2157,6 +2163,8 @@
                 const confidenceMax = parseInt(document.getElementById("confidenceMax").value);
                 const params = new URLSearchParams({
                     limit: 100,
+                    sort_by: sortState.wifiDevices.key,
+                    sort_dir: sortState.wifiDevices.dir,
                     ...(macFilter && { mac_filter: macFilter }),
                     ...(manufacturerFilter && { manufacturer_filter: manufacturerFilter }),
                     ...(ssidFilter && { ssid_filter: ssidFilter }),
@@ -2168,7 +2176,7 @@
                 const data = await response.json();
 
                 cachedWiFiDevices = data.devices;
-                updateWiFiDevicesTable(sortData(cachedWiFiDevices, sortState.wifiDevices.key, sortState.wifiDevices.dir));
+                updateWiFiDevicesTable(cachedWiFiDevices);
             } catch (error) {
                 console.error("Error loading WiFi devices:", error);
             }
