@@ -273,6 +273,25 @@
             transition: background 0.3s;
         }
 
+        th[data-sort-key] {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        th[data-sort-key]:hover {
+            background: var(--rc-dark-red);
+        }
+
+        th .sort-indicator {
+            margin-left: 4px;
+            font-size: 10px;
+            opacity: 0.5;
+        }
+
+        th .sort-indicator.active {
+            opacity: 1;
+        }
+
         td {
             padding: 7px;
             border-bottom: 1px solid var(--border-color);
@@ -1434,11 +1453,11 @@
                     <table>
                         <thead>
                             <tr>
-                                <th data-i18n="dashboard.data.macAddress">MAC Address</th>
-                                <th data-i18n="common.name">Name</th>
-                                <th data-i18n="common.manufacturer">Manufacturer</th>
-                                <th data-i18n="common.confidence">Confidence</th>
-                                <th data-i18n="common.lastSeen">Last Seen</th>
+                                <th data-i18n="dashboard.data.macAddress" data-sort-key="mac" data-table="btDevices">MAC Address</th>
+                                <th data-i18n="common.name" data-sort-key="name" data-table="btDevices">Name</th>
+                                <th data-i18n="common.manufacturer" data-sort-key="manufacturer" data-table="btDevices">Manufacturer</th>
+                                <th data-i18n="common.confidence" data-sort-key="confidence" data-table="btDevices">Confidence</th>
+                                <th data-i18n="common.lastSeen" data-sort-key="last_seen" data-table="btDevices">Last Seen</th>
                                 <th data-i18n="common.notes">Notes</th>
                             </tr>
                         </thead>
@@ -1452,9 +1471,9 @@
                     <table>
                         <thead>
                             <tr>
-                                <th data-i18n="common.mac">MAC</th>
-                                <th data-i18n="common.rssi">RSSI</th>
-                                <th data-i18n="common.time">Time</th>
+                                <th data-i18n="common.mac" data-sort-key="mac" data-table="btSightings">MAC</th>
+                                <th data-i18n="common.rssi" data-sort-key="rssi" data-table="btSightings">RSSI</th>
+                                <th data-i18n="common.time" data-sort-key="timestamp" data-table="btSightings">Time</th>
                             </tr>
                         </thead>
                         <tbody id="btSightingsTable">
@@ -1467,11 +1486,11 @@
                     <table>
                         <thead>
                             <tr>
-                                <th data-i18n="dashboard.data.macAddress">MAC Address</th>
-                                <th data-i18n="common.vendor">Vendor</th>
-                                <th data-i18n="common.type">Type</th>
-                                <th data-i18n="common.confidence">Confidence</th>
-                                <th data-i18n="common.lastSeen">Last Seen</th>
+                                <th data-i18n="dashboard.data.macAddress" data-sort-key="mac" data-table="wifiDevices">MAC Address</th>
+                                <th data-i18n="common.vendor" data-sort-key="vendor" data-table="wifiDevices">Vendor</th>
+                                <th data-i18n="common.type" data-sort-key="device_type" data-table="wifiDevices">Type</th>
+                                <th data-i18n="common.confidence" data-sort-key="confidence" data-table="wifiDevices">Confidence</th>
+                                <th data-i18n="common.lastSeen" data-sort-key="last_seen" data-table="wifiDevices">Last Seen</th>
                                 <th data-i18n="common.notes">Notes</th>
                             </tr>
                         </thead>
@@ -1485,11 +1504,11 @@
                     <table>
                         <thead>
                             <tr>
-                                <th data-i18n="common.mac">MAC</th>
-                                <th data-i18n="common.ssid">SSID</th>
-                                <th data-i18n="dashboard.data.packetType">Packet Type</th>
-                                <th data-i18n="common.rssi">RSSI</th>
-                                <th data-i18n="common.timestamp">Timestamp</th>
+                                <th data-i18n="common.mac" data-sort-key="mac" data-table="wifiAssoc">MAC</th>
+                                <th data-i18n="common.ssid" data-sort-key="ssid" data-table="wifiAssoc">SSID</th>
+                                <th data-i18n="dashboard.data.packetType" data-sort-key="packet_type" data-table="wifiAssoc">Packet Type</th>
+                                <th data-i18n="common.rssi" data-sort-key="rssi" data-table="wifiAssoc">RSSI</th>
+                                <th data-i18n="common.timestamp" data-sort-key="timestamp" data-table="wifiAssoc">Timestamp</th>
                             </tr>
                         </thead>
                         <tbody id="wifiAssocTable">
@@ -1676,6 +1695,20 @@
         // Track devices with notes (for highlighting sightings)
         let btDevicesWithNotes = new Set();
         let wifiDevicesWithNotes = new Set();
+
+        // Sort state per table (default: devices by last_seen desc, sightings by timestamp desc)
+        let sortState = {
+            btDevices:    { key: 'last_seen',  dir: 'desc' },
+            btSightings:  { key: 'timestamp',  dir: 'desc' },
+            wifiDevices:  { key: 'last_seen',  dir: 'desc' },
+            wifiAssoc:    { key: 'timestamp',  dir: 'desc' }
+        };
+
+        // Cached raw data for client-side re-sorting
+        let cachedBTDevices = [];
+        let cachedBTSightings = [];
+        let cachedWiFiDevices = [];
+        let cachedWiFiAssoc = [];
         
         // Time filter state
         let currentTimePreset = 0; // hours, 0 = all (DEFAULT)
@@ -1991,6 +2024,79 @@
             }
         }
 
+        // ============= Sorting Utilities =============
+        function sortData(data, key, dir) {
+            return [...data].sort((a, b) => {
+                let va = a[key], vb = b[key];
+                if (va == null) va = '';
+                if (vb == null) vb = '';
+                if (typeof va === 'number' && typeof vb === 'number') {
+                    return dir === 'asc' ? va - vb : vb - va;
+                }
+                va = String(va).toLowerCase();
+                vb = String(vb).toLowerCase();
+                if (va < vb) return dir === 'asc' ? -1 : 1;
+                if (va > vb) return dir === 'asc' ? 1 : -1;
+                return 0;
+            });
+        }
+
+        function handleHeaderSort(e) {
+            const th = e.currentTarget;
+            const table = th.getAttribute('data-table');
+            const key = th.getAttribute('data-sort-key');
+            if (!table || !key) return;
+
+            const state = sortState[table];
+            if (state.key === key) {
+                state.dir = state.dir === 'desc' ? 'asc' : 'desc';
+            } else {
+                state.key = key;
+                state.dir = 'desc';
+            }
+            updateSortIndicators(table);
+            rerenderTable(table);
+        }
+
+        function updateSortIndicators(table) {
+            document.querySelectorAll(`th[data-table="${table}"]`).forEach(th => {
+                let indicator = th.querySelector('.sort-indicator');
+                if (!indicator) {
+                    indicator = document.createElement('span');
+                    indicator.className = 'sort-indicator';
+                    th.appendChild(indicator);
+                }
+                const key = th.getAttribute('data-sort-key');
+                if (key === sortState[table].key) {
+                    indicator.textContent = sortState[table].dir === 'desc' ? ' ▼' : ' ▲';
+                    indicator.classList.add('active');
+                } else {
+                    indicator.textContent = ' ▼';
+                    indicator.classList.remove('active');
+                }
+            });
+        }
+
+        function rerenderTable(table) {
+            if (table === 'btDevices') {
+                updateBTDevicesTable(sortData(cachedBTDevices, sortState.btDevices.key, sortState.btDevices.dir));
+            } else if (table === 'btSightings') {
+                updateBTSightingsTable(sortData(cachedBTSightings, sortState.btSightings.key, sortState.btSightings.dir));
+            } else if (table === 'wifiDevices') {
+                updateWiFiDevicesTable(sortData(cachedWiFiDevices, sortState.wifiDevices.key, sortState.wifiDevices.dir));
+            } else if (table === 'wifiAssoc') {
+                updateWiFiAssociationsTable(sortData(cachedWiFiAssoc, sortState.wifiAssoc.key, sortState.wifiAssoc.dir));
+            }
+        }
+
+        function initSortableHeaders() {
+            document.querySelectorAll('th[data-sort-key]').forEach(th => {
+                th.addEventListener('click', handleHeaderSort);
+            });
+            // Set initial sort indicators
+            ['btDevices', 'btSightings', 'wifiDevices', 'wifiAssoc'].forEach(updateSortIndicators);
+        }
+
         // ============= Data Loading Functions =============
         async function loadBTDevices() {
             try {
@@ -2007,7 +2113,8 @@
                 const response = await fetch(`${API_BASE}/api/bt/devices?${params}`);
                 const data = await response.json();
 
-                updateBTDevicesTable(data.devices);
+                cachedBTDevices = data.devices;
+                updateBTDevicesTable(sortData(cachedBTDevices, sortState.btDevices.key, sortState.btDevices.dir));
             } catch (error) {
                 console.error("Error loading BT devices:", error);
             }
@@ -2031,7 +2138,8 @@
                 const response = await fetch(`${API_BASE}/api/bt/sightings?${params}`);
                 const data = await response.json();
 
-                updateBTSightingsTable(data.sightings);
+                cachedBTSightings = data.sightings;
+                updateBTSightingsTable(sortData(cachedBTSightings, sortState.btSightings.key, sortState.btSightings.dir));
             } catch (error) {
                 console.error("Error loading BT sightings:", error);
             }
@@ -2054,7 +2162,8 @@
                 const response = await fetch(`${API_BASE}/api/wifi/devices?${params}`);
                 const data = await response.json();
 
-                updateWiFiDevicesTable(data.devices);
+                cachedWiFiDevices = data.devices;
+                updateWiFiDevicesTable(sortData(cachedWiFiDevices, sortState.wifiDevices.key, sortState.wifiDevices.dir));
             } catch (error) {
                 console.error("Error loading WiFi devices:", error);
             }
@@ -2080,7 +2189,8 @@
                 const response = await fetch(`${API_BASE}/api/wifi/associations?${params}`);
                 const data = await response.json();
 
-                updateWiFiAssociationsTable(data.associations);
+                cachedWiFiAssoc = data.associations;
+                updateWiFiAssociationsTable(sortData(cachedWiFiAssoc, sortState.wifiAssoc.key, sortState.wifiAssoc.dir));
             } catch (error) {
                 console.error("Error loading WiFi associations:", error);
             }
@@ -3814,6 +3924,9 @@
         
         // Setup analysis modal event listeners after DOM is ready
         document.addEventListener("DOMContentLoaded", () => {
+            // Initialize sortable table headers
+            initSortableHeaders();
+
             // Analyze button event listener
             const analyzeBtn = document.getElementById("analyzeConfidenceBtn");
             if (analyzeBtn) {
