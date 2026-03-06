@@ -1380,7 +1380,7 @@
                         </button>
                     </div>
                     <div class="filter-group" style="flex: 1; margin-bottom: 0;">
-                        <label style="font-size: 8px;" data-i18n="dashboard.analytics.vendorDb">Vendor DB</label>
+                        <label style="font-size: 8px;" data-i18n="dashboard.analytics.manufacturerDb">Manufacturer DB</label>
                         <button id="updateOuiBtn" data-i18n-title="tooltips.updateOuiBtn" style="width: 100%; font-size: 10px; padding: 5px; background: #9b59b6; color: white; border: none; border-radius: 3px; cursor: pointer; font-weight: bold; white-space: nowrap;">
                             <i class="fas fa-download"></i> <span data-i18n="common.update">Update</span>
                         </button>
@@ -1405,6 +1405,7 @@
                 <!-- Filters -->
                 <div class="filter-group">
                     <input type="text" id="macFilter" data-i18n-placeholder="dashboard.filters.filterByMac" data-i18n-title="tooltips.macFilter" placeholder="Filter by MAC..." style="font-size: 11px;">
+                    <input type="text" id="manufacturerFilter" data-i18n-placeholder="dashboard.filters.filterByManufacturer" data-i18n-title="tooltips.manufacturerFilter" placeholder="Filter by manufacturer..." style="font-size: 11px;">
                     <input type="text" id="ssidFilter" data-i18n-placeholder="dashboard.filters.filterBySsid" data-i18n-title="tooltips.ssidFilter" placeholder="Filter by SSID..." style="font-size: 11px;">
                 </div>
 
@@ -1487,7 +1488,7 @@
                         <thead>
                             <tr>
                                 <th data-i18n="dashboard.data.macAddress" data-sort-key="mac" data-table="wifiDevices">MAC Address</th>
-                                <th data-i18n="common.vendor" data-sort-key="vendor" data-table="wifiDevices">Vendor</th>
+                                <th data-i18n="common.manufacturer" data-sort-key="manufacturer" data-table="wifiDevices">Manufacturer</th>
                                 <th data-i18n="common.type" data-sort-key="device_type" data-table="wifiDevices">Type</th>
                                 <th data-i18n="common.confidence" data-sort-key="confidence" data-table="wifiDevices">Confidence</th>
                                 <th data-i18n="common.lastSeen" data-sort-key="last_seen" data-table="wifiDevices">Last Seen</th>
@@ -2101,11 +2102,13 @@
         async function loadBTDevices() {
             try {
                 const macFilter = document.getElementById("macFilter").value;
+                const manufacturerFilter = document.getElementById("manufacturerFilter").value;
                 const confidenceMin = parseInt(document.getElementById("confidenceMin").value);
                 const confidenceMax = parseInt(document.getElementById("confidenceMax").value);
                 const params = new URLSearchParams({
                     limit: 100,
                     ...(macFilter && { mac_filter: macFilter }),
+                    ...(manufacturerFilter && { manufacturer_filter: manufacturerFilter }),
                     ...(confidenceMin !== 0 && { confidence_min: confidenceMin }),
                     ...(confidenceMax !== 100 && { confidence_max: confidenceMax })
                 });
@@ -2148,12 +2151,14 @@
         async function loadWiFiDevices() {
             try {
                 const macFilter = document.getElementById("macFilter").value;
+                const manufacturerFilter = document.getElementById("manufacturerFilter").value;
                 const ssidFilter = document.getElementById("ssidFilter").value;
                 const confidenceMin = parseInt(document.getElementById("confidenceMin").value);
                 const confidenceMax = parseInt(document.getElementById("confidenceMax").value);
                 const params = new URLSearchParams({
                     limit: 100,
                     ...(macFilter && { mac_filter: macFilter }),
+                    ...(manufacturerFilter && { manufacturer_filter: manufacturerFilter }),
                     ...(ssidFilter && { ssid_filter: ssidFilter }),
                     ...(confidenceMin !== 0 && { confidence_min: confidenceMin }),
                     ...(confidenceMax !== 100 && { confidence_max: confidenceMax })
@@ -2284,9 +2289,9 @@
                 const confidenceColor = device.confidence > 70 ? "#2ecc71" : device.confidence > 40 ? "#e67e22" : "#e74c3c";
                 const escapedNotes = (device.notes || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
                 return `
-                    <tr data-mac="${device.mac}" data-vendor="${device.vendor || '—'}" data-device-type="${device.device_type || '—'}" data-last-seen="${device.last_seen}" data-notes="${escapedNotes}" class="wifi-device-row ${isSelected ? 'selected' : ''} ${hasNote ? 'has-note' : ''}">
+                    <tr data-mac="${device.mac}" data-manufacturer="${device.manufacturer || '—'}" data-device-type="${device.device_type || '—'}" data-last-seen="${device.last_seen}" data-notes="${escapedNotes}" class="wifi-device-row ${isSelected ? 'selected' : ''} ${hasNote ? 'has-note' : ''}">
                         <td class="mac-addr">${device.mac}</td>
-                        <td>${device.vendor || "—"}</td>
+                        <td>${device.manufacturer || "—"}</td>
                         <td>${device.device_type || "—"}</td>
                         <td>
                             <div class="confidence-bar">
@@ -2771,7 +2776,7 @@
         async function handleWiFiDeviceRowClick(e) {
             const row = e.currentTarget;
             const mac = row.getAttribute("data-mac");
-            const vendor = row.getAttribute("data-vendor");
+            const manufacturer = row.getAttribute("data-manufacturer");
             const lastSeen = parseFloat(row.getAttribute("data-last-seen"));
 
             // If clicking the same device again, deselect it
@@ -2784,7 +2789,7 @@
             selectedWiFiDevice = mac;
             selectedWiFiDeviceData = {
                 mac: mac,
-                vendor: vendor,
+                manufacturer: manufacturer,
                 last_seen: lastSeen
             };
 
@@ -2793,13 +2798,13 @@
             row.classList.add("selected");
 
             // Show tooltip with device details
-            await showWiFiDeviceTooltip(mac, vendor, lastSeen);
+            await showWiFiDeviceTooltip(mac, manufacturer, lastSeen);
 
             // Filter the map to show only points from this device
             filterMapByWiFiDevice(mac);
         }
 
-        async function showWiFiDeviceTooltip(mac, vendor, lastSeen) {
+        async function showWiFiDeviceTooltip(mac, manufacturer, lastSeen) {
             try {
                 const tooltip = document.getElementById("deviceTooltip");
                 const contentDiv = document.getElementById("deviceTooltipContent");
@@ -2826,13 +2831,13 @@
                     </div>
                 `;
 
-                // Display vendor
-                const displayVendor = deviceInfo.vendor || vendor || "—";
-                if (displayVendor !== "—") {
+                // Display manufacturer
+                const displayManufacturer = deviceInfo.manufacturer || manufacturer || "—";
+                if (displayManufacturer !== "—") {
                     html += `
                         <div class="device-tooltip-row">
-                            <span class="device-tooltip-label">${t('common.vendor', 'Vendor')}:</span>
-                            <span class="device-tooltip-value">${displayVendor}</span>
+                            <span class="device-tooltip-label">${t('common.manufacturer', 'Manufacturer')}:</span>
+                            <span class="device-tooltip-value">${displayManufacturer}</span>
                         </div>
                     `;
                 }
@@ -3588,6 +3593,12 @@
             updateHeatmap();
         });
 
+        document.getElementById("manufacturerFilter").addEventListener("input", () => {
+            if (currentTab === "bt-devices") loadBTDevices();
+            else if (currentTab === "wifi-devices") loadWiFiDevices();
+            updateHeatmap();
+        });
+
         document.getElementById("rssiMin").addEventListener("input", (e) => {
             document.getElementById("rssiMinValue").textContent = e.target.value;
             if (currentTab === "bt-sightings") loadBTSightings();
@@ -3963,7 +3974,7 @@
                 const result = await response.json();
                 
                 if (response.ok) {
-                    alert(`${t('dashboard.oui.updateSuccess', 'OUI database updated successfully!\n\nEntries:')} ${result.entries || t('dashboard.messages.na', 'N/A')}${t('dashboard.oui.runAnalyze', "\n\nRun 'Analyze Confidence' to apply vendor lookups to WiFi devices.")}`);
+                    alert(`${t('dashboard.oui.updateSuccess', 'OUI database updated successfully!\n\nEntries:')} ${result.entries || t('dashboard.messages.na', 'N/A')}${t('dashboard.oui.runAnalyze', "\n\nRun 'Analyze Confidence' to apply manufacturer lookups to WiFi devices.")}`);
                 } else {
                     alert(`${t('dashboard.oui.updateFailed', 'Failed to update OUI database:')} ${result.error || t('dashboard.messages.unknownError', 'Unknown error')}`);
                 }

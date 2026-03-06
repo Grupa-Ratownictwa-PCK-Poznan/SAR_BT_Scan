@@ -100,6 +100,7 @@ def query_devices(device_type: str, limit: int = 1000, offset: int = 0,
         offset: Pagination offset
         filters: Optional dict with filter keys:
                 - mac_filter: MAC address substring
+                - manufacturer_filter: Manufacturer/vendor name substring
                 - confidence_min: Minimum confidence (0-100)
                 - confidence_max: Maximum confidence (0-100)
                 - rssi_min: Minimum RSSI
@@ -122,6 +123,12 @@ def query_devices(device_type: str, limit: int = 1000, offset: int = 0,
                     # Filter by MAC if specified
                     if "mac_filter" in filters and filters["mac_filter"].lower() not in addr.lower():
                         continue
+                    
+                    # Filter by manufacturer if specified
+                    if "manufacturer_filter" in filters and filters["manufacturer_filter"]:
+                        mf = filters["manufacturer_filter"].lower()
+                        if not manufacturer or mf not in manufacturer.lower():
+                            continue
                     
                     # Filter by confidence if specified
                     if "confidence_min" in filters and confidence < filters["confidence_min"]:
@@ -162,23 +169,29 @@ def query_devices(device_type: str, limit: int = 1000, offset: int = 0,
                     if "mac_filter" in filters and filters["mac_filter"].lower() not in mac.lower():
                         continue
                     
+                    # Try to recover vendor for randomized MACs
+                    display_manufacturer = vendor or ""
+                    if not display_manufacturer and is_locally_administered_mac(mac):
+                        recovered_vendor, was_randomized = lookup_randomized_mac_vendor(mac)
+                        if recovered_vendor:
+                            display_manufacturer = recovered_vendor
+                    
+                    # Filter by manufacturer if specified
+                    if "manufacturer_filter" in filters and filters["manufacturer_filter"]:
+                        mf = filters["manufacturer_filter"].lower()
+                        if not display_manufacturer or mf not in display_manufacturer.lower():
+                            continue
+                    
                     # Filter by confidence if specified
                     if "confidence_min" in filters and confidence < filters["confidence_min"]:
                         continue
                     if "confidence_max" in filters and confidence > filters["confidence_max"]:
                         continue
                     
-                    # Try to recover vendor for randomized MACs
-                    display_vendor = vendor or ""
-                    if not display_vendor and is_locally_administered_mac(mac):
-                        recovered_vendor, was_randomized = lookup_randomized_mac_vendor(mac)
-                        if recovered_vendor:
-                            display_vendor = recovered_vendor
-                    
                     results.append({
                         "type": "device",
                         "mac": mac,
-                        "vendor": display_vendor,
+                        "manufacturer": display_manufacturer,
                         "device_type": device_type_val or "",
                         "first_seen": first_seen,
                         "last_seen": last_seen,
@@ -403,12 +416,15 @@ async def get_status():
 async def get_bt_devices(limit: int = Query(100, ge=1, le=1000),
                         offset: int = Query(0, ge=0),
                         mac_filter: Optional[str] = None,
+                        manufacturer_filter: Optional[str] = None,
                         confidence_min: Optional[int] = Query(None, ge=0, le=100),
                         confidence_max: Optional[int] = Query(None, ge=0, le=100)):
     """Get BT devices list with optional filters."""
     filters = {}
     if mac_filter:
         filters["mac_filter"] = mac_filter
+    if manufacturer_filter:
+        filters["manufacturer_filter"] = manufacturer_filter
     if confidence_min is not None:
         filters["confidence_min"] = confidence_min
     if confidence_max is not None:
@@ -454,6 +470,7 @@ async def get_bt_sightings(
 async def get_wifi_devices(limit: int = Query(100, ge=1, le=1000),
                           offset: int = Query(0, ge=0),
                           mac_filter: Optional[str] = None,
+                          manufacturer_filter: Optional[str] = None,
                           ssid_filter: Optional[str] = None,
                           confidence_min: Optional[int] = Query(None, ge=0, le=100),
                           confidence_max: Optional[int] = Query(None, ge=0, le=100)):
@@ -461,6 +478,8 @@ async def get_wifi_devices(limit: int = Query(100, ge=1, le=1000),
     filters = {}
     if mac_filter:
         filters["mac_filter"] = mac_filter
+    if manufacturer_filter:
+        filters["manufacturer_filter"] = manufacturer_filter
     if ssid_filter:
         filters["ssid_filter"] = ssid_filter
     if confidence_min is not None:
@@ -526,7 +545,7 @@ async def get_wifi_device_ssids(mac: str):
             if device_row:
                 vendor, device_type, confidence, notes, first_seen, last_seen = device_row
                 device_info = {
-                    "vendor": vendor or "Unknown",
+                    "manufacturer": vendor or "Unknown",
                     "device_type": device_type or "Unknown",
                     "confidence": confidence or 0,
                     "notes": notes or "",

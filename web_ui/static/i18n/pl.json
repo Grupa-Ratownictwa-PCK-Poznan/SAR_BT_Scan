@@ -22,7 +22,6 @@
     "about": "O programie",
     "mac": "MAC",
     "name": "Nazwa",
-    "vendor": "Dostawca",
     "manufacturer": "Producent",
     "type": "Typ",
     "confidence": "Pewność",
@@ -73,7 +72,7 @@
     "analytics": {
       "title": "Analityka",
       "confidence": "Pewność",
-      "vendorDb": "Baza dostawców"
+      "manufacturerDb": "Baza producentów"
     },
     "data": {
       "title": "Dane",
@@ -95,6 +94,7 @@
     },
     "filters": {
       "filterByMac": "Filtruj po MAC...",
+      "filterByManufacturer": "Filtruj po producencie...",
       "filterBySsid": "Filtruj po SSID...",
       "rssiRange": "Zakres RSSI (dBm)",
       "confidenceRange": "Zakres pewności",
@@ -186,7 +186,7 @@
     },
     "oui": {
       "updateSuccess": "Baza OUI zaktualizowana pomyślnie!\n\nWpisy:",
-      "runAnalyze": "\n\nUruchom 'Analizuj pewność' aby zastosować wyszukiwanie dostawców do urządzeń WiFi.",
+      "runAnalyze": "\n\nUruchom 'Analizuj pewność' aby zastosować wyszukiwanie producentów do urządzeń WiFi.",
       "updateFailed": "Nie udało się zaktualizować bazy OUI:"
     }
   },
@@ -256,7 +256,7 @@
     "darkModeToggle": "Przełącz między jasnym a ciemnym motywem kolorystycznym. Tryb ciemny jest łatwiejszy dla oczu w słabym oświetleniu i zmniejsza odblaski ekranu.",
     "pauseResumeBtn": "Wstrzymaj lub wznów aktualizacje danych na żywo. Po wstrzymaniu wyświetlacz się zatrzymuje, dzięki czemu możesz analizować bieżące dane bez ich zmiany. Kliknij ponownie, aby wznowić aktualizacje w czasie rzeczywistym.",
     "analyzeConfidenceBtn": "Uruchom algorytm analizy pewności dla wszystkich wykrytych urządzeń. Oblicza prawdopodobieństwo, że każde urządzenie należy do prawdziwej osoby, a nie jest losowe/przypadkowe, na podstawie wzorców sygnału, czasu i zachowania.",
-    "updateOuiBtn": "Pobierz najnowszą bazę danych dostawców OUI (Organizationally Unique Identifier). Pomaga to identyfikować producentów urządzeń na podstawie adresów MAC dla lepszej klasyfikacji urządzeń.",
+    "updateOuiBtn": "Pobierz najnowszą bazę danych producentów OUI (Organizationally Unique Identifier). Pomaga to identyfikować producentów urządzeń na podstawie adresów MAC dla lepszej klasyfikacji urządzeń.",
     "downloadDbBtn": "Pobierz całą bazę danych skanera jako plik. Użyj tego do tworzenia kopii zapasowej danych, przeniesienia ich do innego systemu lub analizy offline za pomocą zewnętrznych narzędzi.",
     "purgeDbBtn": "Usuń WSZYSTKIE dane z bazy danych. Najpierw zostanie utworzona kopia zapasowa. Użyj tego, aby zacząć od nowa przy rozpoczynaniu nowej operacji poszukiwawczej. UWAGA: Tej czynności nie można cofnąć!",
     "clearUsbBtn": "Usuń WSZYSTKIE pliki z urządzenia pamięci USB. Użyj tego, aby wyczyścić wyeksportowane dane i zwolnić miejsce na dysku USB. UWAGA: Tej czynności nie można cofnąć!",
@@ -265,7 +265,7 @@
     "shutdownBtn": "Bezpiecznie wyłącz system skanera. Będziesz musiał fizycznie go ponownie włączyć. Użyj tego przed odłączeniem zasilania, aby zapobiec uszkodzeniu danych.",
     "tabBtDevices": "Zobacz listę wykrytych urządzeń Bluetooth. Pokazuje adres MAC, nazwę urządzenia, producenta, wskaźnik pewności i kiedy każde urządzenie było ostatnio widziane.",
     "tabBtSightings": "Zobacz poszczególne wykrycia sygnałów Bluetooth (obserwacje). Pokazuje każdy moment wykrycia urządzenia z siłą sygnału i znacznikiem czasu. Przydatne do śledzenia ruchu urządzenia.",
-    "tabWifiDevices": "Zobacz listę wykrytych urządzeń WiFi (stacji). Pokazuje adres MAC, dostawcę, typ urządzenia, wskaźnik pewności i czas ostatniego widzenia.",
+    "tabWifiDevices": "Zobacz listę wykrytych urządzeń WiFi (stacji). Pokazuje adres MAC, producenta, typ urządzenia, wskaźnik pewności i czas ostatniego widzenia.",
     "tabWifiAssoc": "Zobacz zdarzenia asocjacji WiFi. Pokazuje, do których sieci (SSID) każde urządzenie próbowało się połączyć, typy pakietów, siłę sygnału i znaczniki czasu.",
     "mapBtBtn": "Pokaż tylko lokalizacje urządzeń Bluetooth na mapie cieplnej. Filtruje mapę, aby wyświetlać miejsca wykrycia urządzeń BT.",
     "mapWifiBtn": "Pokaż tylko lokalizacje urządzeń WiFi na mapie cieplnej. Filtruje mapę, aby wyświetlać miejsca wykrycia urządzeń WiFi.",
@@ -284,6 +284,7 @@
     "confidenceMinSlider": "Ustaw minimalny filtr wskaźnika pewności. Wyższe wartości pokazują tylko urządzenia bardziej prawdopodobne jako prawdziwe osoby.",
     "confidenceMaxSlider": "Ustaw maksymalny filtr wskaźnika pewności. Niższe wartości wykluczają urządzenia o wysokiej pewności.",
     "macFilter": "Filtruj urządzenia po adresie MAC. Wpisz część adresu MAC, aby znaleźć konkretne urządzenia. Obsługuje częściowe dopasowanie.",
-    "ssidFilter": "Filtruj asocjacje WiFi po nazwie sieci (SSID). Wpisz część nazwy sieci, aby znaleźć urządzenia z pasującymi połączeniami."
+    "ssidFilter": "Filtruj asocjacje WiFi po nazwie sieci (SSID). Wpisz część nazwy sieci, aby znaleźć urządzenia z pasującymi połączeniami.",
+    "manufacturerFilter": "Filtruj urządzenia po nazwie producenta. Wpisz część nazwy producenta, aby znaleźć pasujące urządzenia."
   }
 }

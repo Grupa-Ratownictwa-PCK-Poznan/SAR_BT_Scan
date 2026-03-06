@@ -22,7 +22,6 @@
     "about": "About",
     "mac": "MAC",
     "name": "Name",
-    "vendor": "Vendor",
     "manufacturer": "Manufacturer",
     "type": "Type",
     "confidence": "Confidence",
@@ -73,7 +72,7 @@
     "analytics": {
       "title": "Analytics",
       "confidence": "Confidence",
-      "vendorDb": "Vendor DB"
+      "manufacturerDb": "Manufacturer DB"
     },
     "data": {
       "title": "Data",
@@ -95,6 +94,7 @@
     },
     "filters": {
       "filterByMac": "Filter by MAC...",
+      "filterByManufacturer": "Filter by manufacturer...",
       "filterBySsid": "Filter by SSID...",
       "rssiRange": "RSSI Range (dBm)",
       "confidenceRange": "Confidence Range",
@@ -186,7 +186,7 @@
     },
     "oui": {
       "updateSuccess": "OUI database updated successfully!\n\nEntries:",
-      "runAnalyze": "\n\nRun 'Analyze Confidence' to apply vendor lookups to WiFi devices.",
+      "runAnalyze": "\n\nRun 'Analyze Confidence' to apply manufacturer lookups to WiFi devices.",
       "updateFailed": "Failed to update OUI database:"
     }
   },
@@ -256,7 +256,7 @@
     "darkModeToggle": "Switch between light and dark color themes. Dark mode is easier on the eyes in low-light conditions and reduces screen glare.",
     "pauseResumeBtn": "Pause or resume live data updates. When paused, the display freezes so you can analyze the current data without it changing. Click again to resume real-time updates.",
     "analyzeConfidenceBtn": "Run the confidence analysis algorithm on all detected devices. This calculates how likely each device belongs to a real person vs. being random/spurious based on signal patterns, timing, and behavior.",
-    "updateOuiBtn": "Download the latest OUI (Organizationally Unique Identifier) vendor database. This helps identify device manufacturers from MAC addresses for better device classification.",
+    "updateOuiBtn": "Download the latest OUI (Organizationally Unique Identifier) manufacturer database. This helps identify device manufacturers from MAC addresses for better device classification.",
     "downloadDbBtn": "Download the entire scanner database as a file. Use this to backup your data, transfer it to another system, or analyze it offline with external tools.",
     "purgeDbBtn": "Delete ALL data from the database. A backup copy will be created first. Use this to start fresh when beginning a new search operation. WARNING: This action cannot be undone!",
     "clearUsbBtn": "Delete ALL files from the USB storage device. Use this to clear exported data and free up space on the USB drive. WARNING: This action cannot be undone!",
@@ -265,7 +265,7 @@
     "shutdownBtn": "Safely shut down the scanner system. You will need to physically power it back on. Use this before disconnecting power to prevent data corruption.",
     "tabBtDevices": "View the list of detected Bluetooth devices. Shows MAC address, device name, manufacturer, confidence score, and when each device was last seen.",
     "tabBtSightings": "View individual Bluetooth signal detections (sightings). Shows each time a device was detected with its signal strength and timestamp. Useful for tracking device movement.",
-    "tabWifiDevices": "View the list of detected WiFi devices (stations). Shows MAC address, vendor, device type, confidence score, and last seen time.",
+    "tabWifiDevices": "View the list of detected WiFi devices (stations). Shows MAC address, manufacturer, device type, confidence score, and last seen time.",
     "tabWifiAssoc": "View WiFi association events. Shows which networks (SSIDs) each device has tried to connect to, packet types, signal strength, and timestamps.",
     "mapBtBtn": "Show only Bluetooth device locations on the heatmap. Filters the map to display where BT devices were detected.",
     "mapWifiBtn": "Show only WiFi device locations on the heatmap. Filters the map to display where WiFi devices were detected.",
@@ -284,6 +284,7 @@
     "confidenceMinSlider": "Set minimum confidence score filter. Higher values show only devices more likely to be real persons.",
     "confidenceMaxSlider": "Set maximum confidence score filter. Lower values exclude high-confidence devices.",
     "macFilter": "Filter devices by MAC address. Type part of a MAC address to find specific devices. Supports partial matching.",
-    "ssidFilter": "Filter WiFi associations by network name (SSID). Type part of a network name to find devices with matching connections."
+    "ssidFilter": "Filter WiFi associations by network name (SSID). Type part of a network name to find devices with matching connections.",
+    "manufacturerFilter": "Filter devices by manufacturer name. Type part of a manufacturer or vendor name to find matching devices."
   }
 }

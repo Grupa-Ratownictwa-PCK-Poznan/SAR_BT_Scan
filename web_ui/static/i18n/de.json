@@ -22,7 +22,6 @@
     "about": "Über",
     "mac": "MAC",
     "name": "Name",
-    "vendor": "Hersteller",
     "manufacturer": "Hersteller",
     "type": "Typ",
     "confidence": "Konfidenz",
@@ -73,7 +72,7 @@
     "analytics": {
       "title": "Analytik",
       "confidence": "Konfidenz",
-      "vendorDb": "Hersteller-DB"
+      "manufacturerDb": "Hersteller-DB"
     },
     "data": {
       "title": "Daten",
@@ -95,6 +94,7 @@
     },
     "filters": {
       "filterByMac": "Nach MAC filtern...",
+      "filterByManufacturer": "Nach Hersteller filtern...",
       "filterBySsid": "Nach SSID filtern...",
       "rssiRange": "RSSI-Bereich (dBm)",
       "confidenceRange": "Konfidenz-Bereich",
@@ -284,6 +284,7 @@
     "confidenceMinSlider": "Minimalen Konfidenzwert-Filter festlegen. Höhere Werte zeigen nur Geräte, die wahrscheinlicher echte Personen sind.",
     "confidenceMaxSlider": "Maximalen Konfidenzwert-Filter festlegen. Niedrigere Werte schließen Geräte mit hoher Konfidenz aus.",
     "macFilter": "Geräte nach MAC-Adresse filtern. Geben Sie einen Teil einer MAC-Adresse ein, um bestimmte Geräte zu finden. Unterstützt Teilübereinstimmung.",
-    "ssidFilter": "WLAN-Assoziationen nach Netzwerkname (SSID) filtern. Geben Sie einen Teil eines Netzwerknamens ein, um Geräte mit passenden Verbindungen zu finden."
+    "ssidFilter": "WLAN-Assoziationen nach Netzwerkname (SSID) filtern. Geben Sie einen Teil eines Netzwerknamens ein, um Geräte mit passenden Verbindungen zu finden.",
+    "manufacturerFilter": "Geräte nach Herstellername filtern. Geben Sie einen Teil eines Herstellernamens ein, um passende Geräte zu finden."
   }
 }
