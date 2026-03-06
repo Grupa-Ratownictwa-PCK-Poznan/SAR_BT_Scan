@@ -143,13 +143,22 @@ def query_devices(device_type: str, limit: int = 1000, offset: int = 0,
                     })
             
             elif device_type == "wifi":
-                query = "SELECT mac, first_seen, last_seen, vendor, device_type, confidence, notes FROM wifi_devices ORDER BY last_seen DESC"
-                cursor = con.execute(query)
+                # If SSID filter is specified, only return devices that have associations with matching SSIDs
+                if "ssid_filter" in filters and filters["ssid_filter"]:
+                    ssid_val = filters["ssid_filter"]
+                    query = """SELECT mac, first_seen, last_seen, vendor, device_type, confidence, notes 
+                               FROM wifi_devices 
+                               WHERE mac IN (SELECT DISTINCT mac FROM wifi_associations WHERE ssid LIKE ? COLLATE NOCASE)
+                               ORDER BY last_seen DESC"""
+                    cursor = con.execute(query, (f"%{ssid_val}%",))
+                else:
+                    query = "SELECT mac, first_seen, last_seen, vendor, device_type, confidence, notes FROM wifi_devices ORDER BY last_seen DESC"
+                    cursor = con.execute(query)
                 
                 for row in cursor.fetchall():
                     mac, first_seen, last_seen, vendor, device_type_val, confidence, notes = row
                     
-                    # Filter by MAC if specified
+                    # Filter by MAC if specified (case-insensitive)
                     if "mac_filter" in filters and filters["mac_filter"].lower() not in mac.lower():
                         continue
                     
@@ -199,7 +208,7 @@ def query_sightings(mac_filter: Optional[str] = None,
             params = []
             
             if mac_filter:
-                query += " AND addr LIKE ?"
+                query += " AND addr LIKE ? COLLATE NOCASE"
                 params.append(f"%{mac_filter}%")
             
             if rssi_min is not None:
@@ -268,11 +277,11 @@ def query_wifi_associations(mac_filter: Optional[str] = None,
             params = []
             
             if mac_filter:
-                query += " AND mac LIKE ?"
+                query += " AND mac LIKE ? COLLATE NOCASE"
                 params.append(f"%{mac_filter}%")
             
             if ssid_filter:
-                query += " AND ssid LIKE ?"
+                query += " AND ssid LIKE ? COLLATE NOCASE"
                 params.append(f"%{ssid_filter}%")
             
             if rssi_min is not None:
@@ -445,12 +454,15 @@ async def get_bt_sightings(
 async def get_wifi_devices(limit: int = Query(100, ge=1, le=1000),
                           offset: int = Query(0, ge=0),
                           mac_filter: Optional[str] = None,
+                          ssid_filter: Optional[str] = None,
                           confidence_min: Optional[int] = Query(None, ge=0, le=100),
                           confidence_max: Optional[int] = Query(None, ge=0, le=100)):
     """Get WiFi devices list with optional filters."""
     filters = {}
     if mac_filter:
         filters["mac_filter"] = mac_filter
+    if ssid_filter:
+        filters["ssid_filter"] = ssid_filter
     if confidence_min is not None:
         filters["confidence_min"] = confidence_min
     if confidence_max is not None:
@@ -602,7 +614,7 @@ async def get_heatmap_data(
                 params = []
                 
                 if mac_filter:
-                    query += " AND addr LIKE ?"
+                    query += " AND addr LIKE ? COLLATE NOCASE"
                     params.append(f"%{mac_filter}%")
                 
                 if rssi_min is not None:
@@ -640,11 +652,11 @@ async def get_heatmap_data(
                 params = []
                 
                 if mac_filter:
-                    query += " AND mac LIKE ?"
+                    query += " AND mac LIKE ? COLLATE NOCASE"
                     params.append(f"%{mac_filter}%")
                 
                 if ssid_filter:
-                    query += " AND ssid LIKE ?"
+                    query += " AND ssid LIKE ? COLLATE NOCASE"
                     params.append(f"%{ssid_filter}%")
                 
                 if rssi_min is not None:

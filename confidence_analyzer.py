@@ -66,7 +66,7 @@ except ImportError:
 try:
     from device_type_classifier import classify_device
     CLASSIFIER_AVAILABLE = True
-except ImportError:
+except Exception:
     CLASSIFIER_AVAILABLE = False
     def classify_device(**kwargs): return ""
 

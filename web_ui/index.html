@@ -1385,7 +1385,7 @@
                 <!-- Filters -->
                 <div class="filter-group">
                     <input type="text" id="macFilter" data-i18n-placeholder="dashboard.filters.filterByMac" data-i18n-title="tooltips.macFilter" placeholder="Filter by MAC..." style="font-size: 11px;">
-                    <input type="text" id="ssidFilter" data-i18n-placeholder="dashboard.filters.filterBySsid" data-i18n-title="tooltips.ssidFilter" placeholder="Filter by SSID..." style="display: none; font-size: 11px;">
+                    <input type="text" id="ssidFilter" data-i18n-placeholder="dashboard.filters.filterBySsid" data-i18n-title="tooltips.ssidFilter" placeholder="Filter by SSID..." style="font-size: 11px;">
                 </div>
 
                 <div class="filter-group">
@@ -2039,11 +2039,13 @@
         async function loadWiFiDevices() {
             try {
                 const macFilter = document.getElementById("macFilter").value;
+                const ssidFilter = document.getElementById("ssidFilter").value;
                 const confidenceMin = parseInt(document.getElementById("confidenceMin").value);
                 const confidenceMax = parseInt(document.getElementById("confidenceMax").value);
                 const params = new URLSearchParams({
                     limit: 100,
                     ...(macFilter && { mac_filter: macFilter }),
+                    ...(ssidFilter && { ssid_filter: ssidFilter }),
                     ...(confidenceMin !== 0 && { confidence_min: confidenceMin }),
                     ...(confidenceMax !== 100 && { confidence_max: confidenceMax })
                 });
@@ -2367,7 +2369,7 @@
                 Object.entries(timeParams).forEach(([k, v]) => params.append(k, v));
                 
                 const ssidFilter = document.getElementById("ssidFilter")?.value.trim();
-                if (ssidFilter && currentTab === "wifi-assoc") params.append("ssid_filter", ssidFilter);
+                if (ssidFilter && (currentTab === "wifi-assoc" || currentTab === "wifi-devices")) params.append("ssid_filter", ssidFilter);
                 
                 const apiUrl = `${API_BASE}/api/map/heatmap?${params}`;
                 console.log("Fetching heatmap from:", apiUrl);
@@ -3462,13 +3464,16 @@
 
         // Filter listeners
         document.getElementById("macFilter").addEventListener("input", () => {
-            if (currentTab.includes("bt")) loadBTDevices();
-            else if (currentTab.includes("wifi")) loadWiFiDevices();
+            if (currentTab === "bt-devices") loadBTDevices();
+            else if (currentTab === "bt-sightings") loadBTSightings();
+            else if (currentTab === "wifi-devices") loadWiFiDevices();
+            else if (currentTab === "wifi-assoc") loadWiFiAssociations();
             updateHeatmap();
         });
 
         document.getElementById("ssidFilter").addEventListener("input", () => {
-            loadWiFiAssociations();
+            if (currentTab === "wifi-devices") loadWiFiDevices();
+            else if (currentTab === "wifi-assoc") loadWiFiAssociations();
             updateHeatmap();
         });
 
@@ -3542,11 +3547,11 @@
             updateHeatmap();
         });
 
-        // Show SSID filter only for WiFi associations
+        // Show SSID filter for WiFi tabs (devices and associations)
         document.querySelectorAll(".tab-btn[data-tab]").forEach(btn => {
             btn.addEventListener("click", (e) => {
                 const ssidFilter = document.getElementById("ssidFilter");
-                if (e.target.dataset.tab === "wifi-assoc") {
+                if (e.target.dataset.tab === "wifi-assoc" || e.target.dataset.tab === "wifi-devices") {
                     ssidFilter.style.display = "block";
                 } else {
                     ssidFilter.style.display = "none";
