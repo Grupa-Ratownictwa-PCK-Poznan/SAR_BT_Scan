@@ -489,16 +489,20 @@ class ConfidenceAnalyzer:
         analysis: DeviceAnalysis,
         early_late_gps_distance: Optional[float] = None,
     ) -> Optional[str]:
-        """Classify a device as SAR HQ equipment, SAR TEAM member device, or None.
+        """Classify a device as SAR HQ equipment, SAR TEAM member device, or both.
 
         SAR HQ:   strong signal at both session start AND end, with location
                   evidence that the device stays at a fixed point (HQ).
         SAR TEAM: seen continuously throughout the session with consistent
                   signal strength (device carried alongside the scanner).
 
+        A device can match both (e.g. a team member's phone at HQ).
+
         Returns:
-            "SAR HQ", "SAR TEAM", or None
+            "SAR HQ", "SAR TEAM", "SAR HQ+TEAM", or None
         """
+        roles: list[str] = []
+
         # --- SAR HQ detection ---
         # Strong RSSI at both session boundaries
         strong_at_boundaries = (
@@ -522,7 +526,7 @@ class ConfidenceAnalyzer:
                 # No GPS data at all – boundary RSSI alone is strong enough.
                 location_ok = True
             if location_ok:
-                return "SAR HQ"
+                roles.append("HQ")
 
         # --- SAR TEAM detection ---
         # Seen in most time buckets with consistent signal
@@ -537,9 +541,11 @@ class ConfidenceAnalyzer:
             )
             very_high_presence = analysis.active_presence_ratio >= 0.70
             if rssi_consistent or very_high_presence:
-                return "SAR TEAM"
+                roles.append("TEAM")
 
-        return None
+        if not roles:
+            return None
+        return "SAR " + "+".join(roles)
 
     def is_whitelisted(self, mac: str) -> bool:
         """Check if a MAC address is in the whitelist."""
