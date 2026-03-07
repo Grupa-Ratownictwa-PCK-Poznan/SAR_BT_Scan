@@ -100,6 +100,22 @@
             transition: background 0.3s;
         }
 
+        .sidebar-row {
+            display: flex;
+            gap: 4px;
+        }
+
+        .sidebar-row > .panel {
+            flex: 1;
+            min-width: 0;
+        }
+
+        @media (max-width: 700px) {
+            .sidebar-row {
+                flex-direction: column;
+            }
+        }
+
         .main-content {
             flex: 1;
             display: flex;
@@ -1304,86 +1320,92 @@
             <!-- Live Time -->
             <div id="liveTime">--:--:--</div>
 
-            <!-- Status Indicators Panel -->
-            <div class="panel">
-                <div class="panel-title">
-                    <i class="fas fa-heartbeat"></i> <span data-i18n="dashboard.status.title">Status</span>
+            <!-- Row 1: Status + Statistics side by side -->
+            <div class="sidebar-row">
+                <!-- Status Indicators Panel -->
+                <div class="panel">
+                    <div class="panel-title">
+                        <i class="fas fa-heartbeat"></i> <span data-i18n="dashboard.status.title">Status</span>
+                    </div>
+                    <div class="indicators">
+                        <div class="indicator" id="gpsIndicator">
+                            <div class="indicator-label" data-i18n="dashboard.status.gpsFix">GPS Fix</div>
+                            <div class="indicator-value error">--</div>
+                        </div>
+                        <div class="indicator" id="satsIndicator">
+                            <div class="indicator-label" data-i18n="dashboard.status.satellites">Satellites</div>
+                            <div class="indicator-value">0</div>
+                        </div>
+                        <div class="indicator" id="scanModeIndicator">
+                            <div class="indicator-label" data-i18n="dashboard.status.scanMode">Scan Mode</div>
+                            <div class="indicator-value">--</div>
+                        </div>
+                        <div class="indicator" id="wifiMonitorIndicator">
+                            <div class="indicator-label" data-i18n="dashboard.status.wifiMonitor">WiFi Monitor</div>
+                            <div class="indicator-value error">OFF</div>
+                        </div>
+                    </div>
                 </div>
-                <div class="indicators">
-                    <div class="indicator" id="gpsIndicator">
-                        <div class="indicator-label" data-i18n="dashboard.status.gpsFix">GPS Fix</div>
-                        <div class="indicator-value error">--</div>
+
+                <!-- Statistics Panel -->
+                <div class="panel">
+                    <div class="panel-title">
+                        <i class="fas fa-chart-bar"></i> <span data-i18n="dashboard.statistics.title">Statistics</span>
                     </div>
-                    <div class="indicator" id="satsIndicator">
-                        <div class="indicator-label" data-i18n="dashboard.status.satellites">Satellites</div>
-                        <div class="indicator-value">0</div>
-                    </div>
-                    <div class="indicator" id="scanModeIndicator">
-                        <div class="indicator-label" data-i18n="dashboard.status.scanMode">Scan Mode</div>
-                        <div class="indicator-value">--</div>
-                    </div>
-                    <div class="indicator" id="wifiMonitorIndicator">
-                        <div class="indicator-label" data-i18n="dashboard.status.wifiMonitor">WiFi Monitor</div>
-                        <div class="indicator-value error">OFF</div>
+                    <div class="stats-grid">
+                        <div class="stat-box">
+                            <div class="stat-label" data-i18n="dashboard.statistics.btDevices">BT Devices</div>
+                            <div class="stat-value" id="btDeviceCount">0</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label" data-i18n="dashboard.statistics.wifiDevices">WiFi Devices</div>
+                            <div class="stat-value" id="wifiDeviceCount">0</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label" data-i18n="dashboard.statistics.btSightings">BT Sightings</div>
+                            <div class="stat-value" id="btSightingCount">0</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label" data-i18n="dashboard.statistics.wifiAssoc">WiFi Assoc</div>
+                            <div class="stat-value" id="wifiAssocCount">0</div>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Pause/Resume Panel -->
-            <div class="panel">
-                <div class="panel-title" style="display: flex; align-items: center; justify-content: space-between;">
-                    <span><i class="fas fa-pause-circle"></i> <span data-i18n="dashboard.updates.title">Updates</span></span>
+            <!-- Row 2: Updates + Analytics side by side -->
+            <div class="sidebar-row">
+                <!-- Pause/Resume Panel -->
+                <div class="panel">
+                    <div class="panel-title" style="display: flex; align-items: center; justify-content: space-between;">
+                        <span><i class="fas fa-pause-circle"></i> <span data-i18n="dashboard.updates.title">Updates</span></span>
+                    </div>
+                    <button id="pauseResumeBtn" data-i18n-title="tooltips.pauseResumeBtn" style="width: 100%; padding: 6px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                        <i class="fas fa-play"></i> <span data-i18n="dashboard.updates.allRunning">All Systems Running</span>
+                    </button>
+                    <div style="font-size: 9px; color: #666; margin-top: 4px; text-align: center;">
+                        <span id="pauseStatus" data-i18n="dashboard.updates.liveActive">Live updates active</span>
+                    </div>
                 </div>
-                <button id="pauseResumeBtn" data-i18n-title="tooltips.pauseResumeBtn" style="width: 100%; padding: 6px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px; display: flex; align-items: center; justify-content: center; gap: 6px;">
-                    <i class="fas fa-play"></i> <span data-i18n="dashboard.updates.allRunning">All Systems Running</span>
-                </button>
-                <div style="font-size: 9px; color: #666; margin-top: 4px; text-align: center;">
-                    <span id="pauseStatus" data-i18n="dashboard.updates.liveActive">Live updates active</span>
-                </div>
-            </div>
 
-            <!-- Statistics Panel -->
-            <div class="panel">
-                <div class="panel-title">
-                    <i class="fas fa-chart-bar"></i> <span data-i18n="dashboard.statistics.title">Statistics</span>
-                </div>
-                <div class="stats-grid">
-                    <div class="stat-box">
-                        <div class="stat-label" data-i18n="dashboard.statistics.btDevices">BT Devices</div>
-                        <div class="stat-value" id="btDeviceCount">0</div>
+                <!-- Analytics Panel -->
+                <div class="panel">
+                    <div class="panel-title">
+                        <i class="fas fa-microscope"></i> <span data-i18n="dashboard.analytics.title">Analytics</span>
                     </div>
-                    <div class="stat-box">
-                        <div class="stat-label" data-i18n="dashboard.statistics.wifiDevices">WiFi Devices</div>
-                        <div class="stat-value" id="wifiDeviceCount">0</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-label" data-i18n="dashboard.statistics.btSightings">BT Sightings</div>
-                        <div class="stat-value" id="btSightingCount">0</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-label" data-i18n="dashboard.statistics.wifiAssoc">WiFi Assoc</div>
-                        <div class="stat-value" id="wifiAssocCount">0</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Analytics Panel -->
-            <div class="panel">
-                <div class="panel-title">
-                    <i class="fas fa-microscope"></i> <span data-i18n="dashboard.analytics.title">Analytics</span>
-                </div>
-                <div style="display: flex; gap: 4px;">
-                    <div class="filter-group" style="flex: 1; margin-bottom: 0;">
-                        <label style="font-size: 8px;" data-i18n="dashboard.analytics.confidence">Confidence</label>
-                        <button id="analyzeConfidenceBtn" data-i18n-title="tooltips.analyzeConfidenceBtn" style="width: 100%; font-size: 10px; padding: 5px; background: var(--accent-green); color: white; border: none; border-radius: 3px; cursor: pointer; font-weight: bold; white-space: nowrap;">
-                            <i class="fas fa-brain"></i> <span data-i18n="common.analyze">Analyze</span>
-                        </button>
-                    </div>
-                    <div class="filter-group" style="flex: 1; margin-bottom: 0;">
-                        <label style="font-size: 8px;" data-i18n="dashboard.analytics.manufacturerDb">Manufacturer DB</label>
-                        <button id="updateOuiBtn" data-i18n-title="tooltips.updateOuiBtn" style="width: 100%; font-size: 10px; padding: 5px; background: #9b59b6; color: white; border: none; border-radius: 3px; cursor: pointer; font-weight: bold; white-space: nowrap;">
-                            <i class="fas fa-download"></i> <span data-i18n="common.update">Update</span>
-                        </button>
+                    <div style="display: flex; gap: 4px;">
+                        <div class="filter-group" style="flex: 1; margin-bottom: 0;">
+                            <label style="font-size: 8px;" data-i18n="dashboard.analytics.confidence">Confidence</label>
+                            <button id="analyzeConfidenceBtn" data-i18n-title="tooltips.analyzeConfidenceBtn" style="width: 100%; font-size: 10px; padding: 5px; background: var(--accent-green); color: white; border: none; border-radius: 3px; cursor: pointer; font-weight: bold; white-space: nowrap;">
+                                <i class="fas fa-brain"></i> <span data-i18n="common.analyze">Analyze</span>
+                            </button>
+                        </div>
+                        <div class="filter-group" style="flex: 1; margin-bottom: 0;">
+                            <label style="font-size: 8px;" data-i18n="dashboard.analytics.manufacturerDb">Manufacturer DB</label>
+                            <button id="updateOuiBtn" data-i18n-title="tooltips.updateOuiBtn" style="width: 100%; font-size: 10px; padding: 5px; background: #9b59b6; color: white; border: none; border-radius: 3px; cursor: pointer; font-weight: bold; white-space: nowrap;">
+                                <i class="fas fa-download"></i> <span data-i18n="common.update">Update</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
