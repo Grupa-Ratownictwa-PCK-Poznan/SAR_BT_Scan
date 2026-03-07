@@ -137,6 +137,8 @@ class DeviceAnalysis:
     gps_spread_meters: Optional[float] = None  # Mean distance from GPS centroid
     # Multi-scanner
     scanner_count: int = 1  # Number of distinct scanners that saw this device
+    # SAR role classification
+    sar_role: Optional[str] = None  # "SAR HQ", "SAR TEAM", or None
 
 
 class ConfidenceAnalyzer:
@@ -482,6 +484,63 @@ class ConfidenceAnalyzer:
         
         return None
     
+    def _classify_sar_role(
+        self,
+        analysis: DeviceAnalysis,
+        early_late_gps_distance: Optional[float] = None,
+    ) -> Optional[str]:
+        """Classify a device as SAR HQ equipment, SAR TEAM member device, or None.
+
+        SAR HQ:   strong signal at both session start AND end, with location
+                  evidence that the device stays at a fixed point (HQ).
+        SAR TEAM: seen continuously throughout the session with consistent
+                  signal strength (device carried alongside the scanner).
+
+        Returns:
+            "SAR HQ", "SAR TEAM", or None
+        """
+        # --- SAR HQ detection ---
+        # Strong RSSI at both session boundaries
+        strong_at_boundaries = (
+            analysis.early_presence
+            and analysis.late_presence
+            and analysis.early_rssi is not None
+            and analysis.early_rssi > -70
+            and analysis.late_rssi is not None
+            and analysis.late_rssi > -70
+        )
+
+        if strong_at_boundaries:
+            # Need location evidence: HQ ratio high, or early/late GPS close,
+            # or no GPS data (can't contradict).
+            location_ok = False
+            if analysis.hq_ratio is not None and analysis.hq_ratio > 0.70:
+                location_ok = True
+            if early_late_gps_distance is not None and early_late_gps_distance < 150:
+                location_ok = True
+            if analysis.hq_ratio is None and early_late_gps_distance is None:
+                # No GPS data at all – boundary RSSI alone is strong enough.
+                location_ok = True
+            if location_ok:
+                return "SAR HQ"
+
+        # --- SAR TEAM detection ---
+        # Seen in most time buckets with consistent signal
+        if (
+            analysis.active_presence_ratio is not None
+            and analysis.active_presence_ratio >= 0.50
+            and analysis.presence_ratio >= 0.60
+        ):
+            rssi_consistent = (
+                analysis.rssi_std_dev is not None
+                and analysis.rssi_std_dev < 10.0
+            )
+            very_high_presence = analysis.active_presence_ratio >= 0.70
+            if rssi_consistent or very_high_presence:
+                return "SAR TEAM"
+
+        return None
+
     def is_whitelisted(self, mac: str) -> bool:
         """Check if a MAC address is in the whitelist."""
         # Normalize MAC for comparison
@@ -828,6 +887,24 @@ class ConfidenceAnalyzer:
             if classified_type:
                 guessed_type = classified_type
             
+            # Compute early/late GPS centroid distance for SAR HQ detection
+            early_gps = [(a[2], a[3]) for a in associations
+                         if a[0] <= early_cutoff
+                         and a[2] is not None and a[3] is not None
+                         and a[2] != 0 and a[3] != 0]
+            late_gps = [(a[2], a[3]) for a in associations
+                        if a[0] >= late_cutoff
+                        and a[2] is not None and a[3] is not None
+                        and a[2] != 0 and a[3] != 0]
+
+            early_late_gps_distance: Optional[float] = None
+            if early_gps and late_gps:
+                e_lat = sum(c[0] for c in early_gps) / len(early_gps)
+                e_lon = sum(c[1] for c in early_gps) / len(early_gps)
+                l_lat = sum(c[0] for c in late_gps) / len(late_gps)
+                l_lon = sum(c[1] for c in late_gps) / len(late_gps)
+                early_late_gps_distance = self._haversine_distance(e_lat, e_lon, l_lat, l_lon)
+
             # Calculate new confidence
             if is_whitelisted:
                 # Whitelisted devices automatically get confidence 0
@@ -858,7 +935,7 @@ class ConfidenceAnalyzer:
                     active_presence_ratio=active_presence,
                 )
             
-            return DeviceAnalysis(
+            wifi_analysis = DeviceAnalysis(
                 mac=mac,
                 device_type="wifi",
                 first_seen=first_seen,
@@ -890,6 +967,13 @@ class ConfidenceAnalyzer:
                 gps_spread_meters=gps_spread,
                 scanner_count=scanner_count_val,
             )
+
+            # Classify SAR role (HQ equipment vs team-carried device)
+            wifi_analysis.sar_role = self._classify_sar_role(
+                wifi_analysis, early_late_gps_distance
+            )
+
+            return wifi_analysis
         finally:
             con.close()
     
@@ -1223,12 +1307,20 @@ class ConfidenceAnalyzer:
                         )
                     bt_count += 1
                 else:
+                    # Compose device_type: combine classifier type with SAR role
+                    parts = []
+                    if analysis.guessed_type:
+                        parts.append(analysis.guessed_type)
+                    if analysis.sar_role:
+                        parts.append(analysis.sar_role)
+                    device_type_value = " | ".join(parts)
+
                     # Update confidence, vendor, and device_type for WiFi devices
                     con.execute(
                         "UPDATE wifi_devices SET confidence = ?, vendor = ?, device_type = ? WHERE mac = ?",
                         (analysis.new_confidence, 
                          analysis.vendor_name or "", 
-                         analysis.guessed_type or "", 
+                         device_type_value, 
                          analysis.mac)
                     )
                     wifi_count += 1
@@ -1356,6 +1448,9 @@ def run_analysis(dry_run: bool = False, verbose: bool = False) -> Dict:
             # Burstiness
             if analysis.burstiness_cov is not None:
                 print(f"  Burstiness CoV: {analysis.burstiness_cov:.2f}")
+            # SAR role classification
+            if analysis.sar_role:
+                print(f"  *** {analysis.sar_role} ***")
             # Show enrichment for WiFi devices
             if analysis.device_type == "wifi":
                 if analysis.vendor_name:
