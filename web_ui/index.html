@@ -1431,27 +1431,29 @@
                     <input type="text" id="ssidFilter" data-i18n-placeholder="dashboard.filters.filterBySsid" data-i18n-title="tooltips.ssidFilter" placeholder="Filter by SSID..." style="font-size: 11px;">
                 </div>
 
-                <div class="filter-group">
-                    <label data-i18n="dashboard.filters.rssiRange">RSSI Range (dBm)</label>
-                    <div style="display: flex; gap: 5px;">
-                        <input type="range" id="rssiMin" min="-100" max="0" value="-100" style="flex: 1;" data-i18n-title="tooltips.rssiMinSlider">
-                        <input type="range" id="rssiMax" min="-100" max="0" value="0" style="flex: 1;" data-i18n-title="tooltips.rssiMaxSlider">
+                <div class="sidebar-row">
+                    <div class="filter-group" style="flex: 1; min-width: 0;">
+                        <label data-i18n="dashboard.filters.rssiRange">RSSI Range (dBm)</label>
+                        <div style="display: flex; gap: 5px;">
+                            <input type="range" id="rssiMin" min="-100" max="0" value="-100" style="flex: 1;" data-i18n-title="tooltips.rssiMinSlider">
+                            <input type="range" id="rssiMax" min="-100" max="0" value="0" style="flex: 1;" data-i18n-title="tooltips.rssiMaxSlider">
+                        </div>
+                        <div class="range-values">
+                            <span id="rssiMinValue">-100</span>
+                            <span id="rssiMaxValue">0</span>
+                        </div>
                     </div>
-                    <div class="range-values">
-                        <span id="rssiMinValue">-100</span>
-                        <span id="rssiMaxValue">0</span>
-                    </div>
-                </div>
 
-                <div class="filter-group">
-                    <label data-i18n="dashboard.filters.confidenceRange">Confidence Range</label>
-                    <div style="display: flex; gap: 5px;">
-                        <input type="range" id="confidenceMin" min="0" max="100" value="0" style="flex: 1;" data-i18n-title="tooltips.confidenceMinSlider">
-                        <input type="range" id="confidenceMax" min="0" max="100" value="100" style="flex: 1;" data-i18n-title="tooltips.confidenceMaxSlider">
-                    </div>
-                    <div class="range-values">
-                        <span id="confidenceMinValue">0</span>
-                        <span id="confidenceMaxValue">100</span>
+                    <div class="filter-group" style="flex: 1; min-width: 0;">
+                        <label data-i18n="dashboard.filters.confidenceRange">Confidence Range</label>
+                        <div style="display: flex; gap: 5px;">
+                            <input type="range" id="confidenceMin" min="0" max="100" value="0" style="flex: 1;" data-i18n-title="tooltips.confidenceMinSlider">
+                            <input type="range" id="confidenceMax" min="0" max="100" value="100" style="flex: 1;" data-i18n-title="tooltips.confidenceMaxSlider">
+                        </div>
+                        <div class="range-values">
+                            <span id="confidenceMinValue">0</span>
+                            <span id="confidenceMaxValue">100</span>
+                        </div>
                     </div>
                 </div>
 
@@ -1464,9 +1466,9 @@
                         <button id="timePresetAll" class="time-preset-btn active" data-hours="0" data-i18n="dashboard.filters.all" data-i18n-title="tooltips.timePresetAll">All</button>
                     </div>
                     <div style="font-size: 11px; margin-bottom: 5px;" data-i18n="dashboard.filters.customRange">Or set custom range:</div>
-                    <div style="display: flex; gap: 5px; flex-direction: column;">
-                        <input type="datetime-local" id="timeStart" title="Start time" style="font-size: 11px; padding: 4px;">
-                        <input type="datetime-local" id="timeEnd" title="End time" style="font-size: 11px; padding: 4px;">
+                    <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                        <input type="datetime-local" id="timeStart" title="Start time" style="font-size: 11px; padding: 4px; flex: 1; min-width: 140px;">
+                        <input type="datetime-local" id="timeEnd" title="End time" style="font-size: 11px; padding: 4px; flex: 1; min-width: 140px;">
                         <button id="timeRangeApply" data-i18n-title="tooltips.timeRangeApply" style="font-size: 11px; padding: 5px; background: var(--rc-red); color: white; border: none; border-radius: 3px; cursor: pointer;" data-i18n="dashboard.filters.applyRange">Apply Range</button>
                     </div>
                 </div>
