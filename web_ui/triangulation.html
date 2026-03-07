@@ -843,6 +843,16 @@
                     <!-- Filled by JavaScript -->
                 </div>
             </div>
+
+            <!-- Confidence Analysis Details panel -->
+            <div class="panel" id="confidencePanel" style="display: none;">
+                <div class="panel-title">
+                    <i class="fas fa-brain"></i> Confidence Analysis Details
+                </div>
+                <div class="panel-content" id="confidenceContent">
+                    <!-- Filled by JavaScript -->
+                </div>
+            </div>
         </div>
 
         <!-- Main content area -->
@@ -1127,6 +1137,7 @@
             displayClusters(result);
             displayTimeline(result);
             displayOnMap(result);
+            fetchAndDisplayConfidenceDetails(result.mac);
         }
 
         function displayDeviceInfo(result) {
@@ -1495,6 +1506,198 @@
             map.setView([lat, lon], 17);
         }
 
+        // ============= Confidence Analysis Details =============
+        let lastConfidenceData = null;
+
+        async function fetchAndDisplayConfidenceDetails(mac) {
+            const panel = document.getElementById('confidencePanel');
+            const content = document.getElementById('confidenceContent');
+            try {
+                const resp = await fetch(`${API_BASE}/api/confidence-details/${encodeURIComponent(mac)}`);
+                if (!resp.ok) {
+                    panel.style.display = 'none';
+                    return;
+                }
+                const data = await resp.json();
+                lastConfidenceData = data;
+                renderConfidenceDetails(data);
+            } catch (e) {
+                console.error('Confidence details error:', e);
+                panel.style.display = 'none';
+            }
+        }
+
+        function renderConfidenceDetails(data) {
+            const panel = document.getElementById('confidencePanel');
+            const content = document.getElementById('confidenceContent');
+
+            // --- Score header ---
+            const score = data.confidence_score;
+            const oldScore = data.old_confidence;
+            let scoreColor = '#e67e22';
+            if (score >= 70) scoreColor = '#2ecc71';
+            else if (score <= 30) scoreColor = '#e74c3c';
+
+            let html = '';
+
+            // Score overview
+            html += `<div style="text-align:center; margin-bottom:12px;">
+                <div style="font-size:36px; font-weight:bold; color:${scoreColor};">${score}</div>
+                <div style="font-size:11px; color:var(--text-secondary);">Confidence Score (0 = SAR team, 100 = possible target)</div>`;
+            if (oldScore !== null && oldScore !== undefined && oldScore !== score) {
+                html += `<div style="font-size:11px; color:var(--text-secondary); margin-top:2px;">Previous score in DB: ${oldScore}</div>`;
+            }
+            html += `</div>`;
+
+            // SAR role badge
+            if (data.sar_role) {
+                html += `<div style="text-align:center; margin-bottom:10px;">
+                    <span style="background:#e74c3c; color:#fff; padding:3px 10px; border-radius:10px; font-size:12px; font-weight:600;">
+                        <i class="fas fa-shield-alt"></i> ${data.sar_role}
+                    </span>
+                </div>`;
+            }
+            if (data.whitelisted) {
+                html += `<div style="text-align:center; margin-bottom:10px;">
+                    <span style="background:#3498db; color:#fff; padding:3px 10px; border-radius:10px; font-size:12px; font-weight:600;">
+                        <i class="fas fa-check-circle"></i> Whitelisted Device
+                    </span>
+                </div>`;
+            }
+
+            // --- Scoring Factors (the key section) ---
+            if (data.factors && data.factors.length > 0) {
+                html += `<div style="margin-bottom:14px;">
+                    <div style="font-weight:600; font-size:13px; margin-bottom:6px; border-bottom:1px solid var(--border-color); padding-bottom:4px;">
+                        <i class="fas fa-balance-scale"></i> Scoring Factors
+                    </div>
+                    <div style="font-size:11px; color:var(--text-secondary); margin-bottom:6px;">
+                        Starting from baseline 50, each factor adjusts the score:
+                    </div>`;
+                data.factors.forEach(f => {
+                    const isPositive = f.includes('→ +');
+                    const isNegative = f.includes('→ -');
+                    const icon = isPositive ? 'fa-arrow-up' : (isNegative ? 'fa-arrow-down' : 'fa-minus');
+                    const color = isPositive ? '#2ecc71' : (isNegative ? '#e74c3c' : '#999');
+                    html += `<div style="display:flex; align-items:flex-start; gap:6px; margin-bottom:4px; font-size:12px; line-height:1.4;">
+                        <i class="fas ${icon}" style="color:${color}; margin-top:2px; min-width:12px;"></i>
+                        <span>${f}</span>
+                    </div>`;
+                });
+                html += `</div>`;
+            }
+
+            // --- Key Metrics Table ---
+            html += `<div style="margin-bottom:14px;">
+                <div style="font-weight:600; font-size:13px; margin-bottom:6px; border-bottom:1px solid var(--border-color); padding-bottom:4px;">
+                    <i class="fas fa-chart-line"></i> Key Metrics
+                </div>
+                <table style="width:100%; font-size:12px; border-collapse:collapse;">`;
+
+            const addRow = (label, value, hint) => {
+                html += `<tr style="border-bottom:1px solid var(--border-color);">
+                    <td style="padding:4px 6px; color:var(--text-secondary); white-space:nowrap;">${label}</td>
+                    <td style="padding:4px 6px; font-weight:500;">${value}</td>
+                    ${hint ? `<td style="padding:4px 6px; font-size:10px; color:var(--text-secondary);">${hint}</td>` : '<td></td>'}
+                </tr>`;
+            };
+
+            addRow('Sighting Count', data.sighting_count, '');
+            addRow('Sessions', data.session_count, data.session_count > 1 ? 'Multiple sessions = persistent' : '');
+            if (data.presence_ratio !== null) {
+                addRow('Presence Ratio (span)', (data.presence_ratio * 100).toFixed(1) + '%',
+                    data.presence_ratio > 0.8 ? 'High → likely SAR' : (data.presence_ratio < 0.2 ? 'Low → brief appearance' : ''));
+            }
+            if (data.active_presence_ratio !== null) {
+                addRow('Active Presence (bucketed)', (data.active_presence_ratio * 100).toFixed(1) + '%',
+                    'More accurate than span-based');
+            }
+
+            // Boundary analysis
+            const earlyStr = data.early_presence ? `Yes${data.early_rssi !== null ? ' (' + data.early_rssi + ' dBm)' : ''}` : 'No';
+            const lateStr = data.late_presence ? `Yes${data.late_rssi !== null ? ' (' + data.late_rssi + ' dBm)' : ''}` : 'No';
+            addRow('Early Session (first 10%)', earlyStr, data.early_presence && data.late_presence ? 'Present at both edges' : '');
+            addRow('Late Session (last 10%)', lateStr, '');
+
+            // Signal
+            if (data.avg_rssi !== null) addRow('Avg RSSI', data.avg_rssi + ' dBm', data.avg_rssi > -50 ? 'Very close' : (data.avg_rssi < -80 ? 'Distant' : ''));
+            if (data.rssi_std_dev !== null) addRow('RSSI Std Dev', data.rssi_std_dev + ' dBm', data.rssi_std_dev > 10 ? 'Moving' : (data.rssi_std_dev < 3 ? 'Stationary' : ''));
+            if (data.rssi_has_peak) addRow('RSSI Peak (pass-by)', 'Yes ⬆⬇', 'Rise-then-fall pattern');
+
+            // Spatial
+            if (data.hq_ratio !== null) addRow('HQ Proximity Ratio', (data.hq_ratio * 100).toFixed(1) + '%', data.hq_ratio > 0.9 ? 'Almost always at HQ' : '');
+            if (data.avg_distance_from_hq !== null) addRow('Avg Distance from HQ', data.avg_distance_from_hq + ' m', '');
+            if (data.gps_spread_meters !== null) addRow('GPS Spread', data.gps_spread_meters + ' m', data.gps_spread_meters > 200 ? 'Moving device' : (data.gps_spread_meters < 20 ? 'Stationary' : ''));
+
+            // Burstiness
+            if (data.burstiness_cov !== null) addRow('Burstiness (CoV)', data.burstiness_cov.toFixed(3), data.burstiness_cov > 1.5 ? 'Irregular/bursty' : (data.burstiness_cov < 0.3 ? 'Very regular' : ''));
+
+            // Scanner
+            if (data.scanner_count > 1) addRow('Scanners', data.scanner_count, data.scanner_count >= 3 ? 'Ubiquitous' : '');
+
+            html += `</table></div>`;
+
+            // --- Device Identity ---
+            html += `<div style="margin-bottom:14px;">
+                <div style="font-weight:600; font-size:13px; margin-bottom:6px; border-bottom:1px solid var(--border-color); padding-bottom:4px;">
+                    <i class="fas fa-id-card"></i> Device Identity
+                </div>
+                <table style="width:100%; font-size:12px; border-collapse:collapse;">`;
+
+            if (data.device_name) addRow('BT Name', data.device_name, '');
+            if (data.manufacturer_name) addRow('BT Manufacturer', data.manufacturer_name, '');
+            if (data.vendor_name) addRow('OUI Vendor', data.vendor_name, '');
+            if (data.guessed_type) addRow('Classified Type', data.guessed_type, '');
+            addRow('Randomized MAC', data.is_randomized_mac ? 'Yes (modern phone/tablet)' : 'No', '');
+            if (data.is_beacon_device === true) addRow('WiFi Role', 'Access Point (beacon)', 'Infrastructure');
+            else if (data.is_beacon_device === false) addRow('WiFi Role', 'Client (probe requests)', 'Personal device');
+            if (data.ssid_count > 0) addRow('SSIDs Probed', data.ssid_count + ': ' + data.ssid_list.slice(0, 5).join(', ') + (data.ssid_count > 5 ? '…' : ''), '');
+
+            html += `</table></div>`;
+
+            // --- Session Context ---
+            html += `<div style="margin-bottom:6px;">
+                <div style="font-weight:600; font-size:13px; margin-bottom:6px; border-bottom:1px solid var(--border-color); padding-bottom:4px;">
+                    <i class="fas fa-clock"></i> Session Context
+                </div>
+                <table style="width:100%; font-size:12px; border-collapse:collapse;">`;
+            addRow('Session Duration', data.session_duration_human, '');
+            addRow('Session Start', formatDateTime(data.session_start), '');
+            addRow('Session End', formatDateTime(data.session_end), '');
+            if (data.hq_coords) addRow('HQ Location', data.hq_coords[0].toFixed(5) + ', ' + data.hq_coords[1].toFixed(5), '');
+            html += `</table></div>`;
+
+            // --- Attention items ---
+            const attention = [];
+            if (data.confidence_score >= 70) attention.push('High confidence — this device shows patterns consistent with a missing person\'s device.');
+            if (data.confidence_score <= 30) attention.push('Low confidence — this device is likely SAR team equipment or infrastructure.');
+            if (data.whitelisted) attention.push('This device is on the SAR team whitelist.');
+            if (data.sar_role) attention.push('Classified as ' + data.sar_role + ' equipment.');
+            if (data.rssi_has_peak) attention.push('RSSI rise-then-fall pattern detected — device may have passed by the scanner.');
+            if (data.is_randomized_mac) attention.push('MAC is randomized (locally-administered) — this is a modern smartphone or tablet.');
+            if (data.presence_ratio !== null && data.active_presence_ratio !== null && data.presence_ratio > 0.5 && data.active_presence_ratio < 0.15)
+                attention.push('Device has a wide time span but very few active sightings — sporadic presence.');
+            if (data.hq_ratio !== null && data.hq_ratio > 0.9) attention.push('Device was seen almost exclusively near HQ.');
+            if (data.gps_spread_meters !== null && data.gps_spread_meters > 200) attention.push('Device has significant spatial spread — it was moving.');
+            if (data.session_count > 1) attention.push('Device was seen across ' + data.session_count + ' separate sessions.');
+            if (data.burstiness_cov !== null && data.burstiness_cov > 1.5) attention.push('Irregular/bursty sighting pattern — not a constant presence.');
+            if (data.ssid_count >= 3) attention.push('Probes multiple WiFi networks (' + data.ssid_count + ') — likely a personal device.');
+
+            if (attention.length > 0) {
+                html += `<div style="margin-top:10px; padding:8px; background:var(--bg-secondary); border-radius:6px; border-left:3px solid ${scoreColor};">
+                    <div style="font-weight:600; font-size:12px; margin-bottom:4px;">
+                        <i class="fas fa-exclamation-circle"></i> Attention
+                    </div>`;
+                attention.forEach(a => {
+                    html += `<div style="font-size:11px; margin-bottom:3px; line-height:1.4;">• ${a}</div>`;
+                });
+                html += `</div>`;
+            }
+
+            content.innerHTML = html;
+            panel.style.display = 'block';
+        }
+
         // ============= Utility Functions =============
         function formatDateTime(timestamp) {
             if (!timestamp) return '—';
@@ -1533,6 +1736,7 @@
             document.getElementById('ssidsPanel').style.display = 'none';
             document.getElementById('clustersPanel').style.display = 'none';
             document.getElementById('timelinePanel').style.display = 'none';
+            document.getElementById('confidencePanel').style.display = 'none';
         }
 
         function showError(message) {
@@ -1606,6 +1810,7 @@
                 displaySSIDs(currentResult);
                 displayClusters(currentResult);
                 displayTimeline(currentResult);
+                if (lastConfidenceData) renderConfidenceDetails(lastConfidenceData);
             }
         });
 

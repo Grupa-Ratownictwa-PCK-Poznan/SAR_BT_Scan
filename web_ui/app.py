@@ -901,6 +901,32 @@ async def triangulate_device(mac: str):
         )
 
 
+@app.get("/api/confidence-details/{mac}")
+async def confidence_details(mac: str):
+    """Run on-the-fly confidence analysis for a single device and return details."""
+    try:
+        from confidence_analyzer import ConfidenceAnalyzer
+
+        analyzer = ConfidenceAnalyzer(db_path=get_db_path())
+        result = analyzer.analyze_single_device(mac)
+
+        if result is None:
+            return JSONResponse(
+                {"error": f"Device not found or no data: {mac}"},
+                status_code=404,
+            )
+
+        return result
+    except Exception as e:
+        print(f"Error in confidence analysis for {mac}: {e}")
+        import traceback
+        traceback.print_exc()
+        return JSONResponse(
+            {"error": f"Confidence analysis failed: {str(e)}"},
+            status_code=500,
+        )
+
+
 @app.post("/api/purge-db")
 async def purge_db():
     """Purge all tables in the database and create a backup."""

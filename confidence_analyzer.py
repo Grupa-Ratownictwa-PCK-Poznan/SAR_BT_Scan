@@ -1248,6 +1248,78 @@ class ConfidenceAnalyzer:
         
         return self.session_stats, self.analyses
 
+    def analyze_single_device(self, mac: str) -> Optional[Dict]:
+        """Analyze a single device on-the-fly and return detailed results as a dict.
+
+        This does NOT write anything to the database.  It computes session
+        stats, runs the per-device analysis, and returns all the details
+        that explain *how* the confidence score was calculated.
+        """
+        session = self.get_session_stats()
+        if not session:
+            return None
+
+        # Normalise MAC for matching
+        mac_upper = mac.upper().replace('-', ':')
+
+        # Try BT first, then WiFi
+        analysis: Optional[DeviceAnalysis] = self.analyze_bt_device(mac_upper, session)
+        if analysis is None:
+            analysis = self.analyze_wifi_device(mac_upper, session)
+        if analysis is None:
+            return None
+
+        # Build a human-readable details dict
+        details: Dict = {
+            "mac": analysis.mac,
+            "device_type": analysis.device_type,
+            "confidence_score": analysis.new_confidence,
+            "old_confidence": analysis.old_confidence,
+            "factors": analysis.factors,  # list of strings explaining each scoring rule
+            "whitelisted": analysis.whitelisted,
+            "sar_role": analysis.sar_role,
+            # --- Temporal ---
+            "first_seen": analysis.first_seen,
+            "last_seen": analysis.last_seen,
+            "sighting_count": analysis.sighting_count,
+            "session_count": analysis.session_count,
+            "presence_ratio": round(analysis.presence_ratio, 4) if analysis.presence_ratio is not None else None,
+            "active_presence_ratio": round(analysis.active_presence_ratio, 4) if analysis.active_presence_ratio is not None else None,
+            "early_presence": analysis.early_presence,
+            "late_presence": analysis.late_presence,
+            "early_rssi": round(analysis.early_rssi, 1) if analysis.early_rssi is not None else None,
+            "late_rssi": round(analysis.late_rssi, 1) if analysis.late_rssi is not None else None,
+            # --- Signal ---
+            "avg_rssi": round(analysis.avg_rssi, 1) if analysis.avg_rssi is not None else None,
+            "rssi_std_dev": round(analysis.rssi_std_dev, 2) if analysis.rssi_std_dev is not None else None,
+            "rssi_has_peak": analysis.rssi_has_peak,
+            # --- Spatial ---
+            "hq_ratio": round(analysis.hq_ratio, 4) if analysis.hq_ratio is not None else None,
+            "avg_distance_from_hq": round(analysis.avg_distance_from_hq, 1) if analysis.avg_distance_from_hq is not None else None,
+            "gps_spread_meters": round(analysis.gps_spread_meters, 1) if analysis.gps_spread_meters is not None else None,
+            # --- Device identity ---
+            "vendor_name": analysis.vendor_name,
+            "guessed_type": analysis.guessed_type,
+            "device_name": analysis.device_name,
+            "manufacturer_name": analysis.manufacturer_name,
+            "is_randomized_mac": analysis.is_randomized_mac,
+            "is_beacon_device": analysis.is_beacon_device,
+            "scanner_count": analysis.scanner_count,
+            # --- Burstiness ---
+            "burstiness_cov": round(analysis.burstiness_cov, 3) if analysis.burstiness_cov is not None else None,
+            # --- WiFi specifics ---
+            "ssid_count": analysis.ssid_count,
+            "ssid_list": analysis.ssid_list,
+            # --- Session context ---
+            "session_start": session.start_time,
+            "session_end": session.end_time,
+            "session_duration": session.duration,
+            "session_duration_human": f"{session.duration // 60}m {session.duration % 60}s",
+            # --- HQ info ---
+            "hq_coords": list(self.hq_coords) if self.hq_coords else None,
+        }
+        return details
+
     @staticmethod
     def _find_matching_bracket_end(text: str, start_index: int = 0) -> Optional[int]:
         """Return index of the matching closing bracket for text[start_index] == '['."""
