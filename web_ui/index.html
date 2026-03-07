@@ -3946,6 +3946,11 @@
             // Initialize sortable table headers
             initSortableHeaders();
 
+            // i18n updates header text via textContent, so re-attach sort arrows after language changes.
+            document.addEventListener('languageChanged', () => {
+                ['btDevices', 'btSightings', 'wifiDevices', 'wifiAssoc'].forEach(updateSortIndicators);
+            });
+
             // Analyze button event listener
             const analyzeBtn = document.getElementById("analyzeConfidenceBtn");
             if (analyzeBtn) {
