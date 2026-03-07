@@ -673,6 +673,57 @@
             border-radius: 3px;
         }
 
+        /* Tooltips for confidence analysis */
+        .tip {
+            position: relative;
+            cursor: help;
+            border-bottom: 1px dotted var(--text-secondary);
+        }
+        .tip .tiptext {
+            visibility: hidden;
+            opacity: 0;
+            position: absolute;
+            z-index: 1000;
+            bottom: calc(100% + 6px);
+            left: 50%;
+            transform: translateX(-50%);
+            width: 280px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 8px 10px;
+            font-size: 11px;
+            font-weight: 400;
+            line-height: 1.45;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+            pointer-events: none;
+            transition: opacity 0.15s;
+            white-space: normal;
+        }
+        .tip .tiptext::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: var(--border-color) transparent transparent transparent;
+        }
+        .tip:hover .tiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+        /* Keep tooltips on screen for narrow left-edge labels */
+        .tip .tiptext.tip-right {
+            left: 0;
+            transform: none;
+        }
+        .tip .tiptext.tip-right::after {
+            left: 20px;
+        }
+
         /* Responsive */
         @media (max-width: 1024px) {
             .container {
@@ -1540,10 +1591,15 @@
 
             let html = '';
 
+            // Helper: wrap label text in a tooltip span
+            const tip = (label, explanation) => {
+                return `<span class="tip">${label}<span class="tiptext tip-right">${explanation}</span></span>`;
+            };
+
             // Score overview
             html += `<div style="text-align:center; margin-bottom:12px;">
                 <div style="font-size:36px; font-weight:bold; color:${scoreColor};">${score}</div>
-                <div style="font-size:11px; color:var(--text-secondary);">Confidence Score (0 = SAR team, 100 = possible target)</div>`;
+                <div style="font-size:11px; color:var(--text-secondary);">${tip('Confidence Score', 'Scale 0–100. A score near 0 means the device is almost certainly SAR team equipment (seen constantly, strong signal at HQ). A score near 100 means the device patterns are consistent with a missing person\'s device (brief, sporadic appearance). 50 is the neutral baseline.')} (0 = SAR team, 100 = possible target)</div>`;
             if (oldScore !== null && oldScore !== undefined && oldScore !== score) {
                 html += `<div style="font-size:11px; color:var(--text-secondary); margin-top:2px;">Previous score in DB: ${oldScore}</div>`;
             }
@@ -1552,15 +1608,17 @@
             // SAR role badge
             if (data.sar_role) {
                 html += `<div style="text-align:center; margin-bottom:10px;">
-                    <span style="background:#e74c3c; color:#fff; padding:3px 10px; border-radius:10px; font-size:12px; font-weight:600;">
+                    <span class="tip" style="background:#e74c3c; color:#fff; padding:3px 10px; border-radius:10px; font-size:12px; font-weight:600; border-bottom:none;">
                         <i class="fas fa-shield-alt"></i> ${data.sar_role}
+                        <span class="tiptext">The system classified this device as SAR equipment. SAR HQ = device with strong signal at both session start and end, staying near the headquarters location. SAR TEAM = device carried by a team member, present consistently throughout the session with stable signal strength.</span>
                     </span>
                 </div>`;
             }
             if (data.whitelisted) {
                 html += `<div style="text-align:center; margin-bottom:10px;">
-                    <span style="background:#3498db; color:#fff; padding:3px 10px; border-radius:10px; font-size:12px; font-weight:600;">
+                    <span class="tip" style="background:#3498db; color:#fff; padding:3px 10px; border-radius:10px; font-size:12px; font-weight:600; border-bottom:none;">
                         <i class="fas fa-check-circle"></i> Whitelisted Device
+                        <span class="tiptext">This MAC address is on the SAR team whitelist file (device_whitelist.txt). Whitelisted devices are automatically assigned confidence 0 because they are known SAR team equipment.</span>
                     </span>
                 </div>`;
             }
@@ -1569,7 +1627,7 @@
             if (data.factors && data.factors.length > 0) {
                 html += `<div style="margin-bottom:14px;">
                     <div style="font-weight:600; font-size:13px; margin-bottom:6px; border-bottom:1px solid var(--border-color); padding-bottom:4px;">
-                        <i class="fas fa-balance-scale"></i> Scoring Factors
+                        <i class="fas fa-balance-scale"></i> ${tip('Scoring Factors', 'Each factor is a rule the analyzer checks. Positive factors (+) increase confidence toward &ldquo;possible target&rdquo;. Negative factors (&minus;) decrease confidence toward &ldquo;SAR equipment&rdquo;. The final score is the sum of all adjustments clamped to 0–100.')}
                     </div>
                     <div style="font-size:11px; color:var(--text-secondary); margin-bottom:6px;">
                         Starting from baseline 50, each factor adjusts the score:
@@ -1602,38 +1660,66 @@
                 </tr>`;
             };
 
-            addRow('Sighting Count', data.sighting_count, '');
-            addRow('Sessions', data.session_count, data.session_count > 1 ? 'Multiple sessions = persistent' : '');
+            addRow(
+                tip('Sighting Count', 'Total number of times this device was detected by any scanner during all sessions. A very high count relative to session length suggests the device was always present (SAR team). A low count suggests a fleeting appearance (possible target).'),
+                data.sighting_count, '');
+            addRow(
+                tip('Sessions', 'Number of distinct scanning sessions in which this device appeared. Sessions are separated by gaps longer than the configured threshold. Devices seen in many sessions are likely persistent SAR equipment.'),
+                data.session_count, data.session_count > 1 ? 'Multiple sessions = persistent' : '');
             if (data.presence_ratio !== null) {
-                addRow('Presence Ratio (span)', (data.presence_ratio * 100).toFixed(1) + '%',
+                addRow(
+                    tip('Presence Ratio (span)', 'Fraction of the total session duration covered by this device\'s first-to-last-seen time span. A ratio of 100% means the device was seen from session start to end. High values (&gt;80%) suggest SAR team devices. Low values (&lt;20%) suggest brief, interesting appearances.'),
+                    (data.presence_ratio * 100).toFixed(1) + '%',
                     data.presence_ratio > 0.8 ? 'High → likely SAR' : (data.presence_ratio < 0.2 ? 'Low → brief appearance' : ''));
             }
             if (data.active_presence_ratio !== null) {
-                addRow('Active Presence (bucketed)', (data.active_presence_ratio * 100).toFixed(1) + '%',
-                    'More accurate than span-based');
+                addRow(
+                    tip('Active Presence (bucketed)', 'The session is divided into 60-second buckets. This shows the fraction of buckets that contain at least one sighting. More accurate than span-based ratio because a device seen once at minute 5 and once at minute 55 gets a low active ratio (sporadic) vs. a high span ratio.'),
+                    (data.active_presence_ratio * 100).toFixed(1) + '%',
+                    '');
             }
 
             // Boundary analysis
             const earlyStr = data.early_presence ? `Yes${data.early_rssi !== null ? ' (' + data.early_rssi + ' dBm)' : ''}` : 'No';
             const lateStr = data.late_presence ? `Yes${data.late_rssi !== null ? ' (' + data.late_rssi + ' dBm)' : ''}` : 'No';
-            addRow('Early Session (first 10%)', earlyStr, data.early_presence && data.late_presence ? 'Present at both edges' : '');
-            addRow('Late Session (last 10%)', lateStr, '');
+            addRow(
+                tip('Early Session (first 10%)', 'Was this device detected in the first 10% of the session? If yes, the average RSSI during that period is shown. Devices with strong signal at both session start AND end are likely HQ equipment that was present the entire time.'),
+                earlyStr, data.early_presence && data.late_presence ? 'Present at both edges' : '');
+            addRow(
+                tip('Late Session (last 10%)', 'Was this device detected in the last 10% of the session? Combined with early presence and strong RSSI at both boundaries, this is a strong indicator of HQ/base equipment.'),
+                lateStr, '');
 
             // Signal
-            if (data.avg_rssi !== null) addRow('Avg RSSI', data.avg_rssi + ' dBm', data.avg_rssi > -50 ? 'Very close' : (data.avg_rssi < -80 ? 'Distant' : ''));
-            if (data.rssi_std_dev !== null) addRow('RSSI Std Dev', data.rssi_std_dev + ' dBm', data.rssi_std_dev > 10 ? 'Moving' : (data.rssi_std_dev < 3 ? 'Stationary' : ''));
-            if (data.rssi_has_peak) addRow('RSSI Peak (pass-by)', 'Yes ⬆⬇', 'Rise-then-fall pattern');
+            if (data.avg_rssi !== null) addRow(
+                tip('Avg RSSI', 'Average Received Signal Strength Indicator across all sightings, in dBm. Values closer to 0 mean stronger signal (device is nearby). Typical ranges: &gt; &minus;50 dBm = very close (within a few meters), &minus;50 to &minus;70 = moderate, &minus;70 to &minus;85 = far, &lt; &minus;85 = very distant. Strong constant signal suggests nearby SAR equipment.'),
+                data.avg_rssi + ' dBm', data.avg_rssi > -50 ? 'Very close' : (data.avg_rssi < -80 ? 'Distant' : ''));
+            if (data.rssi_std_dev !== null) addRow(
+                tip('RSSI Std Dev', 'Standard deviation of RSSI readings (in dBm). Low σ (&lt;3) means the signal strength barely changed — the device is stationary at a fixed distance. High σ (&gt;10) means the signal varied a lot — the device was likely moving closer and farther from the scanner.'),
+                data.rssi_std_dev + ' dBm', data.rssi_std_dev > 10 ? 'Moving' : (data.rssi_std_dev < 3 ? 'Stationary' : ''));
+            if (data.rssi_has_peak) addRow(
+                tip('RSSI Peak (pass-by)', 'A rise-then-fall RSSI pattern was detected: the signal got stronger (device approaching), peaked, then got weaker (device moving away). This is a strong indicator that someone carried this device past the scanner — a very interesting pattern for SAR.'),
+                'Yes ⬆⬇', '');
 
             // Spatial
-            if (data.hq_ratio !== null) addRow('HQ Proximity Ratio', (data.hq_ratio * 100).toFixed(1) + '%', data.hq_ratio > 0.9 ? 'Almost always at HQ' : '');
-            if (data.avg_distance_from_hq !== null) addRow('Avg Distance from HQ', data.avg_distance_from_hq + ' m', '');
-            if (data.gps_spread_meters !== null) addRow('GPS Spread', data.gps_spread_meters + ' m', data.gps_spread_meters > 200 ? 'Moving device' : (data.gps_spread_meters < 20 ? 'Stationary' : ''));
+            if (data.hq_ratio !== null) addRow(
+                tip('HQ Proximity Ratio', 'Fraction of sightings that occurred within the configured HQ radius. A high ratio (&gt;90%) means the device was almost always at the base/headquarters — very likely SAR infrastructure. A low ratio (&lt;20%) means the device was mostly in the field.'),
+                (data.hq_ratio * 100).toFixed(1) + '%', data.hq_ratio > 0.9 ? 'Almost always at HQ' : '');
+            if (data.avg_distance_from_hq !== null) addRow(
+                tip('Avg Distance from HQ', 'Average distance (in meters) of all GPS-tagged sightings from the HQ/base location. Values &lt; 50m suggest base equipment. Values &gt; 500m suggest the device is in the search area.'),
+                data.avg_distance_from_hq + ' m', '');
+            if (data.gps_spread_meters !== null) addRow(
+                tip('GPS Spread', 'Mean distance of all GPS sighting locations from their centroid (in meters). Large spread (&gt;200m) means the device was detected at many different places — it was moving through the area. Small spread (&lt;20m) means it stayed in one spot — likely a fixed installation or parked equipment.'),
+                data.gps_spread_meters + ' m', data.gps_spread_meters > 200 ? 'Moving device' : (data.gps_spread_meters < 20 ? 'Stationary' : ''));
 
             // Burstiness
-            if (data.burstiness_cov !== null) addRow('Burstiness (CoV)', data.burstiness_cov.toFixed(3), data.burstiness_cov > 1.5 ? 'Irregular/bursty' : (data.burstiness_cov < 0.3 ? 'Very regular' : ''));
+            if (data.burstiness_cov !== null) addRow(
+                tip('Burstiness (CoV)', 'Coefficient of Variation of the time intervals between consecutive sightings. Low CoV (&lt;0.3) = very regular, periodic sightings (like SAR equipment that beacons constantly). High CoV (&gt;1.5) = irregular, bursty pattern (like a person\'s phone that appears, disappears, and reappears).'),
+                data.burstiness_cov.toFixed(3), data.burstiness_cov > 1.5 ? 'Irregular/bursty' : (data.burstiness_cov < 0.3 ? 'Very regular' : ''));
 
             // Scanner
-            if (data.scanner_count > 1) addRow('Scanners', data.scanner_count, data.scanner_count >= 3 ? 'Ubiquitous' : '');
+            if (data.scanner_count > 1) addRow(
+                tip('Scanners', 'Number of distinct scanner devices that detected this device. If many scanners (≥3) all see it, the device is likely ubiquitous SAR equipment present at the base. A device seen by only one scanner with few sightings is more localized and interesting.'),
+                data.scanner_count, data.scanner_count >= 3 ? 'Ubiquitous' : '');
 
             html += `</table></div>`;
 
@@ -1644,27 +1730,43 @@
                 </div>
                 <table style="width:100%; font-size:12px; border-collapse:collapse;">`;
 
-            if (data.device_name) addRow('BT Name', data.device_name, '');
-            if (data.manufacturer_name) addRow('BT Manufacturer', data.manufacturer_name, '');
-            if (data.vendor_name) addRow('OUI Vendor', data.vendor_name, '');
-            if (data.guessed_type) addRow('Classified Type', data.guessed_type, '');
-            addRow('Randomized MAC', data.is_randomized_mac ? 'Yes (modern phone/tablet)' : 'No', '');
-            if (data.is_beacon_device === true) addRow('WiFi Role', 'Access Point (beacon)', 'Infrastructure');
-            else if (data.is_beacon_device === false) addRow('WiFi Role', 'Client (probe requests)', 'Personal device');
-            if (data.ssid_count > 0) addRow('SSIDs Probed', data.ssid_count + ': ' + data.ssid_list.slice(0, 5).join(', ') + (data.ssid_count > 5 ? '…' : ''), '');
+            if (data.device_name) addRow(
+                tip('BT Name', 'The Bluetooth advertisement name broadcast by this device. Personal device names (e.g. &ldquo;John\'s iPhone&rdquo;) increase confidence. SAR equipment names (e.g. &ldquo;Garmin&rdquo;, &ldquo;Kenwood&rdquo;) decrease it.'),
+                data.device_name, '');
+            if (data.manufacturer_name) addRow(
+                tip('BT Manufacturer', 'Manufacturer extracted from the Bluetooth advertisement data. Personal-device brands (Apple, Samsung, etc.) increase confidence. SAR/radio brands (Motorola Solutions, Garmin, etc.) decrease it.'),
+                data.manufacturer_name, '');
+            if (data.vendor_name) addRow(
+                tip('OUI Vendor', 'Vendor identified from the first 3 bytes (OUI) of the MAC address using the IEEE database. Helps identify the device maker even when Bluetooth name is absent.'),
+                data.vendor_name, '');
+            if (data.guessed_type) addRow(
+                tip('Classified Type', 'Device type inferred by the classifier based on name, manufacturer, service UUIDs, OUI vendor, and other signals. Examples: phone, tablet, wearable, audio, infrastructure, router, drone.'),
+                data.guessed_type, '');
+            addRow(
+                tip('Randomized MAC', 'Is this a locally-administered (randomized) MAC address? Modern smartphones (iOS 14+, Android 10+) randomize their MAC to protect privacy. If yes, this device is almost certainly a modern phone or tablet — which increases confidence that it could be a missing person\'s device.'),
+                data.is_randomized_mac ? 'Yes (modern phone/tablet)' : 'No', '');
+            if (data.is_beacon_device === true) addRow(
+                tip('WiFi Role', 'Determined by analyzing WiFi packet types. Beacon frames = Access Point (router/hotspot). ProbeRequest frames = client device (phone/laptop). Access Points are infrastructure and decrease confidence.'),
+                'Access Point (beacon)', 'Infrastructure');
+            else if (data.is_beacon_device === false) addRow(
+                tip('WiFi Role', 'Determined by analyzing WiFi packet types. This device only sends ProbeRequest frames, meaning it is a client device (phone, laptop, tablet) searching for known networks — not an access point.'),
+                'Client (probe requests)', 'Personal device');
+            if (data.ssid_count > 0) addRow(
+                tip('SSIDs Probed', 'WiFi network names (SSIDs) this device is searching for. These are networks the device has connected to before (home, work, hotel WiFi, etc.). More SSIDs = more likely a personal device. The SSID names themselves can provide context about the person.'),
+                data.ssid_count + ': ' + data.ssid_list.slice(0, 5).join(', ') + (data.ssid_count > 5 ? '…' : ''), '');
 
             html += `</table></div>`;
 
             // --- Session Context ---
             html += `<div style="margin-bottom:6px;">
                 <div style="font-weight:600; font-size:13px; margin-bottom:6px; border-bottom:1px solid var(--border-color); padding-bottom:4px;">
-                    <i class="fas fa-clock"></i> Session Context
+                    <i class="fas fa-clock"></i> ${tip('Session Context', 'Overall scanning session information. The session window spans from the earliest to the latest sighting across all devices (BT and WiFi). All per-device metrics (presence ratio, boundary analysis, etc.) are calculated relative to this session window.')}
                 </div>
                 <table style="width:100%; font-size:12px; border-collapse:collapse;">`;
-            addRow('Session Duration', data.session_duration_human, '');
-            addRow('Session Start', formatDateTime(data.session_start), '');
-            addRow('Session End', formatDateTime(data.session_end), '');
-            if (data.hq_coords) addRow('HQ Location', data.hq_coords[0].toFixed(5) + ', ' + data.hq_coords[1].toFixed(5), '');
+            addRow(tip('Session Duration', 'Total length of the scanning session from first to last sighting across all devices.'), data.session_duration_human, '');
+            addRow(tip('Session Start', 'Timestamp of the very first sighting recorded in this session (any device).'), formatDateTime(data.session_start), '');
+            addRow(tip('Session End', 'Timestamp of the very last sighting recorded in this session (any device).'), formatDateTime(data.session_end), '');
+            if (data.hq_coords) addRow(tip('HQ Location', 'Coordinates of the headquarters/base used for HQ proximity calculations. Either configured in settings or auto-detected from the first GPS-tagged sighting.'), data.hq_coords[0].toFixed(5) + ', ' + data.hq_coords[1].toFixed(5), '');
             html += `</table></div>`;
 
             // --- Attention items ---
