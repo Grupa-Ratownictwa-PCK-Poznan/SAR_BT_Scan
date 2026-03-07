@@ -1578,6 +1578,96 @@
             }
         }
 
+        function getFactorTooltip(factor) {
+            const fl = factor.toLowerCase();
+            // Factor 1: Presence ratio
+            if (fl.includes('presence ratio'))
+                return 'PRESENCE RATIO — What fraction of the total session time span this device covers (first seen to last seen). A device present for &gt;80% of the session is almost certainly SAR team equipment that was on the entire time. A device seen for &lt;20% appeared only briefly — more interesting for SAR. This is the single strongest indicator.';
+            // Factor 2: Strong RSSI at boundaries
+            if (fl.includes('strong rssi at start') && fl.includes('and end'))
+                return 'BOUNDARY SIGNAL STRENGTH — The device had a strong signal (close proximity) at both the very start and very end of the scanning session. This is the hallmark of HQ/base equipment: it was sitting near the scanner the whole time. Very strong negative indicator.';
+            if (fl.includes('present at session boundaries'))
+                return 'SESSION BOUNDARY PRESENCE — The device was detected at both the beginning and end of the session, though without strong signal at both edges. Still suggests a persistent device, but less conclusive than strong signal at both boundaries.';
+            // Factor 3: Mid-session appearance
+            if (fl.includes('only mid-session appearance'))
+                return 'MID-SESSION ONLY — The device was NOT present at the start or end of the session — it appeared only in the middle. This is a strong positive indicator: someone carried this device through the search area and then left. Could be a missing person passing through.';
+            if (fl.includes('not present at start'))
+                return 'LATE ARRIVAL — The device was not seen when the session started but appeared later. This suggests it entered the scanner\'s range during the operation — someone arrived or passed through.';
+            if (fl.includes('present at start, disappeared'))
+                return 'EARLY DEPARTURE — The device was seen at the session start but disappeared before the end. The person or device left the area during the operation.';
+            // Factor 4: Sighting frequency
+            if (fl.includes('sighting rate'))
+                return 'SIGHTING FREQUENCY — How often the device was detected compared to the maximum expected (one sighting per ~30s scan cycle). A very high rate means the device was constantly in range — typical of SAR team equipment that never leaves.';
+            if (fl.includes('low sighting count'))
+                return 'LOW SIGHTING COUNT — The device was only detected a handful of times. Few sightings suggest a fleeting, transient presence — someone briefly passed through the scanner\'s range.';
+            // Factor 5: Average signal strength
+            if (fl.includes('weak average signal'))
+                return 'WEAK SIGNAL — The average RSSI was very low (below −80 dBm), meaning the device was far from the scanner most of the time. Distant devices are less likely to be nearby SAR equipment.';
+            if (fl.includes('very strong average signal'))
+                return 'STRONG SIGNAL — The average RSSI was very high (above −50 dBm), meaning the device was consistently close to the scanner. This is typical of equipment sitting at the base/HQ location.';
+            // Factor 6: HQ proximity ratio
+            if (fl.includes('seen mostly near hq'))
+                return 'HQ PROXIMITY — The vast majority of this device\'s GPS-tagged sightings were within the configured HQ radius. The device is almost certainly base/infrastructure equipment.';
+            if (fl.includes('rarely seen near hq'))
+                return 'FIELD DEVICE — Very few of this device\'s sightings were near the HQ. It was mostly detected out in the field, making it more interesting as a potential target.';
+            // Factor 7: Distance from HQ
+            if (fl.includes('avg distance from hq') && fl.includes('far from base'))
+                return 'FAR FROM BASE — The device\'s average distance from HQ is over 500 meters. It is clearly out in the search area, not sitting at the command post.';
+            if (fl.includes('avg distance from hq') && fl.includes('at base'))
+                return 'AT BASE — The device\'s average distance from HQ is less than 50 meters. It is very likely stationary equipment at the command post.';
+            // Factor 8: Multi-session
+            if (fl.includes('separate sessions') || (fl.includes('seen in') && fl.includes('sessions')))
+                return 'MULTI-SESSION — The device was detected across multiple distinct scanning sessions (separated by large time gaps). Persistent devices seen in many sessions are almost always SAR team equipment that stays powered on.';
+            // Factor 9: RSSI trend / variance
+            if (fl.includes('rssi rise-then-fall'))
+                return 'PASS-BY PATTERN — The RSSI followed a rise–peak–fall curve: the device got closer, reached maximum proximity, then moved away. This is the classic pattern of someone walking or driving past the scanner. Very strong indicator of a person in motion.';
+            if (fl.includes('high rssi variance'))
+                return 'HIGH SIGNAL VARIANCE — The signal strength varied a lot (σ &gt; 10 dBm). This means the device was changing distance from the scanner — i.e., it was moving. Moving devices are more interesting for SAR.';
+            if (fl.includes('low rssi variance'))
+                return 'LOW SIGNAL VARIANCE — The signal strength was very stable (σ &lt; 3 dBm), meaning the device stayed at a fixed distance. Stationary devices are likely infrastructure or parked equipment.';
+            // Factor 10: SSID probing
+            if (fl.includes('probes') && fl.includes('ssid'))
+                return 'SSID PROBING — The device is sending WiFi probe requests for remembered networks (home WiFi, office, hotel, etc.). Personal phones and laptops do this constantly. More unique SSIDs = more likely a personal device. The SSID names may also provide helpful context about the owner.';
+            // Factor 11: Randomized MAC
+            if (fl.includes('randomized mac'))
+                return 'RANDOMIZED MAC — The MAC address is locally-administered, which means the device is randomizing it for privacy. Modern smartphones (iOS 14+, Android 10+) do this. It\'s a strong signal that this is a personal phone or tablet, not infrastructure equipment.';
+            // Factor 12: Device name/manufacturer classification
+            if (fl.includes('personal device identified'))
+                return 'PERSONAL DEVICE — The BT name or manufacturer matches known personal device brands (iPhone, Samsung Galaxy, AirPods, Fitbit, etc.). This increases the chance it belongs to a person rather than being SAR infrastructure.';
+            if (fl.includes('sar/infrastructure equipment'))
+                return 'SAR/INFRASTRUCTURE — The BT name or manufacturer matches known SAR or infrastructure equipment brands (Garmin, Kenwood, Motorola Solutions, DJI drone, Ubiquiti, etc.). This device is very likely team equipment.';
+            // Factor 13: Burstiness
+            if (fl.includes('bursty sighting pattern'))
+                return 'BURSTY PATTERN — The intervals between sightings are very irregular (CoV &gt; 1.5). The device appeared, disappeared, reappeared — unlike SAR equipment that beacons constantly. This pattern is typical of a person passing through the area intermittently.';
+            if (fl.includes('regular sighting pattern'))
+                return 'REGULAR PATTERN — The intervals between sightings are very uniform (CoV &lt; 0.3). The device broadcasts at a steady, predictable rate — typical of always-on SAR equipment or beacons. Not typical of a person\'s device usage pattern.';
+            // Factor 14: WiFi packet type
+            if (fl.includes('beacon-only device'))
+                return 'ACCESS POINT — This WiFi device only sends Beacon frames, which means it\'s an Access Point (router, hotspot, repeater). Access Points are infrastructure equipment and are not carried by people.';
+            if (fl.includes('proberequest-only device'))
+                return 'CLIENT DEVICE — This WiFi device only sends ProbeRequest frames, which means it\'s a client (phone, laptop, tablet) searching for WiFi networks. Client devices are typically personal.';
+            // Factor 15: GPS spread
+            if (fl.includes('large gps spread'))
+                return 'LARGE GPS SPREAD — The device was detected across a wide geographic area (&gt;200m spread from its centroid). It was clearly moving through the search area, which makes it more interesting for SAR.';
+            if (fl.includes('tiny gps spread'))
+                return 'TINY GPS SPREAD — The device was always detected in roughly the same spot (&lt;20m from centroid). It is stationary — likely a fixed installation or equipment left at one location.';
+            // Factor 16: Scanner count
+            if (fl.includes('seen by') && fl.includes('scanners'))
+                return 'MULTI-SCANNER DETECTION — The device was detected by many different scanners simultaneously. This is typical of ubiquitous SAR equipment that broadcasts strongly and is picked up by all scanners in the area.';
+            if (fl.includes('single scanner, few sightings'))
+                return 'LOCALIZED DETECTION — The device was only seen by one scanner and only a few times. This suggests a localized, brief presence — someone passing through one specific area.';
+            // Factor 17: Active presence discrepancy
+            if (fl.includes('active presence much lower'))
+                return 'SPORADIC PRESENCE — Although the device\'s time span covers a large portion of the session, it was actually detected in very few time buckets. This means it appeared, went silent for long periods, and reappeared — it\'s not a constant presence despite the wide time range.';
+            // Factor 18: Signal convergence
+            if (fl.includes('signal convergence') || fl.includes('positive indicators') || fl.includes('negative indicators'))
+                return 'SIGNAL CONVERGENCE — Meta-factor: when multiple independent analysis rules agree (all pointing toward "target" or all toward "SAR equipment"), the system adds a bonus/penalty. Agreement between many indicators makes the conclusion more reliable.';
+            // Whitelisted
+            if (fl.includes('whitelisted'))
+                return 'WHITELISTED — This device\'s MAC is in the SAR team whitelist. It is automatically assigned confidence 0 regardless of other factors.';
+            return '';
+        }
+
         function renderConfidenceDetails(data) {
             const panel = document.getElementById('confidencePanel');
             const content = document.getElementById('confidenceContent');
@@ -1637,9 +1727,12 @@
                     const isNegative = f.includes('→ -');
                     const icon = isPositive ? 'fa-arrow-up' : (isNegative ? 'fa-arrow-down' : 'fa-minus');
                     const color = isPositive ? '#2ecc71' : (isNegative ? '#e74c3c' : '#999');
+                    const ftip = getFactorTooltip(f);
+                    const spanOpen = ftip ? `<span class="tip" style="border-bottom:none;">` : '<span>';
+                    const spanTip = ftip ? `<span class="tiptext tip-right">${ftip}</span>` : '';
                     html += `<div style="display:flex; align-items:flex-start; gap:6px; margin-bottom:4px; font-size:12px; line-height:1.4;">
                         <i class="fas ${icon}" style="color:${color}; margin-top:2px; min-width:12px;"></i>
-                        <span>${f}</span>
+                        ${spanOpen}${f}${spanTip}</span>
                     </div>`;
                 });
                 html += `</div>`;
