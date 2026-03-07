@@ -1157,6 +1157,40 @@ class ConfidenceAnalyzer:
             con.close()
         
         return self.session_stats, self.analyses
+
+    @staticmethod
+    def _find_matching_bracket_end(text: str, start_index: int = 0) -> Optional[int]:
+        """Return index of the matching closing bracket for text[start_index] == '['."""
+        if start_index < 0 or start_index >= len(text) or text[start_index] != '[':
+            return None
+
+        depth = 0
+        for idx in range(start_index, len(text)):
+            ch = text[idx]
+            if ch == '[':
+                depth += 1
+            elif ch == ']':
+                depth -= 1
+                if depth == 0:
+                    return idx
+        return None
+
+    def _strip_leading_type_tags(self, notes: str) -> str:
+        """Remove one or more leading [type:...] tags from BT notes.
+
+        Handles nested brackets inside the type value, e.g. [type:phone [heur]].
+        """
+        cleaned = (notes or '').strip()
+
+        while cleaned.startswith('[type:'):
+            tag_end = self._find_matching_bracket_end(cleaned, 0)
+            if tag_end is None:
+                # Malformed tag: best-effort drop the prefix to avoid carrying stale artifacts.
+                cleaned = cleaned[len('[type:'):].lstrip()
+                break
+            cleaned = cleaned[tag_end + 1:].lstrip()
+
+        return cleaned
     
     def apply_updates(self) -> Dict[str, int]:
         """Apply confidence updates and enrichment data to the database."""
@@ -1171,24 +1205,21 @@ class ConfidenceAnalyzer:
         try:
             for analysis in self.analyses:
                 if analysis.device_type == "bt":
+                    row = con.execute("SELECT notes FROM devices WHERE addr = ?", (analysis.mac,)).fetchone()
+                    existing = (row[0] or '') if row else ''
+                    base_notes = self._strip_leading_type_tags(existing)
+
                     if analysis.guessed_type:
-                        # Persist classified device type to notes field
-                        row = con.execute("SELECT notes FROM devices WHERE addr = ?", (analysis.mac,)).fetchone()
-                        existing = (row[0] or '') if row else ''
-                        # Remove old [type:...] tag if present
-                        if existing.startswith('[type:'):
-                            bracket_end = existing.find(']')
-                            if bracket_end >= 0:
-                                existing = existing[bracket_end + 1:].strip()
-                        new_notes = f"[type:{analysis.guessed_type}] {existing}".strip()
+                        # Replace previous classifier tag instead of appending repeatedly.
+                        new_notes = f"[type:{analysis.guessed_type}] {base_notes}".strip()
                         con.execute(
                             "UPDATE devices SET confidence = ?, notes = ? WHERE addr = ?",
                             (analysis.new_confidence, new_notes, analysis.mac)
                         )
                     else:
                         con.execute(
-                            "UPDATE devices SET confidence = ? WHERE addr = ?",
-                            (analysis.new_confidence, analysis.mac)
+                            "UPDATE devices SET confidence = ?, notes = ? WHERE addr = ?",
+                            (analysis.new_confidence, base_notes, analysis.mac)
                         )
                     bt_count += 1
                 else:
