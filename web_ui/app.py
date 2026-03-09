@@ -1037,6 +1037,7 @@ async def purge_db():
                 print(f"Purged table: {table}")
             
             con.commit()
+            con.execute("VACUUM;")
     except Exception as e:
         return JSONResponse({"error": f"Failed to purge database: {str(e)}"}, status_code=500)
     
