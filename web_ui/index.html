@@ -1734,6 +1734,9 @@
         let cachedBTSightings = [];
         let cachedWiFiDevices = [];
         let cachedWiFiAssoc = [];
+
+        // Request generation counters to prevent stale responses from overwriting current data
+        let requestGen = { btDevices: 0, btSightings: 0, wifiDevices: 0, wifiAssoc: 0, heatmap: 0 };
         
         // Time filter state
         let currentTimePreset = 0; // hours, 0 = all (DEFAULT)
@@ -2128,6 +2131,7 @@
 
         // ============= Data Loading Functions =============
         async function loadBTDevices() {
+            const gen = ++requestGen.btDevices;
             try {
                 const macFilter = document.getElementById("macFilter").value;
                 const manufacturerFilter = document.getElementById("manufacturerFilter").value;
@@ -2144,9 +2148,12 @@
                 });
 
                 const response = await fetch(`${API_BASE}/api/bt/devices?${params}`);
+                if (gen !== requestGen.btDevices) return;
+                if (!response.ok) return;
                 const data = await response.json();
+                if (gen !== requestGen.btDevices) return;
 
-                cachedBTDevices = data.devices;
+                cachedBTDevices = data.devices || [];
                 updateBTDevicesTable(cachedBTDevices);
             } catch (error) {
                 console.error("Error loading BT devices:", error);
@@ -2154,6 +2161,7 @@
         }
 
         async function loadBTSightings() {
+            const gen = ++requestGen.btSightings;
             try {
                 const macFilter = document.getElementById("macFilter").value;
                 const rssiMin = parseInt(document.getElementById("rssiMin").value);
@@ -2169,9 +2177,12 @@
                 });
 
                 const response = await fetch(`${API_BASE}/api/bt/sightings?${params}`);
+                if (gen !== requestGen.btSightings) return;
+                if (!response.ok) return;
                 const data = await response.json();
+                if (gen !== requestGen.btSightings) return;
 
-                cachedBTSightings = data.sightings;
+                cachedBTSightings = data.sightings || [];
                 updateBTSightingsTable(sortData(cachedBTSightings, sortState.btSightings.key, sortState.btSightings.dir));
             } catch (error) {
                 console.error("Error loading BT sightings:", error);
@@ -2179,6 +2190,7 @@
         }
 
         async function loadWiFiDevices() {
+            const gen = ++requestGen.wifiDevices;
             try {
                 const macFilter = document.getElementById("macFilter").value;
                 const manufacturerFilter = document.getElementById("manufacturerFilter").value;
@@ -2197,9 +2209,12 @@
                 });
 
                 const response = await fetch(`${API_BASE}/api/wifi/devices?${params}`);
+                if (gen !== requestGen.wifiDevices) return;
+                if (!response.ok) return;
                 const data = await response.json();
+                if (gen !== requestGen.wifiDevices) return;
 
-                cachedWiFiDevices = data.devices;
+                cachedWiFiDevices = data.devices || [];
                 updateWiFiDevicesTable(cachedWiFiDevices);
             } catch (error) {
                 console.error("Error loading WiFi devices:", error);
@@ -2207,6 +2222,7 @@
         }
 
         async function loadWiFiAssociations() {
+            const gen = ++requestGen.wifiAssoc;
             try {
                 const macFilter = document.getElementById("macFilter").value;
                 const ssidFilter = document.getElementById("ssidFilter").value;
@@ -2224,9 +2240,12 @@
                 });
 
                 const response = await fetch(`${API_BASE}/api/wifi/associations?${params}`);
+                if (gen !== requestGen.wifiAssoc) return;
+                if (!response.ok) return;
                 const data = await response.json();
+                if (gen !== requestGen.wifiAssoc) return;
 
-                cachedWiFiAssoc = data.associations;
+                cachedWiFiAssoc = data.associations || [];
                 updateWiFiAssociationsTable(sortData(cachedWiFiAssoc, sortState.wifiAssoc.key, sortState.wifiAssoc.dir));
             } catch (error) {
                 console.error("Error loading WiFi associations:", error);
@@ -2500,6 +2519,7 @@
         }
 
         async function updateHeatmap() {
+            const gen = ++requestGen.heatmap;
             try {
                 // Build query with filters
                 const params = new URLSearchParams();
@@ -2523,11 +2543,13 @@
                 console.log("Fetching heatmap from:", apiUrl);
                 
                 const response = await fetch(apiUrl);
+                if (gen !== requestGen.heatmap) return;
                 if (!response.ok) {
                     console.error("Heatmap API error:", response.status, response.statusText);
                     return;
                 }
                 const data = await response.json();
+                if (gen !== requestGen.heatmap) return;
                 console.log("Heatmap data received:", data.points.length, "points");
 
                 if (!map) {
@@ -3610,25 +3632,39 @@
             });
         });
 
-        // Filter listeners
-        document.getElementById("macFilter").addEventListener("input", () => {
+        // Debounce timer for text filter inputs
+        let filterDebounceTimer = null;
+        function debouncedFilterRefresh(fn, delay = 250) {
+            clearTimeout(filterDebounceTimer);
+            filterDebounceTimer = setTimeout(fn, delay);
+        }
+
+        function loadCurrentTabData() {
             if (currentTab === "bt-devices") loadBTDevices();
             else if (currentTab === "bt-sightings") loadBTSightings();
             else if (currentTab === "wifi-devices") loadWiFiDevices();
             else if (currentTab === "wifi-assoc") loadWiFiAssociations();
-            updateHeatmap();
+        }
+
+        // Filter listeners
+        document.getElementById("macFilter").addEventListener("input", () => {
+            debouncedFilterRefresh(() => { loadCurrentTabData(); updateHeatmap(); });
         });
 
         document.getElementById("ssidFilter").addEventListener("input", () => {
-            if (currentTab === "wifi-devices") loadWiFiDevices();
-            else if (currentTab === "wifi-assoc") loadWiFiAssociations();
-            updateHeatmap();
+            debouncedFilterRefresh(() => {
+                if (currentTab === "wifi-devices") loadWiFiDevices();
+                else if (currentTab === "wifi-assoc") loadWiFiAssociations();
+                updateHeatmap();
+            });
         });
 
         document.getElementById("manufacturerFilter").addEventListener("input", () => {
-            if (currentTab === "bt-devices") loadBTDevices();
-            else if (currentTab === "wifi-devices") loadWiFiDevices();
-            updateHeatmap();
+            debouncedFilterRefresh(() => {
+                if (currentTab === "bt-devices") loadBTDevices();
+                else if (currentTab === "wifi-devices") loadWiFiDevices();
+                updateHeatmap();
+            });
         });
 
         document.getElementById("rssiMin").addEventListener("input", (e) => {
@@ -3787,11 +3823,7 @@
             // Refresh data periodically
             setInterval(() => {
                 if (isPaused) return;  // Skip updates if paused
-                if (currentTab === "bt-devices") loadBTDevices();
-                else if (currentTab === "bt-sightings") loadBTSightings();
-                else if (currentTab === "wifi-devices") loadWiFiDevices();
-                else if (currentTab === "wifi-assoc") loadWiFiAssociations();
-                
+                loadCurrentTabData();
                 updateHeatmap();
                 updateStatus();
             }, 5000);
