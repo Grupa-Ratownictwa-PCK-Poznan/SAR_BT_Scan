@@ -50,7 +50,8 @@ const I18n = (function() {
      */
     async function loadTranslation(lang) {
         try {
-            const response = await fetch(`/static/i18n/${lang}.json`);
+            const cacheBust = Date.now();
+            const response = await fetch(`/static/i18n/${lang}.json?_=${cacheBust}`);
             if (!response.ok) {
                 throw new Error(`Failed to load ${lang}.json: ${response.status}`);
             }
