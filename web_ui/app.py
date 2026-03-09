@@ -101,6 +101,29 @@ _WIFI_SORT_COLUMNS = {
 }
 
 
+def _parse_exclude_list(value: Optional[str]) -> List[str]:
+    """Parse a comma-separated exclude string into a list of stripped, non-empty values."""
+    if not value:
+        return []
+    return [v.strip() for v in value.split(',') if v.strip()]
+
+
+def _apply_exclude_clauses(base: str, params: list, column: str, exclude_values: List[str],
+                           *, subquery: Optional[str] = None) -> str:
+    """Append SQL NOT LIKE clauses for each exclude value.
+
+    If *subquery* is given (e.g. for SSID exclusion on the wifi_devices table),
+    the NOT IN sub-select form is used instead of a direct column LIKE.
+    """
+    for val in exclude_values:
+        if subquery:
+            base += f" AND mac NOT IN ({subquery})"
+        else:
+            base += f" AND {column} NOT LIKE ? COLLATE NOCASE"
+        params.append(f"%{val}%")
+    return base
+
+
 def query_devices(device_type: str, limit: int = 1000, offset: int = 0, 
                   filters: Optional[Dict] = None,
                   sort_by: Optional[str] = None,
@@ -189,6 +212,15 @@ def query_devices(device_type: str, limit: int = 1000, offset: int = 0,
                 if "confidence_max" in filters:
                     base += " AND confidence <= ?"
                     params.append(filters["confidence_max"])
+                
+                # Exclude filters
+                base = _apply_exclude_clauses(base, params, "mac",
+                    _parse_exclude_list(filters.get("mac_exclude")))
+                base = _apply_exclude_clauses(base, params, "vendor",
+                    _parse_exclude_list(filters.get("manufacturer_exclude")))
+                ssid_excl = _parse_exclude_list(filters.get("ssid_exclude"))
+                base = _apply_exclude_clauses(base, params, "", ssid_excl,
+                    subquery="SELECT DISTINCT mac FROM wifi_associations WHERE ssid LIKE ? COLLATE NOCASE")
                 
                 total_count = con.execute(f"SELECT COUNT(*) {base}", params).fetchone()[0]
                 
@@ -297,7 +329,10 @@ def query_wifi_associations(mac_filter: Optional[str] = None,
                            rssi_max: Optional[int] = None,
                            time_start: Optional[float] = None,
                            time_end: Optional[float] = None,
-                           limit: int = 500) -> List[Dict]:
+                           limit: int = 500,
+                           mac_exclude: Optional[str] = None,
+                           ssid_exclude: Optional[str] = None,
+                           manufacturer_exclude: Optional[str] = None) -> List[Dict]:
     """Query WiFi association requests with filters."""
     results = []
     
@@ -329,6 +364,19 @@ def query_wifi_associations(mac_filter: Optional[str] = None,
             if time_end is not None:
                 query += " AND ts_unix <= ?"
                 params.append(time_end)
+            
+            # Exclude filters
+            query = _apply_exclude_clauses(query, params, "mac",
+                _parse_exclude_list(mac_exclude))
+            query = _apply_exclude_clauses(query, params, "ssid",
+                _parse_exclude_list(ssid_exclude))
+            mfr_excl = _parse_exclude_list(manufacturer_exclude)
+            if mfr_excl:
+                query += (" AND mac NOT IN (SELECT mac FROM wifi_devices WHERE "
+                          + " OR ".join(["vendor LIKE ? COLLATE NOCASE"] * len(mfr_excl))
+                          + ")")
+                for val in mfr_excl:
+                    params.append(f"%{val}%")
             
             query += " ORDER BY ts_unix DESC LIMIT ?"
             params.append(limit)
@@ -492,6 +540,9 @@ async def get_wifi_devices(limit: int = Query(100, ge=1, le=1000),
                           mac_filter: Optional[str] = None,
                           manufacturer_filter: Optional[str] = None,
                           ssid_filter: Optional[str] = None,
+                          mac_exclude: Optional[str] = None,
+                          manufacturer_exclude: Optional[str] = None,
+                          ssid_exclude: Optional[str] = None,
                           confidence_min: Optional[int] = Query(None, ge=0, le=100),
                           confidence_max: Optional[int] = Query(None, ge=0, le=100),
                           sort_by: Optional[str] = None,
@@ -504,6 +555,12 @@ async def get_wifi_devices(limit: int = Query(100, ge=1, le=1000),
         filters["manufacturer_filter"] = manufacturer_filter
     if ssid_filter:
         filters["ssid_filter"] = ssid_filter
+    if mac_exclude:
+        filters["mac_exclude"] = mac_exclude
+    if manufacturer_exclude:
+        filters["manufacturer_exclude"] = manufacturer_exclude
+    if ssid_exclude:
+        filters["ssid_exclude"] = ssid_exclude
     if confidence_min is not None:
         filters["confidence_min"] = confidence_min
     if confidence_max is not None:
@@ -519,6 +576,9 @@ async def get_wifi_associations(
     limit: int = Query(500, ge=1, le=2000),
     mac_filter: Optional[str] = None,
     ssid_filter: Optional[str] = None,
+    mac_exclude: Optional[str] = None,
+    ssid_exclude: Optional[str] = None,
+    manufacturer_exclude: Optional[str] = None,
     rssi_min: Optional[int] = Query(None, ge=-100, le=0),
     rssi_max: Optional[int] = Query(None, ge=-100, le=0),
     hours_back: Optional[int] = Query(None, ge=0),
@@ -543,7 +603,10 @@ async def get_wifi_associations(
         rssi_max=rssi_max,
         time_start=time_start_unix,
         time_end=time_end,
-        limit=limit
+        limit=limit,
+        mac_exclude=mac_exclude,
+        ssid_exclude=ssid_exclude,
+        manufacturer_exclude=manufacturer_exclude
     )
     return {"associations": associations, "count": len(associations)}
 
@@ -630,6 +693,9 @@ async def get_heatmap_data(
     hours_back: Optional[int] = Query(None, ge=0),
     mac_filter: Optional[str] = None,
     ssid_filter: Optional[str] = None,
+    mac_exclude: Optional[str] = None,
+    ssid_exclude: Optional[str] = None,
+    manufacturer_exclude: Optional[str] = None,
     rssi_min: Optional[int] = Query(None, ge=-100, le=0),
     rssi_max: Optional[int] = Query(None, ge=-100, le=0),
     time_start: Optional[float] = None,
@@ -716,6 +782,19 @@ async def get_heatmap_data(
                 if time_end is not None:
                     query += " AND ts_unix <= ?"
                     params.append(time_end)
+                
+                # Exclude filters for WiFi heatmap
+                query = _apply_exclude_clauses(query, params, "mac",
+                    _parse_exclude_list(mac_exclude))
+                query = _apply_exclude_clauses(query, params, "ssid",
+                    _parse_exclude_list(ssid_exclude))
+                mfr_excl = _parse_exclude_list(manufacturer_exclude)
+                if mfr_excl:
+                    query += (" AND mac NOT IN (SELECT mac FROM wifi_devices WHERE "
+                              + " OR ".join(["vendor LIKE ? COLLATE NOCASE"] * len(mfr_excl))
+                              + ")")
+                    for val in mfr_excl:
+                        params.append(f"%{val}%")
                 
                 cursor = con.execute(query, params)
                 for lat, lon, rssi, mac, ssid, packet_type, ts_unix in cursor.fetchall():

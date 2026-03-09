@@ -96,6 +96,9 @@
       "filterByMac": "Filtruj po MAC...",
       "filterByManufacturer": "Filtruj po producencie...",
       "filterBySsid": "Filtruj po SSID...",
+      "excludeByMac": "Wyklucz MAC (po przecinku)...",
+      "excludeByManufacturer": "Wyklucz producenta (po przecinku)...",
+      "excludeBySsid": "Wyklucz SSID (po przecinku)...",
       "rssiRange": "Zakres RSSI (dBm)",
       "confidenceRange": "Zakres pewności",
       "timeRange": "Zakres czasu",
@@ -285,6 +288,9 @@
     "confidenceMaxSlider": "Ustaw maksymalny filtr wskaźnika pewności. Niższe wartości wykluczają urządzenia o wysokiej pewności.",
     "macFilter": "Filtruj urządzenia po adresie MAC. Wpisz część adresu MAC, aby znaleźć konkretne urządzenia. Obsługuje częściowe dopasowanie.",
     "ssidFilter": "Filtruj asocjacje WiFi po nazwie sieci (SSID). Wpisz część nazwy sieci, aby znaleźć urządzenia z pasującymi połączeniami.",
-    "manufacturerFilter": "Filtruj urządzenia po nazwie producenta. Wpisz część nazwy producenta, aby znaleźć pasujące urządzenia."
+    "manufacturerFilter": "Filtruj urządzenia po nazwie producenta. Wpisz część nazwy producenta, aby znaleźć pasujące urządzenia.",
+    "macExclude": "Wyklucz urządzenia po adresie MAC. Wprowadź wartości oddzielone przecinkami, aby ukryć urządzenia, których MAC zawiera podane ciągi znaków.",
+    "ssidExclude": "Wyklucz po SSID. Wprowadź wartości oddzielone przecinkami, aby ukryć urządzenia/asocjacje, których SSID zawiera podane ciągi znaków.",
+    "manufacturerExclude": "Wyklucz po producencie. Wprowadź wartości oddzielone przecinkami, aby ukryć urządzenia, których producent zawiera podane ciągi znaków."
   }
 }

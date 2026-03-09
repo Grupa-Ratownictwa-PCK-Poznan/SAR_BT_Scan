@@ -1430,6 +1430,11 @@
                     <input type="text" id="manufacturerFilter" data-i18n-placeholder="dashboard.filters.filterByManufacturer" data-i18n-title="tooltips.manufacturerFilter" placeholder="Filter by manufacturer..." style="font-size: 11px;">
                     <input type="text" id="ssidFilter" data-i18n-placeholder="dashboard.filters.filterBySsid" data-i18n-title="tooltips.ssidFilter" placeholder="Filter by SSID..." style="font-size: 11px;">
                 </div>
+                <div class="filter-group">
+                    <input type="text" id="macExclude" data-i18n-placeholder="dashboard.filters.excludeByMac" data-i18n-title="tooltips.macExclude" placeholder="Exclude MAC (comma-sep)..." style="font-size: 11px;">
+                    <input type="text" id="manufacturerExclude" data-i18n-placeholder="dashboard.filters.excludeByManufacturer" data-i18n-title="tooltips.manufacturerExclude" placeholder="Exclude manufacturer (comma-sep)..." style="font-size: 11px;">
+                    <input type="text" id="ssidExclude" data-i18n-placeholder="dashboard.filters.excludeBySsid" data-i18n-title="tooltips.ssidExclude" placeholder="Exclude SSID (comma-sep)..." style="font-size: 11px;">
+                </div>
 
                 <div class="sidebar-row">
                     <div class="filter-group" style="flex: 1; min-width: 0;">
@@ -2195,6 +2200,9 @@
                 const macFilter = document.getElementById("macFilter").value;
                 const manufacturerFilter = document.getElementById("manufacturerFilter").value;
                 const ssidFilter = document.getElementById("ssidFilter").value;
+                const macExclude = document.getElementById("macExclude").value;
+                const manufacturerExclude = document.getElementById("manufacturerExclude").value;
+                const ssidExclude = document.getElementById("ssidExclude").value;
                 const confidenceMin = parseInt(document.getElementById("confidenceMin").value);
                 const confidenceMax = parseInt(document.getElementById("confidenceMax").value);
                 const params = new URLSearchParams({
@@ -2204,6 +2212,9 @@
                     ...(macFilter && { mac_filter: macFilter }),
                     ...(manufacturerFilter && { manufacturer_filter: manufacturerFilter }),
                     ...(ssidFilter && { ssid_filter: ssidFilter }),
+                    ...(macExclude && { mac_exclude: macExclude }),
+                    ...(manufacturerExclude && { manufacturer_exclude: manufacturerExclude }),
+                    ...(ssidExclude && { ssid_exclude: ssidExclude }),
                     ...(confidenceMin !== 0 && { confidence_min: confidenceMin }),
                     ...(confidenceMax !== 100 && { confidence_max: confidenceMax })
                 });
@@ -2226,6 +2237,9 @@
             try {
                 const macFilter = document.getElementById("macFilter").value;
                 const ssidFilter = document.getElementById("ssidFilter").value;
+                const macExclude = document.getElementById("macExclude").value;
+                const ssidExclude = document.getElementById("ssidExclude").value;
+                const manufacturerExclude = document.getElementById("manufacturerExclude").value;
                 const rssiMin = parseInt(document.getElementById("rssiMin").value);
                 const rssiMax = parseInt(document.getElementById("rssiMax").value);
                 const timeFilterParams = getTimeFilterParams();
@@ -2234,6 +2248,9 @@
                     limit: 500,
                     ...(macFilter && { mac_filter: macFilter }),
                     ...(ssidFilter && { ssid_filter: ssidFilter }),
+                    ...(macExclude && { mac_exclude: macExclude }),
+                    ...(ssidExclude && { ssid_exclude: ssidExclude }),
+                    ...(manufacturerExclude && { manufacturer_exclude: manufacturerExclude }),
                     ...(rssiMin !== -100 && { rssi_min: rssiMin }),
                     ...(rssiMax !== 0 && { rssi_max: rssiMax }),
                     ...timeFilterParams
@@ -2538,6 +2555,15 @@
                 
                 const ssidFilter = document.getElementById("ssidFilter")?.value.trim();
                 if (ssidFilter && (currentTab === "wifi-assoc" || currentTab === "wifi-devices")) params.append("ssid_filter", ssidFilter);
+                
+                const macExclude = document.getElementById("macExclude")?.value.trim();
+                if (macExclude) params.append("mac_exclude", macExclude);
+                
+                const ssidExclude = document.getElementById("ssidExclude")?.value.trim();
+                if (ssidExclude) params.append("ssid_exclude", ssidExclude);
+                
+                const manufacturerExclude = document.getElementById("manufacturerExclude")?.value.trim();
+                if (manufacturerExclude) params.append("manufacturer_exclude", manufacturerExclude);
                 
                 const apiUrl = `${API_BASE}/api/map/heatmap?${params}`;
                 console.log("Fetching heatmap from:", apiUrl);
@@ -3663,6 +3689,30 @@
             debouncedFilterRefresh(() => {
                 if (currentTab === "bt-devices") loadBTDevices();
                 else if (currentTab === "wifi-devices") loadWiFiDevices();
+                updateHeatmap();
+            });
+        });
+
+        document.getElementById("macExclude").addEventListener("input", () => {
+            debouncedFilterRefresh(() => {
+                if (currentTab === "wifi-devices") loadWiFiDevices();
+                else if (currentTab === "wifi-assoc") loadWiFiAssociations();
+                updateHeatmap();
+            });
+        });
+
+        document.getElementById("ssidExclude").addEventListener("input", () => {
+            debouncedFilterRefresh(() => {
+                if (currentTab === "wifi-devices") loadWiFiDevices();
+                else if (currentTab === "wifi-assoc") loadWiFiAssociations();
+                updateHeatmap();
+            });
+        });
+
+        document.getElementById("manufacturerExclude").addEventListener("input", () => {
+            debouncedFilterRefresh(() => {
+                if (currentTab === "wifi-devices") loadWiFiDevices();
+                else if (currentTab === "wifi-assoc") loadWiFiAssociations();
                 updateHeatmap();
             });
         });

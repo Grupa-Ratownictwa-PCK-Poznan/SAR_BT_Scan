@@ -96,6 +96,9 @@
       "filterByMac": "Filter by MAC...",
       "filterByManufacturer": "Filter by manufacturer...",
       "filterBySsid": "Filter by SSID...",
+      "excludeByMac": "Exclude MAC (comma-sep)...",
+      "excludeByManufacturer": "Exclude manufacturer (comma-sep)...",
+      "excludeBySsid": "Exclude SSID (comma-sep)...",
       "rssiRange": "RSSI Range (dBm)",
       "confidenceRange": "Confidence Range",
       "timeRange": "Time Range",
@@ -285,6 +288,9 @@
     "confidenceMaxSlider": "Set maximum confidence score filter. Lower values exclude high-confidence devices.",
     "macFilter": "Filter devices by MAC address. Type part of a MAC address to find specific devices. Supports partial matching.",
     "ssidFilter": "Filter WiFi associations by network name (SSID). Type part of a network name to find devices with matching connections.",
-    "manufacturerFilter": "Filter devices by manufacturer name. Type part of a manufacturer or vendor name to find matching devices."
+    "manufacturerFilter": "Filter devices by manufacturer name. Type part of a manufacturer or vendor name to find matching devices.",
+    "macExclude": "Exclude devices by MAC address. Enter comma-separated values to hide devices whose MAC contains any of the given substrings.",
+    "ssidExclude": "Exclude by SSID. Enter comma-separated values to hide devices/associations whose SSID contains any of the given substrings.",
+    "manufacturerExclude": "Exclude by manufacturer. Enter comma-separated values to hide devices whose manufacturer contains any of the given substrings."
   }
 }
