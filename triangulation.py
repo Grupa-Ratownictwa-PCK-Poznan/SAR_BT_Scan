@@ -45,6 +45,7 @@ class Sighting:
     rssi: Optional[int]
     source: str  # 'bt' or 'wifi'
     ssid: Optional[str] = None       # For WiFi only
+    packet_type: Optional[str] = None  # WiFi packet type: 'Beacon' or 'ProbeRequest'
     name: Optional[str] = None       # For BT only
     scanner: Optional[str] = None
     gps_hdop: Optional[float] = None # GPS horizontal dilution of precision
@@ -545,11 +546,15 @@ class DeviceTriangulator:
                 has_scanner = 'scanner_name' in columns
                 has_alt = 'alt' in columns
 
+                has_packet_type = 'packet_type' in columns
+
                 select_cols = "ts_unix, lat, lon, rssi, ssid"
                 if has_scanner:
                     select_cols += ", scanner_name"
                 if has_alt:
                     select_cols += ", alt"
+                if has_packet_type:
+                    select_cols += ", packet_type"
 
                 query = (
                     f"SELECT {select_cols} "
@@ -566,6 +571,9 @@ class DeviceTriangulator:
                     if has_scanner:
                         idx += 1
                     alt = row[idx] if has_alt else None
+                    if has_alt:
+                        idx += 1
+                    pkt_type = row[idx] if has_packet_type else None
 
                     sightings.append(Sighting(
                         timestamp=ts,
@@ -574,6 +582,7 @@ class DeviceTriangulator:
                         rssi=rssi,
                         source='wifi',
                         ssid=ssid,
+                        packet_type=pkt_type,
                         scanner=scanner,
                         alt=alt,
                     ))
@@ -991,6 +1000,7 @@ class DeviceTriangulator:
                 'rssi': s.rssi,
                 'source': s.source,
                 'ssid': s.ssid,
+                'packet_type': s.packet_type,
                 'name': s.name,
             }
             if s.alt is not None:

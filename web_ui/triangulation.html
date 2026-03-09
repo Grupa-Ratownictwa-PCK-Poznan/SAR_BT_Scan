@@ -475,6 +475,29 @@
             color: var(--accent-orange);
         }
 
+        .timeline-pkt {
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+        .timeline-pkt.beacon {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+        .timeline-pkt.probe {
+            background: #fce4ec;
+            color: #c62828;
+        }
+        .timeline-pkt.assoc {
+            background: #ede7f6;
+            color: #4527a0;
+        }
+        body.dark-mode .timeline-pkt.beacon { background: #1b3a1e; color: #81c784; }
+        body.dark-mode .timeline-pkt.probe  { background: #3e1a1a; color: #ef9a9a; }
+        body.dark-mode .timeline-pkt.assoc  { background: #2a1f3e; color: #b39ddb; }
+
         /* Loading state */
         .loading {
             display: flex;
@@ -1426,10 +1449,24 @@
             let html = '';
             points.forEach(point => {
                 const sourceClass = point.source === 'bt' ? 'bt' : 'wifi';
+                let pktBadge = '';
+                if (point.packet_type) {
+                    const pt = point.packet_type;
+                    if (pt === 'Beacon') {
+                        pktBadge = `<span class="timeline-pkt beacon">BCN</span>`;
+                    } else if (pt === 'ProbeRequest' || pt === 'Probe') {
+                        pktBadge = `<span class="timeline-pkt probe">Probe</span>`;
+                    } else if (pt.toLowerCase().includes('assoc')) {
+                        pktBadge = `<span class="timeline-pkt assoc">Assoc</span>`;
+                    } else {
+                        pktBadge = `<span class="timeline-pkt probe">${pt}</span>`;
+                    }
+                }
                 html += `
                     <div class="timeline-item">
                         <span class="timeline-time">${point.time_display}</span>
                         <span class="timeline-source ${sourceClass}">${point.source}</span>
+                        ${pktBadge}
                         <span class="timeline-info">
                             ${point.rssi ? `${point.rssi} dBm` : ''}
                             ${point.ssid ? ` | ${point.ssid}` : ''}
@@ -1505,6 +1542,7 @@
                         <strong>${point.source === 'bt' ? t('common.bt', 'BT') : t('common.wifi', 'WiFi')}</strong><br>
                 `;
                 if (point.rssi) popupContent += `${t('common.rssi', 'RSSI')}: ${point.rssi} dBm<br>`;
+                if (point.packet_type) popupContent += `Packet: ${point.packet_type}<br>`;
                 if (point.ssid) popupContent += `${t('common.ssid', 'SSID')}: ${point.ssid}<br>`;
                 if (point.name) popupContent += `${t('common.name', 'Name')}: ${point.name}<br>`;
                 popupContent += `
