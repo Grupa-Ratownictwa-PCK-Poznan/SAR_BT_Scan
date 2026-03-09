@@ -1123,8 +1123,10 @@ class ConfidenceAnalyzer:
                 factors.append(f"Low RSSI variance (σ={rssi_std_dev:.1f} dBm) → -8 (stationary)")
         
         # Factor 10: WiFi SSID Probing (WiFi only)
-        # Personal phones probe for multiple remembered networks
-        if ssid_count is not None:
+        # Personal phones probe for multiple remembered networks.
+        # Skip for beacon-only devices: their SSIDs come from Beacon frames
+        # (advertising the AP's own network), not from ProbeRequest frames.
+        if ssid_count is not None and is_beacon_device is not True:
             if ssid_count >= 3:
                 confidence += 12
                 factors.append(f"Probes {ssid_count} unique SSIDs → +12 (personal device)")

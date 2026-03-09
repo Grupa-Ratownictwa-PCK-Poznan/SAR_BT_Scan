@@ -1844,9 +1844,14 @@
             else if (data.is_beacon_device === false) addRow(
                 tip('WiFi Role', 'Determined by analyzing WiFi packet types. This device only sends ProbeRequest frames, meaning it is a client device (phone, laptop, tablet) searching for known networks — not an access point.'),
                 'Client (probe requests)', 'Personal device');
-            if (data.ssid_count > 0) addRow(
-                tip('SSIDs Probed', 'WiFi network names (SSIDs) this device is searching for. These are networks the device has connected to before (home, work, hotel WiFi, etc.). More SSIDs = more likely a personal device. The SSID names themselves can provide context about the person.'),
-                data.ssid_count + ': ' + data.ssid_list.slice(0, 5).join(', ') + (data.ssid_count > 5 ? '…' : ''), '');
+            if (data.ssid_count > 0) {
+                if (data.is_beacon_device === true) addRow(
+                    tip('Beacon SSID(s)', 'WiFi network names (SSIDs) this Access Point advertises via Beacon frames. These are the network names the router or hotspot is broadcasting — not networks it is searching for.'),
+                    data.ssid_count + ': ' + data.ssid_list.slice(0, 5).join(', ') + (data.ssid_count > 5 ? '…' : ''), '');
+                else addRow(
+                    tip('SSIDs Probed', 'WiFi network names (SSIDs) this device is searching for. These are networks the device has connected to before (home, work, hotel WiFi, etc.). More SSIDs = more likely a personal device. The SSID names themselves can provide context about the person.'),
+                    data.ssid_count + ': ' + data.ssid_list.slice(0, 5).join(', ') + (data.ssid_count > 5 ? '…' : ''), '');
+            }
 
             html += `</table></div>`;
 
