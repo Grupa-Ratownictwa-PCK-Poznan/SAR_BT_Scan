@@ -169,7 +169,10 @@ const I18n = (function() {
         document.querySelectorAll('[data-i18n-placeholder]').forEach(element => {
             const key = element.getAttribute('data-i18n-placeholder');
             if (key) {
-                element.placeholder = t(key);
+                const translated = t(key);
+                if (translated !== key) {
+                    element.placeholder = translated;
+                }
             }
         });
 
@@ -177,7 +180,10 @@ const I18n = (function() {
         document.querySelectorAll('[data-i18n-title]').forEach(element => {
             const key = element.getAttribute('data-i18n-title');
             if (key) {
-                element.title = t(key);
+                const translated = t(key);
+                if (translated !== key) {
+                    element.title = translated;
+                }
             }
         });
 
