@@ -770,6 +770,26 @@
             margin-bottom: 4px;
         }
 
+        .filter-pair {
+            display: flex;
+            gap: 4px;
+        }
+
+        .filter-pair input[type="text"] {
+            flex: 1;
+            min-width: 0;
+        }
+
+        input[type="text"].filter-active {
+            background: #fff3cd !important;
+            border-color: #d4a017 !important;
+        }
+
+        body.dark-mode input[type="text"].filter-active {
+            background: #3a3520 !important;
+            border-color: #d4a017 !important;
+        }
+
         .filter-group label {
             font-size: 9px;
             color: #666;
@@ -1424,16 +1444,20 @@
                     <button class="tab-btn" data-tab="wifi-assoc" data-i18n="dashboard.data.wifiAssocTab" data-i18n-title="tooltips.tabWifiAssoc">WiFi Assoc</button>
                 </div>
 
-                <!-- Filters -->
+                <!-- Filters (include / exclude pairs) -->
                 <div class="filter-group">
-                    <input type="text" id="macFilter" data-i18n-placeholder="dashboard.filters.filterByMac" data-i18n-title="tooltips.macFilter" placeholder="Filter by MAC..." style="font-size: 11px;">
-                    <input type="text" id="manufacturerFilter" data-i18n-placeholder="dashboard.filters.filterByManufacturer" data-i18n-title="tooltips.manufacturerFilter" placeholder="Filter by manufacturer..." style="font-size: 11px;">
-                    <input type="text" id="ssidFilter" data-i18n-placeholder="dashboard.filters.filterBySsid" data-i18n-title="tooltips.ssidFilter" placeholder="Filter by SSID..." style="font-size: 11px;">
-                </div>
-                <div class="filter-group">
-                    <input type="text" id="macExclude" data-i18n-placeholder="dashboard.filters.excludeByMac" data-i18n-title="tooltips.macExclude" placeholder="Exclude MAC (comma-sep)..." style="font-size: 11px;">
-                    <input type="text" id="manufacturerExclude" data-i18n-placeholder="dashboard.filters.excludeByManufacturer" data-i18n-title="tooltips.manufacturerExclude" placeholder="Exclude manufacturer (comma-sep)..." style="font-size: 11px;">
-                    <input type="text" id="ssidExclude" data-i18n-placeholder="dashboard.filters.excludeBySsid" data-i18n-title="tooltips.ssidExclude" placeholder="Exclude SSID (comma-sep)..." style="font-size: 11px;">
+                    <div class="filter-pair">
+                        <input type="text" id="macFilter" data-i18n-placeholder="dashboard.filters.filterByMac" data-i18n-title="tooltips.macFilter" placeholder="Filter by MAC..." style="font-size: 11px;">
+                        <input type="text" id="macExclude" data-i18n-placeholder="dashboard.filters.excludeByMac" data-i18n-title="tooltips.macExclude" placeholder="Exclude MAC..." style="font-size: 11px;">
+                    </div>
+                    <div class="filter-pair">
+                        <input type="text" id="manufacturerFilter" data-i18n-placeholder="dashboard.filters.filterByManufacturer" data-i18n-title="tooltips.manufacturerFilter" placeholder="Filter by manufacturer..." style="font-size: 11px;">
+                        <input type="text" id="manufacturerExclude" data-i18n-placeholder="dashboard.filters.excludeByManufacturer" data-i18n-title="tooltips.manufacturerExclude" placeholder="Exclude manufacturer..." style="font-size: 11px;">
+                    </div>
+                    <div class="filter-pair">
+                        <input type="text" id="ssidFilter" data-i18n-placeholder="dashboard.filters.filterBySsid" data-i18n-title="tooltips.ssidFilter" placeholder="Filter by SSID..." style="font-size: 11px;">
+                        <input type="text" id="ssidExclude" data-i18n-placeholder="dashboard.filters.excludeBySsid" data-i18n-title="tooltips.ssidExclude" placeholder="Exclude SSID..." style="font-size: 11px;">
+                    </div>
                 </div>
 
                 <div class="sidebar-row">
@@ -3671,6 +3695,13 @@
             else if (currentTab === "wifi-devices") loadWiFiDevices();
             else if (currentTab === "wifi-assoc") loadWiFiAssociations();
         }
+
+        // Toggle active highlight on any text filter when it has content
+        document.querySelectorAll('.filter-pair input[type="text"], .filter-group > input[type="text"]').forEach(input => {
+            input.addEventListener("input", () => {
+                input.classList.toggle("filter-active", input.value.trim().length > 0);
+            });
+        });
 
         // Filter listeners
         document.getElementById("macFilter").addEventListener("input", () => {
