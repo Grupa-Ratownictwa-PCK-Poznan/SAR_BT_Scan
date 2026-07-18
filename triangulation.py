@@ -609,7 +609,8 @@ class DeviceTriangulator:
         """Flag GPS outlier sightings using median absolute deviation.
 
         Sightings whose distance from the median lat/lon exceeds
-        OUTLIER_DISTANCE_SIGMA * MAD are flagged (is_outlier=True)
+        OUTLIER_DISTANCE_SIGMA * MAD (around the median distance)
+        are flagged (is_outlier=True)
         but NOT removed, so the caller can decide.
 
         Returns the number of sightings flagged.
@@ -632,7 +633,8 @@ class DeviceTriangulator:
         threshold = self.OUTLIER_DISTANCE_SIGMA * sigma_approx
         flagged = 0
         for s, d in zip(with_loc, distances):
-            if d > threshold:
+            # Compare deviation from median radial distance, not raw distance.
+            if abs(d - med_dist) > threshold:
                 s.is_outlier = True
                 flagged += 1
 
@@ -800,12 +802,20 @@ class DeviceTriangulator:
                 c2.center_lat, c2.center_lon
             )
 
-            # Time between cluster centers
+            # Time between cluster centers.
+            # Use center-to-center timing to avoid inflated speeds when
+            # cluster observation windows overlap.
+            c1_center_ts = ((c1.first_seen or 0) + (c1.last_seen or 0)) // 2
+            c2_center_ts = ((c2.first_seen or 0) + (c2.last_seen or 0)) // 2
             time_diff = (c2.first_seen or 0) - (c1.last_seen or 0)
             if time_diff <= 0:
-                time_diff = 1  # Avoid division by zero
-
-            speed = distance / time_diff
+                time_diff = c2_center_ts - c1_center_ts
+            if time_diff <= 0:
+                # Keep segment but mark speed as unknown instead of forcing
+                # unrealistic movement from 1-second fallback.
+                speed = 0.0
+            else:
+                speed = distance / time_diff
 
             # Heading (bearing) between clusters
             heading = calculate_bearing(
@@ -826,7 +836,7 @@ class DeviceTriangulator:
             )
             segments.append(segment)
 
-            if distance >= self.MIN_MOVEMENT_DISTANCE:
+            if distance >= self.MIN_MOVEMENT_DISTANCE and speed > 0:
                 total_distance += distance
                 speeds.append(speed)
 
@@ -1059,8 +1069,11 @@ class DeviceTriangulator:
             result.last_seen = sightings[-1].timestamp
             result.observation_duration_seconds = result.last_seen - result.first_seen
 
-        # 2. Outlier filtering
-        result.outliers_filtered = self.filter_outliers(sightings)
+        # 2. Outlier filtering (per-source to reduce global multi-modal bias)
+        bt_sightings = [s for s in sightings if s.source == 'bt']
+        wifi_sightings = [s for s in sightings if s.source == 'wifi']
+        result.outliers_filtered = self.filter_outliers(bt_sightings)
+        result.outliers_filtered += self.filter_outliers(wifi_sightings)
 
         # 3. Cluster locations (spatio-temporal)
         clusters = self.cluster_locations(sightings)
