@@ -170,6 +170,10 @@ class ConfidenceAnalyzer:
     
     # Active presence ratio bucket size (seconds)
     PRESENCE_BUCKET_SECONDS = 60
+
+    # WiFi packet-role dominance thresholds
+    WIFI_PACKET_DOMINANCE_THRESHOLD = 0.85  # Ratio required to classify mixed traffic as AP/client
+    WIFI_PACKET_MIN_OBSERVATIONS = 3        # Minimum packets before applying ratio-based dominance
     
     # Personal device keywords (checked in BT name/manufacturer, case-insensitive)
     PERSONAL_DEVICE_KEYWORDS = [
@@ -462,6 +466,36 @@ class ConfidenceAnalyzer:
             occupied.add(bucket_idx)
         
         return min(1.0, len(occupied) / total_buckets)
+
+    def _classify_wifi_packet_role(self, beacon_count: int, probe_count: int) -> Optional[bool]:
+        """Classify WiFi device role from packet type counts.
+
+        Returns:
+            True  -> AP/beacon-dominant
+            False -> client/probe-dominant
+            None  -> mixed/insufficient data
+        """
+        total = beacon_count + probe_count
+        if total <= 0:
+            return None
+
+        # Pure signal remains deterministic.
+        if beacon_count > 0 and probe_count == 0:
+            return True
+        if probe_count > 0 and beacon_count == 0:
+            return False
+
+        # Mixed traffic: require enough packets and clear dominance ratio.
+        if total < self.WIFI_PACKET_MIN_OBSERVATIONS:
+            return None
+
+        beacon_ratio = beacon_count / total
+        probe_ratio = probe_count / total
+        if beacon_ratio >= self.WIFI_PACKET_DOMINANCE_THRESHOLD:
+            return True
+        if probe_ratio >= self.WIFI_PACKET_DOMINANCE_THRESHOLD:
+            return False
+        return None
     
     def _classify_device_name(self, name: Optional[str], manufacturer: Optional[str]) -> Optional[str]:
         """
@@ -873,12 +907,7 @@ class ConfidenceAnalyzer:
             beacon_count = pt_counts.get('Beacon', 0)
             probe_count = pt_counts.get('ProbeRequest', 0)
             
-            if beacon_count > 0 and probe_count == 0:
-                is_beacon_device = True
-            elif probe_count > 0 and beacon_count == 0:
-                is_beacon_device = False
-            else:
-                is_beacon_device = None  # Mixed or unknown
+            is_beacon_device = self._classify_wifi_packet_role(beacon_count, probe_count)
             
             # OUI-based vendor and device type enrichment
             vendor_name, guessed_type = lookup_and_guess(mac)

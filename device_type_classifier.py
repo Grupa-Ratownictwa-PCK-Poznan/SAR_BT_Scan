@@ -44,6 +44,7 @@ Usage:
 """
 
 from __future__ import annotations
+import re
 from typing import Optional, List
 
 
@@ -587,6 +588,11 @@ _SSID_RULES: list[tuple[str, str, bool]] = [
 ]
 
 
+_HOTSPOT_SSID_HINTS = [
+    "hotspot", "tether", "iphone", "androidap", "pixel", "galaxy", "mobile",
+]
+
+
 # ═══════════════════════════════════════════════════════════════════════════
 # Helper
 # ═══════════════════════════════════════════════════════════════════════════
@@ -616,6 +622,22 @@ def _extract_short_uuid(uuid_str: str) -> str:
         return uuid_str[2:].lower()
 
     return uuid_str
+
+
+_COMPANY_SUFFIX_RE = re.compile(
+    r"\b(?:incorporated|inc|corp(?:oration)?|co(?:mpany)?|ltd|limited|llc|gmbh|ag|sa|bv|plc|s\.a\.|s\.r\.o\.)\b",
+    re.IGNORECASE,
+)
+
+
+def _normalize_identity_text(value: Optional[str]) -> str:
+    """Normalize vendor/manufacturer/name text for robust keyword matching."""
+    if not value:
+        return ""
+    text = value.lower()
+    text = _COMPANY_SUFFIX_RE.sub(" ", text)
+    text = re.sub(r"[^a-z0-9]+", " ", text)
+    return " ".join(text.split())
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -655,13 +677,23 @@ def classify_device(
                 return _SERVICE_UUID_TYPES[short]
 
     # ── 2. Name-based matching ────────────────────────────────────────────
-    search_parts = [p for p in (name, manufacturer, oui_vendor) if p]
-    search_text = ' '.join(search_parts).lower()
+    strong_text = _normalize_identity_text(' '.join(p for p in (name, manufacturer) if p))
+    vendor_text = _normalize_identity_text(oui_vendor)
+    combined_text = ' '.join(p for p in (strong_text, vendor_text) if p).strip()
 
-    if search_text.strip():
+    # Strong rules: BLE/device-side identity only (name + BLE manufacturer).
+    if strong_text:
         for keyword, dtype, is_sure in _NAME_RULES:
-            if keyword.lower() in search_text:
+            keyword_norm = _normalize_identity_text(keyword)
+            if keyword_norm and keyword_norm in strong_text:
                 return dtype if is_sure else f"{dtype} [heur]"
+
+    # OUI vendor can support heuristics, but should not produce a sure match.
+    if vendor_text:
+        for keyword, dtype, _ in _NAME_RULES:
+            keyword_norm = _normalize_identity_text(keyword)
+            if keyword_norm and keyword_norm in vendor_text:
+                return f"{dtype} [heur]"
 
     # ── 3. WiFi SSID-based matching (before beacon fallback) ──────────────
     #    Check SSIDs early so phone hotspots (beacon + SSID "iPhone")
@@ -675,20 +707,45 @@ def classify_device(
                         return dtype          # beacon + specific SSID = sure
                     return f"{dtype} [heur]"
 
-    # ── 4. WiFi beacon → router (generic fallback) ────────────────────────
+    # ── 4. WiFi beacon → router (generic fallback with hotspot safeguards) ─
     if is_beacon is True:
+        router_vendor_hints = []
+        phone_vendor_hints = []
+        for dtype, hints in _VENDOR_HEURISTICS:
+            if dtype == "router":
+                router_vendor_hints = hints
+            elif dtype == "phone":
+                phone_vendor_hints = hints
+
+        ssid_joined = " ".join(_normalize_identity_text(s) for s in (ssids or []))
+        if ssid_joined:
+            for hint in _HOTSPOT_SSID_HINTS:
+                if _normalize_identity_text(hint) in ssid_joined:
+                    return "phone [heur]"
+
         if oui_vendor:
-            vendor_lower = oui_vendor.lower()
-            for vk in dict(_VENDOR_HEURISTICS).get("router", []):
-                if vk in vendor_lower:
+            vendor_lower = vendor_text or _normalize_identity_text(oui_vendor)
+            for vk in router_vendor_hints:
+                if _normalize_identity_text(vk) in vendor_lower:
                     return "router"
+
+            # Randomized beacon + mobile vendor is often a phone hotspot.
+            if is_randomized_mac:
+                for vk in phone_vendor_hints:
+                    if _normalize_identity_text(vk) in vendor_lower:
+                        return "phone [heur]"
+
+        # Randomized beacon with no clear router signature: prefer phone heuristic.
+        if is_randomized_mac and not oui_vendor:
+            return "phone [heur]"
+
         return "router [heur]"
 
     # ── 5. Vendor / manufacturer heuristic ────────────────────────────────
-    if search_text.strip():
+    if combined_text:
         for dtype, vendor_keywords in _VENDOR_HEURISTICS:
             for vk in vendor_keywords:
-                if vk.lower() in search_text:
+                if _normalize_identity_text(vk) in combined_text:
                     return f"{dtype} [heur]"
 
     # ── 6. Randomized MAC without other signals → likely phone ────────────

@@ -42,11 +42,14 @@ def detection_callback(device, advertisement_data):
     manufacturer_hex = None
     company_hex = None # probably this or above only, should be the same!
     if advertisement_data.manufacturer_data:
-        for m_id, m_bytes in advertisement_data.manufacturer_data.items():
-            manufacturer = COMPANY_IDS.get(m_id, f"Unknown (0x{m_id:04X})")
-            manufacturer_hex = m_bytes.hex()
-            company_hex = f"0x{m_id:04X}"
-            #print(f"  Raw data: {m_bytes.hex()}")
+        # Some stacks expose multiple manufacturer entries. Pick one deterministically:
+        # prefer known BT SIG company IDs, then the lowest company ID for stable results.
+        entries = list(advertisement_data.manufacturer_data.items())
+        m_id, m_bytes = min(entries, key=lambda kv: (0 if kv[0] in COMPANY_IDS else 1, kv[0]))
+        manufacturer = COMPANY_IDS.get(m_id, f"Unknown (0x{m_id:04X})")
+        manufacturer_hex = m_bytes.hex()
+        company_hex = f"0x{m_id:04X}"
+        #print(f"  Raw data: {m_bytes.hex()}")
 
     # Service data (sometimes useful too)
     service = None
