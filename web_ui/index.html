@@ -2564,6 +2564,9 @@
             try {
                 // Build query with filters
                 const params = new URLSearchParams();
+
+                // Respect selected map data type (bt/wifi/assoc/all)
+                params.append("data_type", mapDataType || "all");
                 
                 const macFilter = document.getElementById("macFilter")?.value.trim();
                 if (macFilter) params.append("mac_filter", macFilter);
@@ -4046,7 +4049,7 @@
             renderAnalysisLoading();
             
             try {
-                const response = await fetch(`${API_BASE}/api/analyze/confidence/preview`);
+                const response = await fetch(`${API_BASE}/api/analyze/confidence/preview?details_limit=15`);
                 const data = await response.json();
                 
                 if (data.error) {

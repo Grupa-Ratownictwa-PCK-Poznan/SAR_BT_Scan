@@ -63,7 +63,8 @@ class ConnectionManager:
         self.active_connections.append(websocket)
 
     def disconnect(self, websocket: WebSocket):
-        self.active_connections.remove(websocket)
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
 
     async def broadcast(self, message: dict):
         for connection in self.active_connections:
@@ -485,7 +486,7 @@ async def get_bt_devices(limit: int = Query(100, ge=1, le=1000),
                         confidence_min: Optional[int] = Query(None, ge=0, le=100),
                         confidence_max: Optional[int] = Query(None, ge=0, le=100),
                         sort_by: Optional[str] = None,
-                        sort_dir: str = Query("desc", regex="^(asc|desc)$")):
+                        sort_dir: str = Query("desc", pattern="^(asc|desc)$")):
     """Get BT devices list with optional filters and sorting."""
     filters = {}
     if mac_filter:
@@ -546,7 +547,7 @@ async def get_wifi_devices(limit: int = Query(100, ge=1, le=1000),
                           confidence_min: Optional[int] = Query(None, ge=0, le=100),
                           confidence_max: Optional[int] = Query(None, ge=0, le=100),
                           sort_by: Optional[str] = None,
-                          sort_dir: str = Query("desc", regex="^(asc|desc)$")):
+                          sort_dir: str = Query("desc", pattern="^(asc|desc)$")):
     """Get WiFi devices list with optional filters and sorting."""
     filters = {}
     if mac_filter:
@@ -689,7 +690,7 @@ async def get_wifi_device_ssids(mac: str):
 
 @app.get("/api/map/heatmap")
 async def get_heatmap_data(
-    data_type: str = Query("all", regex="^(bt|wifi|assoc|all)$"),
+    data_type: str = Query("all", pattern="^(bt|wifi|assoc|all)$"),
     hours_back: Optional[int] = Query(None, ge=0),
     mac_filter: Optional[str] = None,
     ssid_filter: Optional[str] = None,
@@ -873,9 +874,10 @@ async def websocket_live_updates(websocket: WebSocket):
                 print(f"Error sending WebSocket update: {send_error}")
     
     except WebSocketDisconnect:
-        manager.disconnect(websocket)
+        pass
     except Exception as e:
         print(f"WebSocket error: {e}")
+    finally:
         manager.disconnect(websocket)
 
 
@@ -1246,13 +1248,13 @@ async def system_update():
 # ============= Confidence Analysis Endpoints =============
 
 @app.get("/api/analyze/confidence/preview")
-async def preview_confidence_analysis():
+async def preview_confidence_analysis(details_limit: Optional[int] = Query(None, ge=1, le=5000)):
     """Preview confidence analysis without applying changes."""
     try:
         # Import analyzer module
         from confidence_analyzer import ConfidenceAnalyzer
         
-        analyzer = ConfidenceAnalyzer()
+        analyzer = ConfidenceAnalyzer(db_path=get_db_path())
         session, analyses = analyzer.analyze_all()
         
         if not session:
@@ -1262,7 +1264,11 @@ async def preview_confidence_analysis():
         
         # Add detailed device analysis for preview
         device_details = []
-        for a in sorted(analyses, key=lambda x: -x.new_confidence):
+        sorted_analyses = sorted(analyses, key=lambda x: -x.new_confidence)
+        if details_limit is not None:
+            sorted_analyses = sorted_analyses[:details_limit]
+
+        for a in sorted_analyses:
             device_details.append({
                 "mac": a.mac,
                 "type": a.device_type,
@@ -1290,7 +1296,7 @@ async def run_confidence_analysis():
         # Import analyzer module
         from confidence_analyzer import ConfidenceAnalyzer
         
-        analyzer = ConfidenceAnalyzer()
+        analyzer = ConfidenceAnalyzer(db_path=get_db_path())
         session, analyses = analyzer.analyze_all()
         
         if not session:
