@@ -28,8 +28,8 @@ import subprocess
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from settings import WEB_UI_HOST, WEB_UI_PORT, WEB_UI_REFRESH_INTERVAL, DB_FILE, SD_STORAGE, USB_STORAGE
-from storage import db
+from settings import WEB_UI_HOST, WEB_UI_PORT, WEB_UI_REFRESH_INTERVAL, USB_STORAGE
+from storage import db, DB_PATH
 from .mac_utils import lookup_randomized_mac_vendor, is_locally_administered_mac
 import gps_client as gc
 
@@ -43,15 +43,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-DB_PATH = SD_STORAGE + DB_FILE
-
-# Check if the configured database exists; if not, try fallback paths for testing
-if not os.path.exists(DB_PATH):
-    if os.path.exists('/tmp/test_results.db'):
-        DB_PATH = '/tmp/test_results.db'
-    elif os.path.exists('./test_results.db'):
-        DB_PATH = './test_results.db'
 
 # WebSocket connection manager
 class ConnectionManager:

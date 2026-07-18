@@ -74,6 +74,18 @@ def make_timestamp_name():
     return f"{ts}-BTlog.db"
 
 
+def _is_backup_target_available(target: Path) -> bool:
+    """Return True when backup target is available for writes.
+
+    For typical removable-media paths (e.g. /mnt/pendrive), require an
+    active mount to avoid writing to the root filesystem when USB is absent.
+    """
+    target_str = str(target)
+    if target_str.startswith("/mnt/") and not target.is_mount():
+        return False
+    return True
+
+
 def sqlite_consistent_backup(src: Path, dst: Path):
     """
     It makes a consistent backup of SQLite using the backup() API, even when the file is in use.
@@ -110,6 +122,8 @@ def do_minute_backup():
         try:
             if not USB_BACKUP_ENABLED:
                 logger.debug("USB_BACKUP_ENABLED is False, skipping backup")
+            elif not _is_backup_target_available(DEST_DIR):
+                logger.warning(f"Backup target unavailable (not mounted): {DEST_DIR}")
             elif DB_PATH.exists():
                 DEST_DIR.mkdir(parents=True, exist_ok=True)
 

@@ -6,14 +6,59 @@ from contextlib import contextmanager
 
 from settings import SD_STORAGE, DB_FILE, SCANNER_ID
 
-DB_PATH = SD_STORAGE + DB_FILE  #"/var/lib/ble/ble_scanner.db"
+def _can_use_db_path(path: str) -> bool:
+    """Return True when DB file can be created or written at *path*."""
+    directory = os.path.dirname(path) or "."
+    try:
+        os.makedirs(directory, exist_ok=True)
+    except Exception:
+        return False
 
-# Check if the configured database exists; if not, try fallback paths for testing on macOS
-if not os.path.exists(DB_PATH):
+    if os.path.exists(path):
+        return os.access(path, os.R_OK | os.W_OK)
+    return os.access(directory, os.W_OK)
+
+
+def resolve_db_path() -> str:
+    """Resolve a robust SQLite DB path with writable fallbacks.
+
+    Priority:
+    1) BTS_DB_PATH environment override (if provided)
+    2) settings.py configured path (SD_STORAGE + DB_FILE)
+    3) Existing test DBs for local/dev convenience
+    4) Writable runtime fallbacks
+    """
+    env_path = os.getenv("BTS_DB_PATH")
+
+    candidates = []
+    if env_path:
+        candidates.append(env_path)
+
+    configured = os.path.join(SD_STORAGE, DB_FILE)
+    candidates.append(configured)
+
+    # Keep current dev/test compatibility behavior.
     if os.path.exists('/tmp/test_results.db'):
-        DB_PATH = '/tmp/test_results.db'
-    elif os.path.exists('./test_results.db'):
-        DB_PATH = './test_results.db'
+        candidates.append('/tmp/test_results.db')
+    if os.path.exists('./test_results.db'):
+        candidates.append('./test_results.db')
+
+    # Final writable fallbacks for environments without expected mounts/paths.
+    candidates.extend([
+        os.path.join('/tmp', DB_FILE),
+        os.path.join(os.getcwd(), DB_FILE),
+    ])
+
+    for candidate in candidates:
+        candidate = os.path.abspath(os.path.expanduser(candidate))
+        if _can_use_db_path(candidate):
+            return candidate
+
+    # Ultimate fallback: keep behavior deterministic even in highly restricted envs.
+    return os.path.abspath(os.path.join(os.getcwd(), DB_FILE))
+
+
+DB_PATH = resolve_db_path()
 
 def init_db():
     print("Saving to DB on location: " + DB_PATH)

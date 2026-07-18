@@ -38,10 +38,11 @@ from dataclasses import dataclass, field
 
 # Import settings for database path and analyzer config
 from settings import (
-    SD_STORAGE, DB_FILE,
+    SD_STORAGE,
     HQ_LATITUDE, HQ_LONGITUDE, HQ_RADIUS_METERS,
     DEVICE_WHITELIST_FILE, SESSION_GAP_SECONDS
 )
+from storage import DB_PATH
 
 # Import WiFi OUI lookup for vendor/device type enrichment
 try:
@@ -69,15 +70,6 @@ try:
 except Exception:
     CLASSIFIER_AVAILABLE = False
     def classify_device(**kwargs): return ""
-
-# Database path resolution (same logic as storage.py)
-DB_PATH = SD_STORAGE + DB_FILE
-if not os.path.exists(DB_PATH):
-    if os.path.exists('/tmp/test_results.db'):
-        DB_PATH = '/tmp/test_results.db'
-    elif os.path.exists('./test_results.db'):
-        DB_PATH = './test_results.db'
-
 
 @dataclass
 class SessionStats:
